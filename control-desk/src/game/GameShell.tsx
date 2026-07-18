@@ -14,6 +14,16 @@ import './game.css'
 type AudioCue = { id: string; loop: boolean; path: string }
 type AudioCatalog = { assets: AudioCue[] }
 
+const POST_RAMP_SPEED = {
+  decision: 130,
+  ending: 180,
+  evidence: 90,
+  migration: 40,
+  reveal: 220,
+  selectCase: 70,
+  action: 110,
+} as const
+
 function formatElapsed(seconds: number) {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
 }
@@ -197,7 +207,7 @@ export function GameShell() {
 
   useEffect(() => {
     if (!automationActive || phase !== 'migrating' || experiencePhase !== 'migrating' || rampMigrationLocked) return
-    const migrationTimer = window.setTimeout(advanceRampMigration, rampMigrationStep === 0 ? 900 : 700)
+    const migrationTimer = window.setTimeout(advanceRampMigration, POST_RAMP_SPEED.migration)
     return () => window.clearTimeout(migrationTimer)
   }, [advanceRampMigration, automationActive, experiencePhase, phase, rampMigrationLocked, rampMigrationStep])
 
@@ -206,13 +216,13 @@ export function GameShell() {
     const rampCaseIds = WORKSTATION_CASE_IDS_BY_PHASE.ramp
     const rampComplete = rampCaseIds.every((caseId) => workstationClosedCaseIds.includes(caseId))
     if (rampComplete) {
-      const endingTimer = window.setTimeout(completeAutomatedQueue, 1050)
+      const endingTimer = window.setTimeout(completeAutomatedQueue, POST_RAMP_SPEED.ending)
       return () => window.clearTimeout(endingTimer)
     }
 
     const currentCase = WORKSTATION_CASES_BY_ID[workstationActiveCaseId]
     if (currentCase.phase !== 'ramp') {
-      const selectTimer = window.setTimeout(() => advanceWorkstationCase('ramp'), 400)
+      const selectTimer = window.setTimeout(() => advanceWorkstationCase('ramp'), POST_RAMP_SPEED.selectCase)
       return () => window.clearTimeout(selectTimer)
     }
 
@@ -223,7 +233,7 @@ export function GameShell() {
         toggleWorkstationEvidence(nextEvidence)
         playCue('evidence-link', 0.38)
         triggerEffect('paper-drop')
-      }, 520)
+      }, POST_RAMP_SPEED.evidence)
       return () => window.clearTimeout(evidenceTimer)
     }
 
@@ -242,13 +252,13 @@ export function GameShell() {
         completeWorkstationAction(nextAction, true, currentCase.id)
         playCue('evidence-link', 0.38)
         triggerEffect('paper-drop')
-      }, 620)
+      }, POST_RAMP_SPEED.action)
       return () => window.clearTimeout(actionTimer)
     }
 
     const decisionTimer = window.setTimeout(() => {
       recordWorkstationDecision(currentCase.validation.expectedDecision)
-    }, 760)
+    }, POST_RAMP_SPEED.decision)
     return () => window.clearTimeout(decisionTimer)
   }, [advanceWorkstationCase, automationActive, completeAutomatedQueue, completeWorkstationAction, phase, playCue, recordWorkstationDecision, setWorkstationCardFrozen, toggleWorkstationEvidence, triggerEffect, workstationActiveCaseId, workstationClosedCaseIds, workstationCompletedActions, workstationPinnedEvidence])
 
@@ -316,7 +326,7 @@ export function GameShell() {
       setEndingStep(1)
       playCue('slack-ping', 0.6)
       playCue('card-decline', 0.62)
-    }, 1100)
+    }, POST_RAMP_SPEED.reveal)
     return () => window.clearTimeout(revealTimer)
   }, [automationActive, endingStep, phase, playCue])
 
@@ -335,15 +345,9 @@ export function GameShell() {
   const handleStart = () => {
     setRenderQuality('capture')
     startGame()
-    setWorkstationFocused(true)
+    setWorkstationFocused(false)
     switchAmbience('manual-adaptive-music-loop')
     playCue('paper-pickup', 0.52)
-  }
-
-  const handleInstallRamp = () => {
-    setRenderQuality('capture')
-    installRamp()
-    beginRampTransition()
   }
 
   const handleReveal = () => {
@@ -440,17 +444,7 @@ export function GameShell() {
         <i aria-hidden="true"><b /></i>
         <strong>Post-Ramp</strong>
       </label>
-      {phase === 'overload' && <GameDeskHud />}
-
-      {phase === 'migration-prompt' && (
-        <button className="game-install-ramp" onClick={handleInstallRamp} type="button">
-          <img alt="Ramp" src="/brand/ramp-lockup-white.svg" />
-          <span>READY TO CONNECT</span>
-          <strong>Install Ramp</strong>
-          <small>47 expenses ready · {rampCaseCount} exceptions</small>
-          <b>Install and run</b>
-        </button>
-      )}
+      <GameDeskHud />
 
       {automationActive && ['migrating', 'ramp', 'ending'].includes(phase) && (
         <section aria-live="polite" className="game-ramp-run-status">

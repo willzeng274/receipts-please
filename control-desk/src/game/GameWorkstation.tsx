@@ -172,7 +172,7 @@ export function GameWorkstation() {
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const togglePause = useGameStore((state) => state.togglePause)
   const toggleSound = useGameStore((state) => state.toggleSound)
-  const beginMigration = useGameStore((state) => state.beginMigration)
+  const installRamp = useGameStore((state) => state.installRamp)
   const beginRampTransition = useLabStore((state) => state.beginRampTransition)
   const workstationFocused = useLabStore((state) => state.workstationFocused)
   const setWorkstationFocused = useLabStore((state) => state.setWorkstationFocused)
@@ -182,7 +182,7 @@ export function GameWorkstation() {
   const cortisol = rampActive ? Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6) : Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
 
   const handleTryRamp = () => {
-    beginMigration()
+    installRamp()
     beginRampTransition()
   }
 
