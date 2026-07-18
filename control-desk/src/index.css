@@ -207,13 +207,29 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .audio-candidate strong { color: var(--mint); font: 500 9px/1.4 'IBM Plex Mono', monospace; overflow-wrap: anywhere; }
 .audio-candidate audio { width: 100%; height: 38px; }
 .audio-intro small { margin-top: 12px; color: #68736d; font: 400 9px/1.4 'IBM Plex Mono', monospace; }
+.audio-error { margin-top: 14px !important; color: #ff8c76 !important; font: 500 10px/1.5 'IBM Plex Mono', monospace !important; }
 .audio-board { overflow-y: auto; padding: 28px; background-color: #141c1a; background-image: linear-gradient(rgba(235,229,214,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(235,229,214,.025) 1px, transparent 1px); background-size: 28px 28px; }
 .audio-board section { margin-bottom: 20px; border: 1px solid #35413c; background: rgba(23,32,29,.94); }
 .audio-board section header { height: 42px; padding: 0 14px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #35413c; color: var(--amber); font: 500 9px/1 'IBM Plex Mono', monospace; letter-spacing: .09em; }
 .audio-row { min-height: 52px; display: grid; grid-template-columns: 30px 1fr auto; align-items: center; padding: 0 14px; border-bottom: 1px solid #2b3531; color: var(--paper); font-size: 12px; }
 .audio-row:last-child { border-bottom: 0; }
 .audio-row small { color: #707c75; font: 400 8px/1 'IBM Plex Mono', monospace; }
-.audio-play { color: var(--amber); font-size: 8px; }
+.audio-row > span { display: flex; flex-direction: column; gap: 4px; }
+.audio-row > span strong { font-size: 12px; font-weight: 540; }
+.audio-play { width: 24px; height: 24px; border: 1px solid #4c5d56; border-radius: 50%; background: #1b2522; color: var(--amber); font-size: 8px; cursor: pointer; }
+.audio-play:hover, .audio-play:focus-visible { border-color: var(--amber); background: #293630; outline: 0; }
+.audio-case-plan { border-color: #526c61 !important; }
+.audio-case-controls { padding: 16px; display: grid; gap: 16px; }
+.audio-case-controls > label { display: grid; grid-template-columns: 70px 1fr; gap: 12px; align-items: center; color: #88958f; font: 500 9px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
+.audio-case-controls select { width: 100%; height: 40px; padding: 0 12px; border: 1px solid #45544e; background: #111917; color: var(--paper); font: 500 11px/1 'IBM Plex Mono', monospace; }
+.audio-case-detail { padding: 18px; border: 1px solid #33413b; background: #111816; }
+.audio-case-detail > strong { display: block; color: var(--paper); font-size: 18px; }
+.audio-case-detail > p { margin: 8px 0 18px; color: #9ba7a1; font-size: 12px; line-height: 1.55; }
+.audio-case-detail > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.audio-case-detail > div > span { flex: 0 0 100%; color: var(--amber); font: 500 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .09em; }
+.audio-case-detail button, .audio-case-detail em { min-height: 28px; padding: 0 9px; border: 1px solid #3d5047; background: #1c2924; color: #cce6da; font: 500 8px/1 'IBM Plex Mono', monospace; font-style: normal; text-transform: uppercase; cursor: pointer; }
+.audio-case-detail button:hover, .audio-case-detail button:focus-visible { border-color: var(--mint); outline: 0; }
+.audio-case-detail .is-planned em { display: inline-flex; align-items: center; border-style: dashed; color: #8d9993; cursor: default; }
 
 @media (max-width: 1000px) {
   .lab-header { grid-template-columns: 220px 1fr; }

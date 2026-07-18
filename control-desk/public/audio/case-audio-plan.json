@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "description": "Case-by-case audio direction for Receipts, Please. Available cues exist in the prototype catalog; planned cues still require recording or sourcing.",
+  "cases": [
+    {
+      "caseId": "manual-01-amount-mismatch",
+      "title": "Amount mismatch",
+      "available": ["manual-office-loop", "paper-pickup", "evidence-link", "reject-stamp"],
+      "planned": ["pen-overwrite-scratch"],
+      "direction": "Paper intimacy first, then a small evidence connection and a decisive reject impact when the altered digit is found."
+    },
+    {
+      "caseId": "manual-02-impossible-date",
+      "title": "Impossible date",
+      "available": ["manual-office-loop", "paper-pickup", "calculator-key", "evidence-link", "reject-stamp"],
+      "planned": ["calendar-reverse-tick"],
+      "direction": "Keep the receipt ordinary; the audio clue arrives only when the employee start date is compared."
+    },
+    {
+      "caseId": "manual-03-omakase-intern",
+      "title": "Omakase intern",
+      "available": ["manual-office-loop", "paper-pickup", "evidence-link", "reject-stamp"],
+      "planned": ["restaurant-ceramic-clink", "policy-limit-buzzer"],
+      "direction": "A restrained premium restaurant detail should contrast with the blunt policy failure."
+    },
+    {
+      "caseId": "manual-04-infinite-tip",
+      "title": "Infinite tip",
+      "available": ["manual-office-loop", "paper-pickup", "calculator-key", "calculator-print", "evidence-link"],
+      "planned": ["tip-percentage-riser"],
+      "direction": "Calculator keys accelerate into the tape print, followed by an uncomfortable pause after 4,495 percent appears."
+    },
+    {
+      "caseId": "manual-05-frankenstein-receipt",
+      "title": "Frankenstein receipt",
+      "available": ["manual-office-loop", "paper-pickup", "evidence-link", "fraud-stamp"],
+      "planned": ["document-scanner-glitch"],
+      "direction": "Each selected typography mismatch gets a dry link tick; the second confirmed region earns the heavy fraud stamp."
+    },
+    {
+      "caseId": "manual-06-garbage-receipt",
+      "title": "Garbage receipt",
+      "available": ["manual-office-loop", "paper-slide", "receipt-drop", "printer-jam"],
+      "planned": ["napkin-crumple", "camera-focus-fail"],
+      "direction": "The receipt should sound physically flimsy and badly handled, with a short printer complaint when it enters the workflow."
+    },
+    {
+      "caseId": "manual-07-duplicate-receipt-ring",
+      "title": "Duplicate receipt ring",
+      "available": ["manual-office-loop", "paper-slide", "receipt-drop", "evidence-link", "fraud-stamp"],
+      "planned": ["triple-paper-flick", "duplicate-fingerprint-scan"],
+      "direction": "Three paper movements should form a rhythm; identical evidence links expose the shared source before the fraud hit."
+    },
+    {
+      "caseId": "manual-08-ai-generated-receipt",
+      "title": "AI-generated receipt",
+      "available": ["manual-office-loop", "printer-feed", "printer-jam", "evidence-link", "fraud-stamp"],
+      "planned": ["synthetic-document-warble"],
+      "direction": "Start plausibly with printer feed, then introduce unstable digital artifacts as impossible fields are selected."
+    },
+    {
+      "caseId": "optional-01-taxi-location-mismatch",
+      "title": "New York taxi during London trip",
+      "available": ["manual-office-loop", "paper-pickup", "calculator-key", "evidence-link"],
+      "planned": ["taxi-meter-tick", "map-distance-sweep"],
+      "direction": "The location comparison should feel like a map snapping two distant points together."
+    },
+    {
+      "caseId": "optional-02-minibar-workspace-supplies",
+      "title": "Minibar workspace supplies",
+      "available": ["manual-office-loop", "paper-pickup", "evidence-link", "reject-stamp"],
+      "planned": ["miniature-bottle-clink"],
+      "direction": "A tiny glass clink should puncture the deliberately boring workspace-supplies memo."
+    },
+    {
+      "caseId": "optional-03-dog-attendee",
+      "title": "Client dinner with the employee's dog",
+      "available": ["manual-office-loop", "paper-pickup", "evidence-link", "reject-stamp"],
+      "planned": ["dog-collar-jingle", "single-distant-bark"],
+      "direction": "Keep the animal joke subtle: one collar movement after the employee record identifies Biscuit."
+    },
+    {
+      "caseId": "optional-04-cross-department-duplicate",
+      "title": "Same receipt, two departments",
+      "available": ["manual-office-loop", "paper-slide", "evidence-link", "fraud-stamp"],
+      "planned": ["duplicate-fingerprint-scan"],
+      "direction": "Two separate submissions resolve into one identical sonic fingerprint."
+    },
+    {
+      "caseId": "optional-05-one-cent-over-policy",
+      "title": "One cent over policy",
+      "available": ["manual-office-loop", "paper-pickup", "calculator-key", "calculator-print", "evidence-link"],
+      "planned": ["single-coin-ping"],
+      "direction": "Use one absurdly pristine coin ping, then leave the player alone with the judgment call."
+    },
+    {
+      "caseId": "ramp-09-it-inventory-theft",
+      "title": "IT inventory theft",
+      "available": ["ramp-office-loop", "evidence-link", "freeze-cover", "freeze-button", "card-decline", "fraud-stamp"],
+      "planned": ["inventory-serial-scan", "resale-account-alert"],
+      "direction": "Connected evidence builds in layers before the physical freeze sequence and distant decline response."
+    },
+    {
+      "caseId": "ramp-10-influencer-marketing-deal",
+      "title": "Influencer marketing deal",
+      "available": ["ramp-office-loop", "calculator-key", "calculator-print", "evidence-link", "reject-stamp"],
+      "planned": ["tiny-social-like-pops", "vendor-risk-pulse"],
+      "direction": "Fourteen comically small social pips should contrast with the $75,000 calculator result."
+    },
+    {
+      "caseId": "ramp-11-travel-impossibility",
+      "title": "Ramp Travel impossibility",
+      "available": ["ramp-office-loop", "evidence-link", "card-decline"],
+      "planned": ["map-pin-sequence", "impossible-route-sweep"],
+      "direction": "Five map pins should arrive cleanly, followed by one descending impossibility response."
+    },
+    {
+      "caseId": "ramp-12-ai-expense-paradox",
+      "title": "AI expense paradox",
+      "available": ["ramp-office-loop", "paper-pickup", "calculator-key", "calculator-print", "slack-ping", "approve-stamp", "card-decline"],
+      "planned": ["coffee-cup-setdown", "six-charge-notification-stack", "cancellation-fee-ding"],
+      "direction": "The coffee stays calm while six increasingly irritating notifications overwhelm its tiny value."
+    },
+    {
+      "caseId": "ramp-13-procurement-mismatch",
+      "title": "Procurement mismatch",
+      "available": ["ramp-office-loop", "printer-feed", "calculator-key", "calculator-print", "evidence-link", "reject-stamp"],
+      "planned": ["warehouse-pallet-thump", "chair-squeak", "beanbag-poof"],
+      "direction": "Large warehouse weight collapses into one soft, embarrassing beanbag sound."
+    },
+    {
+      "caseId": "ramp-14-intern-card-catastrophe",
+      "title": "Intern card catastrophe",
+      "available": ["ramp-office-loop", "slack-ping", "evidence-link", "freeze-cover", "freeze-button", "card-decline", "fraud-stamp"],
+      "planned": ["forklift-reverse-beep", "hoodie-box-thumps", "energy-drink-fizz", "alpaca-bleat"],
+      "direction": "A rapid montage of purchases resolves into the freeze-button bass hit and one stunned alpaca reaction."
+    },
+    {
+      "caseId": "ending-15-giraffe-executive-hire",
+      "title": "Chief Growth Officer",
+      "available": ["ramp-office-loop", "slack-ping", "card-decline", "giraffe-chew", "badge-jingle"],
+      "planned": ["distant-hoof-shift", "ending-silence-cut", "title-card-sting"],
+      "direction": "After the decline and CEO messages, remove the ambience, then reveal only chewing and the badge jingle before silence."
+    }
+  ]
+}
