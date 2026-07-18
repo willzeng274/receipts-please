@@ -40,12 +40,12 @@
     "fire"
   ],
   "coverage": {
-    "primaryManualCases": 8,
+    "primaryManualCases": 10,
     "optionalManualCases": 5,
-    "rampEraCases": 6,
+    "rampEraCases": 7,
     "endingCases": 1,
-    "totalCases": 20,
-    "generatedReceiptArtifacts": 23
+    "totalCases": 23,
+    "generatedReceiptArtifacts": 26
   },
   "templates": {
     "thermal-restaurant": {
@@ -374,7 +374,7 @@
     {
       "caseId": "manual-01-amount-mismatch",
       "sequence": 1,
-      "title": "Amount mismatch",
+      "title": "Chopped lunch",
       "difficulty": "tutorial",
       "variantId": "overwritten-first-digit",
       "seed": "receipt-cases-v1:manual-01-amount-mismatch:overwritten-first-digit",
@@ -463,7 +463,7 @@
     {
       "caseId": "manual-02-impossible-date",
       "sequence": 2,
-      "title": "Impossible date",
+      "title": "Metro Cafe breakfast",
       "difficulty": "easy",
       "variantId": "three-days-before-start",
       "seed": "receipt-cases-v1:manual-02-impossible-date:three-days-before-start",
@@ -554,7 +554,7 @@
     {
       "caseId": "manual-03-omakase-intern",
       "sequence": 3,
-      "title": "Omakase intern",
+      "title": "Client dinner",
       "difficulty": "easy",
       "variantId": "one-person-executive-dinner",
       "seed": "receipt-cases-v1:manual-03-omakase-intern:one-person-executive-dinner",
@@ -658,7 +658,7 @@
     {
       "caseId": "manual-04-infinite-tip",
       "sequence": 4,
-      "title": "Infinite tip",
+      "title": "Corner Diner lunch",
       "difficulty": "medium",
       "variantId": "four-thousand-percent",
       "seed": "receipt-cases-v1:manual-04-infinite-tip:four-thousand-percent",
@@ -757,7 +757,7 @@
     {
       "caseId": "manual-05-frankenstein-receipt",
       "sequence": 5,
-      "title": "Frankenstein receipt",
+      "title": "Northstar Bistro dinner",
       "difficulty": "medium",
       "variantId": "five-font-forgery",
       "seed": "receipt-cases-v1:manual-05-frankenstein-receipt:five-font-forgery",
@@ -879,7 +879,7 @@
     {
       "caseId": "manual-06-garbage-receipt",
       "sequence": 6,
-      "title": "Garbage receipt",
+      "title": "IT equipment purchase",
       "difficulty": "easy",
       "variantId": "napkin-trust-me",
       "seed": "receipt-cases-v1:manual-06-garbage-receipt:napkin-trust-me",
@@ -1251,7 +1251,7 @@
     {
       "caseId": "ramp-09-it-inventory-theft",
       "sequence": 9,
-      "title": "IT inventory theft",
+      "title": "Technology supply invoice",
       "difficulty": "ramp",
       "variantId": "missing-macbooks-resale-account",
       "seed": "receipt-cases-v1:ramp-09-it-inventory-theft:missing-macbooks-resale-account",
@@ -1277,13 +1277,13 @@
         "inventory": {"MacBooks": {"purchased": 24, "counted": 11}, "monitors": {"purchased": 40, "counted": 19}, "keyboards": {"purchased": 90, "counted": 143, "note": "Imported by weight"}},
         "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "william.zeng@company.example", "employeeId": "employee-william-zeng"}
       },
-      "truth": {"expectedDecision": "fire", "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor. The evidence is severe enough that Fire is the correct decision."},
+      "truth": {"expectedDecision": "fire", "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor. Fire is supported, while Reject is also accepted as a conservative expense-only decision."},
       "generationNotes": "The invoice is legitimate; the suspicious pattern emerges from connected records."
     },
     {
       "caseId": "ramp-10-influencer-marketing-deal",
       "sequence": 10,
-      "title": "Influencer marketing deal",
+      "title": "Marketing vendor invoice",
       "difficulty": "ramp",
       "variantId": "vibe-based-activation",
       "seed": "receipt-cases-v1:ramp-10-influencer-marketing-deal:vibe-based-activation",
@@ -1302,13 +1302,13 @@
         "anomalies": [{"type": "suspicious-vendor", "target": "merchant", "parameters": {"vendorAgeDays": 1, "followers": 14, "verifiedFollowers": 14, "missingApproval": "Legal"}}]
       },
       "comparisonRecords": {"vendor": {"employeeId": "employee-william-zeng", "employeeName": "William Zeng", "createdDaysAgo": 1, "addressMatchesEmployee": true, "socialFollowers": 14, "employeeOwnedFollowers": 8, "legalApproval": false, "campaignLikes": 3}},
-      "truth": {"expectedDecision": "fire", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The undisclosed self-dealing vendor, approval gap, and fabricated campaign performance support termination."},
+      "truth": {"expectedDecision": "fire", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The undisclosed self-dealing vendor, approval gap, and fabricated campaign performance support Fire, while Reject is also accepted as a conservative expense-only decision."},
       "generationNotes": "Present as a confident but thin corporate invoice rather than an obvious fake."
     },
     {
       "caseId": "ramp-11-travel-impossibility",
       "sequence": 11,
-      "title": "Ramp Travel impossibility",
+      "title": "Chicago business trip",
       "difficulty": "ramp",
       "variantId": "five-cities-one-trip",
       "seed": "receipt-cases-v1:ramp-11-travel-impossibility:five-cities-one-trip",
@@ -1343,7 +1343,7 @@
     {
       "caseId": "ramp-12-ai-expense-paradox",
       "sequence": 12,
-      "title": "AI expense paradox",
+      "title": "Client coffee",
       "difficulty": "ramp",
       "variantId": "coffee-costs-six-times-more-to-review",
       "seed": "receipt-cases-v1:ramp-12-ai-expense-paradox:coffee-costs-six-times-more-to-review",
@@ -1378,7 +1378,7 @@
     {
       "caseId": "ramp-13-procurement-mismatch",
       "sequence": 13,
-      "title": "Procurement mismatch",
+      "title": "Office furniture invoice",
       "difficulty": "ramp",
       "variantId": "one-thousand-chairs-one-beanbag",
       "seed": "receipt-cases-v1:ramp-13-procurement-mismatch:one-thousand-chairs-one-beanbag",
@@ -1403,7 +1403,7 @@
     {
       "caseId": "ramp-14-intern-card-catastrophe",
       "sequence": 14,
-      "title": "Intern card catastrophe",
+      "title": "Employee engagement purchase",
       "difficulty": "ramp",
       "variantId": "let-them-cook",
       "seed": "receipt-cases-v1:ramp-14-intern-card-catastrophe:let-them-cook",
@@ -1434,6 +1434,95 @@
       },
       "truth": {"expectedDecision": "reject", "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "Reject the expense and shut down the card program. Because the CEO approved the setup, the current evidence shows a control failure rather than grounds to fire the intern."},
       "generationNotes": "Use the alpaca invoice as the tactile receipt while the unified workspace shows the wider card catastrophe."
+    },
+    {
+      "caseId": "manual-02-client-dinner-clean",
+      "sequence": 2,
+      "title": "Birch Table dinner",
+      "difficulty": "ramp",
+      "variantId": "approved-and-under-policy",
+      "seed": "receipt-cases-v1:manual-02-client-dinner-clean:approved-and-under-policy",
+      "receipt": {
+        "receiptId": "receipt-birch-table-20260714-4481",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "BIRCH TABLE", "addressLines": ["42 IRVING PLACE", "NEW YORK, NY 10003"], "phone": "212-555-0188"},
+        "issuedAt": "2026-07-14T19:24:00-04:00",
+        "lineItems": [
+          {"description": "CLIENT DINNER", "quantity": 4, "unitPriceCents": 6200, "lineTotalCents": 24800}
+        ],
+        "amounts": {"subtotalCents": 24800, "taxCents": 2201, "tipCents": 4960, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 31961, "printedTotalCents": 31961},
+        "payment": {"method": "VISA", "cardLast4": "4481", "authorizationCode": "BIRCH4"},
+        "copy": {"memo": "ACME RENEWAL DINNER", "attendees": ["Maya Chen", "Jordan Bell", "Chris Park", "Taylor Reed"], "footer": "THANK YOU"},
+        "anomalies": []
+      },
+      "comparisonRecords": {
+        "transaction": {"merchant": "Birch Table", "amountCents": 31961, "cardLast4": "4481"},
+        "approval": {"status": "approved", "approver": "VP Sales", "purpose": "Acme renewal dinner"},
+        "policy": {"limitPerAttendeeCents": 10000, "attendeeCount": 4}
+      },
+      "truth": {"expectedDecision": "approve", "primaryClue": "The receipt matches the card charge, has four named attendees, and is below the approved per-person limit.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.transaction", "comparisonRecords.approval", "comparisonRecords.policy"], "secondaryClue": "The business purpose matches the approved Acme renewal dinner.", "explanation": "Everything matches: merchant, amount, attendees, approval, and policy. Approve the receipt."},
+      "generationNotes": "This is an intentionally clean approval case. Do not add suspicious visual noise."
+    },
+    {
+      "caseId": "manual-04-laptop-three-way-match",
+      "sequence": 4,
+      "title": "New-hire laptop",
+      "difficulty": "ramp",
+      "variantId": "po-invoice-inventory-match",
+      "seed": "receipt-cases-v1:manual-04-laptop-three-way-match:po-invoice-inventory-match",
+      "receipt": {
+        "receiptId": "invoice-northstar-laptop-20260715",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "NORTHSTAR TECHNOLOGY SUPPLY", "addressLines": ["80 INDUSTRIAL WAY", "NEWARK, NJ 07105"], "phone": "973-555-0124"},
+        "issuedAt": "2026-07-15T10:11:00-04:00",
+        "lineItems": [{"description": "MACBOOK PRO 14", "quantity": 1, "unitPriceCents": 180000, "lineTotalCents": 180000}],
+        "amounts": {"subtotalCents": 180000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 180000, "printedTotalCents": 180000},
+        "payment": {"method": "CORPORATE CARD", "cardLast4": "2910", "authorizationCode": "PO24117"},
+        "copy": {"memo": "DESIGN NEW HIRE", "footer": "NET 30"},
+        "anomalies": []
+      },
+      "comparisonRecords": {
+        "purchaseOrder": {"id": "PO-24117", "item": "MacBook Pro 14", "quantity": 1, "amountCents": 180000, "status": "approved"},
+        "delivery": {"quantity": 1, "receivedBy": "Maya Chen"},
+        "inventory": {"assetTag": "RP-2048", "serialNumberRecorded": true, "assignedTo": "Maya Chen"}
+      },
+      "truth": {"expectedDecision": "approve", "primaryClue": "The approved PO, invoice, delivery, and assigned inventory record all match.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.purchaseOrder", "comparisonRecords.delivery", "comparisonRecords.inventory"], "secondaryClue": "The laptop has both an asset tag and a recorded serial number.", "explanation": "The complete purchase trail matches with no missing hardware. Approve the receipt."},
+      "generationNotes": "A clean three-way-match case that rewards checking connected records."
+    },
+    {
+      "caseId": "ramp-15-hotel-trip-match",
+      "sequence": 15,
+      "title": "Boston hotel stay",
+      "difficulty": "ramp",
+      "variantId": "itinerary-and-folio-match",
+      "seed": "receipt-cases-v1:ramp-15-hotel-trip-match:itinerary-and-folio-match",
+      "receipt": {
+        "receiptId": "folio-harbor-boston-20260717",
+        "templateId": "hotel-folio",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "HARBOR HOTEL BOSTON", "addressLines": ["70 ATLANTIC AVENUE", "BOSTON, MA 02110"], "phone": "617-555-0117"},
+        "issuedAt": "2026-07-17T08:02:00-04:00",
+        "lineItems": [{"description": "ROOM 804 - TWO NIGHTS", "quantity": 1, "unitPriceCents": 54800, "lineTotalCents": 54800}],
+        "amounts": {"subtotalCents": 54800, "taxCents": 7672, "tipCents": 0, "feesCents": 2500, "discountCents": 0, "calculatedTotalCents": 64972, "printedTotalCents": 64972},
+        "payment": {"method": "VISA", "cardLast4": "8022", "authorizationCode": "BOS804"},
+        "copy": {"memo": "BOSTON CUSTOMER WORKSHOP", "footer": "THANK YOU FOR STAYING"},
+        "anomalies": []
+      },
+      "comparisonRecords": {
+        "approvedTrip": {"origin": "New York", "destination": "Boston", "startDate": "2026-07-15", "endDate": "2026-07-17", "status": "approved"},
+        "booking": {"hotel": "Harbor Hotel Boston", "nights": 2, "bookedAmountCents": 64972},
+        "transaction": {"merchant": "Harbor Hotel Boston", "amountCents": 64972, "cardLast4": "8022"}
+      },
+      "truth": {"expectedDecision": "approve", "primaryClue": "The destination, dates, hotel, amount, and card transaction all match the approved trip.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.approvedTrip", "comparisonRecords.booking", "comparisonRecords.transaction"], "secondaryClue": "There are no out-of-trip charges or unexplained upgrades.", "explanation": "The folio cleanly matches the approved Boston itinerary and card charge. Approve the receipt."},
+      "generationNotes": "A straightforward travel approval case with deliberately consistent records."
     },
     {
       "caseId": "ending-15-giraffe-executive-hire",

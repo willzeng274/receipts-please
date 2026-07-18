@@ -39,7 +39,7 @@ const CASE_PRESENTATION: Record<string, {
 }> = {
   'manual-01-amount-mismatch': {
     employee: 'Maya Chen · Product Design',
-    queueLabel: 'Amount mismatch',
+    queueLabel: 'Chopped lunch',
     workflow: {
       automation: 'Receipt matching',
       connectedSystems: ['Transactions', 'Receipt viewer', 'Calculator'],
@@ -54,7 +54,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'manual-02-impossible-date': {
     employee: 'Rowan Kim · Summer Intern',
-    queueLabel: 'Impossible date',
+    queueLabel: 'Metro Cafe breakfast',
     workflow: {
       automation: 'Employee context',
       connectedSystems: ['Receipt viewer', 'People directory'],
@@ -68,7 +68,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'manual-03-omakase-intern': {
     employee: 'Rowan Kim · Summer Intern',
-    queueLabel: 'Omakase intern',
+    queueLabel: 'Client dinner',
     workflow: {
       automation: 'Policy review',
       connectedSystems: ['Receipt viewer', 'Policy PDF', 'People directory'],
@@ -83,7 +83,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'manual-04-infinite-tip': {
     employee: 'Devon Lee · Partnerships',
-    queueLabel: 'Infinite tip',
+    queueLabel: 'Corner Diner lunch',
     workflow: {
       automation: 'Policy calculation',
       connectedSystems: ['Receipt viewer', 'Policy PDF', 'Calculator'],
@@ -98,7 +98,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'manual-05-frankenstein-receipt': {
     employee: 'Alex Morgan · Sales',
-    queueLabel: 'Frankenstein receipt',
+    queueLabel: 'Northstar Bistro dinner',
     workflow: {
       automation: 'Document analysis',
       connectedSystems: ['Receipt viewer', 'Transactions', 'Card details'],
@@ -113,7 +113,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'manual-06-garbage-receipt': {
     employee: 'Sam Patel · IT Director',
-    queueLabel: 'Garbage receipt',
+    queueLabel: 'IT equipment purchase',
     workflow: {
       automation: 'Submission requirements',
       connectedSystems: ['Receipt viewer', 'Transactions', 'Policy PDF'],
@@ -128,7 +128,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-09-it-inventory-theft': {
     employee: 'William Zeng · IT Director',
-    queueLabel: 'Inventory theft',
+    queueLabel: 'Technology supply invoice',
     workflow: {
       automation: 'Connected exception review',
       connectedSystems: ['Cards', 'Purchase order', 'Inventory integration', 'Vendor records'],
@@ -143,7 +143,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-10-influencer-marketing-deal': {
     employee: 'William Zeng · Marketing',
-    queueLabel: 'Influencer deal',
+    queueLabel: 'Marketing vendor invoice',
     workflow: {
       automation: 'Vendor approval review',
       connectedSystems: ['Vendor management', 'Approvals', 'Card transaction', 'Campaign record'],
@@ -158,7 +158,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-11-travel-impossibility': {
     employee: 'Devon Lee · Partnerships',
-    queueLabel: 'Travel impossibility',
+    queueLabel: 'Chicago business trip',
     workflow: {
       automation: 'Trip matching',
       connectedSystems: ['Ramp Travel', 'Itinerary', 'Card transactions'],
@@ -173,7 +173,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-12-ai-expense-paradox': {
     employee: 'Alex Morgan · Sales',
-    queueLabel: 'AI expense paradox',
+    queueLabel: 'Client coffee',
     workflow: {
       automation: 'Spend analysis',
       connectedSystems: ['Card transaction', 'Vendor charges', 'Subscription controls'],
@@ -188,7 +188,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-13-procurement-mismatch': {
     employee: 'Priya Shah · Operations',
-    queueLabel: 'Procurement mismatch',
+    queueLabel: 'Office furniture invoice',
     workflow: {
       automation: 'Three-way match',
       connectedSystems: ['Purchase order', 'Invoice', 'Receiving record', 'Inventory'],
@@ -203,7 +203,7 @@ const CASE_PRESENTATION: Record<string, {
   },
   'ramp-14-intern-card-catastrophe': {
     employee: 'Rowan Kim · Summer Intern',
-    queueLabel: 'Intern card catastrophe',
+    queueLabel: 'Employee engagement purchase',
     workflow: {
       automation: 'Card control exception',
       connectedSystems: ['Cards', 'Spend programs', 'Approval history', 'Transactions'],
@@ -214,6 +214,51 @@ const CASE_PRESENTATION: Record<string, {
       { label: 'Card profile', value: '7 active · $40k limit', detail: 'Policy limit is $500 per month.', tone: 'risk' },
       { label: 'Purchases', value: 'Forklift · alpaca', detail: 'Plus 600 hoodies and energy drinks.', tone: 'risk' },
       { label: 'Approval', value: 'CEO', detail: 'Reason: “Let them cook.”', tone: 'neutral' },
+    ],
+  },
+  'manual-02-client-dinner-clean': {
+    employee: 'Maya Chen · Product Design',
+    queueLabel: 'Birch Table dinner',
+    workflow: {
+      automation: 'Policy and approval match',
+      connectedSystems: ['Card transaction', 'Attendees', 'Approval history', 'Policy'],
+      exceptionReason: 'Routine sample selected for verification.',
+      policyCitation: 'Client meals are allowed with named attendees, business purpose, and approval.',
+    },
+    evidence: [
+      { label: 'Card match', value: '$319.61', detail: 'Merchant, amount, and card digits match.', tone: 'good' },
+      { label: 'Attendees', value: '4 named', detail: '$79.90 per person · below the $100 limit.', tone: 'good' },
+      { label: 'Approval', value: 'VP Sales approved', detail: 'Purpose: Acme renewal dinner.', tone: 'good' },
+    ],
+  },
+  'manual-04-laptop-three-way-match': {
+    employee: 'Maya Chen · Product Design',
+    queueLabel: 'New-hire laptop',
+    workflow: {
+      automation: 'Three-way match',
+      connectedSystems: ['Purchase order', 'Invoice', 'Delivery', 'Inventory'],
+      exceptionReason: 'Routine sample selected for verification.',
+      policyCitation: 'Equipment invoices must match an approved PO and inventory record.',
+    },
+    evidence: [
+      { label: 'Purchase order', value: '1 laptop · approved', detail: 'PO-24117 · $1,800.', tone: 'good' },
+      { label: 'Delivery', value: '1 received', detail: 'Received by Maya Chen.', tone: 'good' },
+      { label: 'Inventory', value: 'RP-2048', detail: 'Serial recorded and assigned to Maya.', tone: 'good' },
+    ],
+  },
+  'ramp-15-hotel-trip-match': {
+    employee: 'Devon Lee · Partnerships',
+    queueLabel: 'Boston hotel stay',
+    workflow: {
+      automation: 'Trip matching',
+      connectedSystems: ['Ramp Travel', 'Hotel booking', 'Card transaction'],
+      exceptionReason: 'Routine sample selected for verification.',
+      policyCitation: 'Travel expenses must match an approved itinerary and booking.',
+    },
+    evidence: [
+      { label: 'Approved trip', value: 'New York → Boston', detail: 'July 15–17 · approved.', tone: 'good' },
+      { label: 'Hotel booking', value: '2 nights · $649.72', detail: 'Harbor Hotel Boston.', tone: 'good' },
+      { label: 'Card match', value: '$649.72', detail: 'Merchant, amount, and card digits match.', tone: 'good' },
     ],
   },
 }

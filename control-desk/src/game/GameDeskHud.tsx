@@ -62,10 +62,14 @@ export function GameDeskHud() {
   const fired = feedback.decision === 'fire'
   const firedName = currentCase.employee.split(' · ')[0]
   const chosenLabel = titleCase(feedback.decision)
-  const expectedLabel = titleCase(feedback.expectedDecision)
-  const feedbackTitle = feedback.correct
-    ? `Correct — ${expectedLabel} was the right call.`
-    : `Wrong — ${expectedLabel} was the right call.`
+  const rejectAcceptedForFire = feedback.correct && feedback.expectedDecision === 'fire' && feedback.decision === 'reject'
+  const expectedLabel = feedback.expectedDecision === 'fire' ? 'Fire or Reject' : titleCase(feedback.expectedDecision)
+  const answerLabel = feedback.expectedDecision === 'fire' ? 'Accepted answers' : 'Correct answer'
+  const feedbackTitle = rejectAcceptedForFire
+    ? 'Correct — Reject is an accepted conservative call.'
+    : feedback.correct
+      ? `Correct — ${expectedLabel} was the right call.`
+      : `Wrong — ${expectedLabel} was the right call.`
   const firedTitle = feedback.correct
     ? `Correct — ${firedName} got ratioed by payroll.`
     : `Wrong person — the correct call was ${expectedLabel}.`
@@ -104,7 +108,7 @@ export function GameDeskHud() {
         <span>{feedback.correct ? 'CORRECT DECISION' : 'WRONG DECISION'}{fired ? ' · CHAT WITNESSED IT 💀' : ''} · SCORE {score}</span>
         <h2>{fired ? firedTitle : feedbackTitle}</h2>
         <div
-          aria-label={`You chose ${chosenLabel}. Correct answer: ${expectedLabel}. ${feedback.correct ? 'Correct.' : 'Wrong.'}`}
+          aria-label={`You chose ${chosenLabel}. ${answerLabel}: ${expectedLabel}. ${feedback.correct ? 'Correct.' : 'Wrong.'}`}
           className="game-decision-verdict"
           role="group"
         >
@@ -112,9 +116,9 @@ export function GameDeskHud() {
             <span>You chose</span>
             <strong className={`is-${feedback.decision}`}>{chosenLabel}</strong>
           </div>
-          <b className={feedback.correct ? 'is-correct' : 'is-wrong'}>{feedback.correct ? '✓ MATCH' : '≠'}</b>
+          <b className={feedback.correct ? 'is-correct' : 'is-wrong'}>{rejectAcceptedForFire ? '✓ ACCEPTED' : feedback.correct ? '✓ MATCH' : '≠'}</b>
           <div>
-            <span>Correct answer</span>
+            <span>{answerLabel}</span>
             <strong className={`is-${feedback.expectedDecision}`}>{expectedLabel}</strong>
           </div>
         </div>

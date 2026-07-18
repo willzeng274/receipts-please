@@ -95,6 +95,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       ? currentCase.evidence.map((_, index) => index).filter((index) => !state.reviewedEvidence.includes(index))
       : []
     const correct = decision === currentCase.truth.expectedDecision
+      || (currentCase.truth.expectedDecision === 'fire' && decision === 'reject')
     const points = correct
       ? decision === 'fire' ? 200 : 100
       : decision === 'fire' && currentCase.truth.expectedDecision !== 'fire'
