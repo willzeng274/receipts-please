@@ -133,6 +133,25 @@
 .game-title-card dt { color: #728078; font: 600 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; }
 .game-title-card dd { margin: 5px 0 0; font-size: 24px; }
 
+.game-giraffe-stage { position: absolute; z-index: 85; inset: 0; overflow: hidden; color: #edf2ed; background: #080e0d; animation: game-ending-double-take 5.1s ease-in-out both; }
+.game-giraffe-window { position: absolute; inset: clamp(24px, 4vw, 62px) clamp(38px, 9vw, 148px); overflow: hidden; border: 18px solid #242d2a; background: linear-gradient(#91ada8 0 52%, #33443f 52% 100%); box-shadow: inset 0 0 0 2px #68746f, 0 34px 100px rgba(0,0,0,.65); }
+.game-giraffe-window canvas { position: absolute !important; z-index: 2; inset: 0; }
+.game-giraffe-skyline { position: absolute; z-index: 1; right: 0; bottom: 0; left: 0; height: 48%; opacity: .72; background: linear-gradient(90deg, #1d2b28 0 8%, transparent 8% 11%, #263a35 11% 21%, transparent 21% 25%, #1c302b 25% 42%, transparent 42% 47%, #263a35 47% 59%, transparent 59% 65%, #1d2b28 65% 82%, transparent 82% 86%, #253732 86% 100%); clip-path: polygon(0 35%, 7% 35%, 7% 10%, 13% 10%, 13% 43%, 22% 43%, 22% 20%, 31% 20%, 31% 34%, 40% 34%, 40% 0, 47% 0, 47% 45%, 55% 45%, 55% 14%, 64% 14%, 64% 37%, 73% 37%, 73% 8%, 82% 8%, 82% 44%, 91% 44%, 91% 18%, 100% 18%, 100% 100%, 0 100%); }
+.game-giraffe-window-frame { position: absolute; z-index: 4; inset: 0; pointer-events: none; background: linear-gradient(90deg, transparent calc(50% - 7px), #28312e calc(50% - 7px) calc(50% + 7px), transparent calc(50% + 7px)), linear-gradient(transparent calc(63% - 7px), #28312e calc(63% - 7px) calc(63% + 7px), transparent calc(63% + 7px)); box-shadow: inset 0 0 0 5px #1d2522; }
+.game-giraffe-glass { position: absolute; z-index: 5; inset: 0; pointer-events: none; background: linear-gradient(112deg, rgba(255,255,255,.16), transparent 24% 62%, rgba(255,255,255,.08)); mix-blend-mode: screen; }
+.game-giraffe-caption { position: absolute; z-index: 7; bottom: 44px; left: 50%; min-width: 310px; padding: 12px 20px; color: #eef3ef; border: 1px solid #6b7e76; background: rgba(7,13,11,.86); text-align: center; transform: translateX(-50%); }
+.game-giraffe-caption span, .game-giraffe-caption small { display: block; color: #9fb0a8; font: 600 8px/1.2 'IBM Plex Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
+.game-giraffe-caption strong { display: block; margin: 5px 0; color: #f0c467; font-size: 18px; text-transform: uppercase; }
+.game-giraffe-skip { position: absolute; z-index: 8; right: 24px; bottom: 22px; padding: 10px 13px; color: #9eaaa4; border: 1px solid #394640; background: rgba(9,15,13,.72); cursor: pointer; font: 600 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; }
+.game-giraffe-skip:hover, .game-giraffe-skip:focus-visible { color: #fff; border-color: #eebd55; outline: 0; }
+
+@keyframes game-ending-double-take {
+  0%, 72% { transform: translate3d(0, 0, 0) scale(1); }
+  76% { transform: translate3d(-5px, 2px, 0) scale(1.012); }
+  80% { transform: translate3d(4px, -1px, 0) scale(1.008); }
+  85%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+}
+
 @media (max-width: 900px), (max-height: 620px) {
   .game-workstation { min-width: 700px; min-height: 450px; transform: scale(.88); }
   .game-os-body { grid-template-columns: 160px 1fr; }
@@ -142,4 +161,5 @@
 
 @media (prefers-reduced-motion: reduce) {
   .game-decision-bar > button:hover { transform: none; }
+  .game-giraffe-stage { animation: none; }
 }

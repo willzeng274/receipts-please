@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LabViewport } from '../components/lab/LabViewport'
 import { useLabStore } from '../store/useLabStore'
 import { ENDING_CASE, GAME_CASES } from './gameData'
+import { GiraffeEndingStage } from './GiraffeEndingStage'
 import { useGameStore } from './useGameStore'
 
 type AudioCue = { id: string; loop: boolean; path: string }
@@ -24,10 +25,7 @@ export function GameShell() {
   const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
-  const giraffeFocused = useLabStore((state) => state.giraffeFocused)
-  const giraffeFocusRun = useLabStore((state) => state.giraffeFocusRun)
   const resetExperience = useLabStore((state) => state.resetExperience)
-  const runGiraffeReveal = useLabStore((state) => state.runGiraffeReveal)
   const setCameraPreset = useLabStore((state) => state.setCameraPreset)
   const setGridVisible = useLabStore((state) => state.setGridVisible)
   const setMode = useLabStore((state) => state.setMode)
@@ -143,11 +141,16 @@ export function GameShell() {
   }, [phase, setWorkstationFocused])
 
   useEffect(() => {
-    if (phase === 'ending' && endingStep === 1 && giraffeFocusRun > 0 && !giraffeFocused) {
-      completeGame()
-      playCue('badge-jingle', 0.62)
+    if (phase !== 'ending' || endingStep !== 1) return
+    const chewTimer = window.setTimeout(() => playCue('giraffe-chew', 0.54), 2500)
+    const badgeTimer = window.setTimeout(() => playCue('badge-jingle', 0.62), 3200)
+    const titleTimer = window.setTimeout(completeGame, 5100)
+    return () => {
+      window.clearTimeout(chewTimer)
+      window.clearTimeout(badgeTimer)
+      window.clearTimeout(titleTimer)
     }
-  }, [completeGame, endingStep, giraffeFocusRun, giraffeFocused, phase, playCue])
+  }, [completeGame, endingStep, phase, playCue])
 
   const handleStart = () => {
     startGame()
@@ -160,8 +163,6 @@ export function GameShell() {
     setEndingStep(1)
     playCue('slack-ping', 0.6)
     playCue('card-decline', 0.62)
-    window.setTimeout(() => playCue('giraffe-chew', 0.54), 900)
-    runGiraffeReveal()
   }
 
   const handleRestart = () => {
@@ -201,6 +202,8 @@ export function GameShell() {
           <button onClick={handleReveal} type="button">Preserve automatic decline</button>
         </section>
       )}
+
+      {phase === 'ending' && endingStep === 1 && <GiraffeEndingStage onSkip={completeGame} />}
 
       {phase === 'complete' && (
         <section className="game-title-card">
