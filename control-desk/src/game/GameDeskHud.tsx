@@ -9,7 +9,9 @@ function titleCase(value: string) {
 
 export function GameDeskHud() {
   const acknowledgeOverload = useGameStore((state) => state.acknowledgeOverload)
+  const activeActions = useGameStore((state) => state.activeActions)
   const advanceCase = useGameStore((state) => state.advanceCase)
+  const calculatorComplete = useGameStore((state) => state.calculatorComplete)
   const caseIndex = useGameStore((state) => state.caseIndex)
   const decisions = useGameStore((state) => state.decisions)
   const feedback = useGameStore((state) => state.feedback)
@@ -46,10 +48,15 @@ export function GameDeskHud() {
   if (focused || !['manual', 'ramp'].includes(phase)) return null
 
   const evidenceComplete = phase === 'ramp' || reviewedEvidence.length >= currentCase.evidence.length
+  const calculatorRequired = currentCase.workflow.requiredDeskTool === 'calculator'
+  const requiredActions = currentCase.truth.requiredActions ?? []
+  const actionsComplete = requiredActions.every((action) => activeActions.includes(action))
 
   if (feedback) {
     const missing: string[] = []
     if (feedback.missingEvidence.length) missing.push(`${feedback.missingEvidence.length} unopened record${feedback.missingEvidence.length === 1 ? '' : 's'}`)
+    if (feedback.missingDeskTool) missing.push('calculator tape')
+    if (feedback.missingActions.length) missing.push(...feedback.missingActions.map(titleCase))
     const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
       ? 'Face the backlog'
       : caseIndex === GAME_CASES.length - 1
@@ -59,7 +66,11 @@ export function GameDeskHud() {
     return (
       <section aria-live="polite" className={`game-desk-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
         <span>{feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
-        <h2>{feedback.correct ? currentCase.truth.primaryClue : `Expected: ${titleCase(feedback.expectedDecision)}`}</h2>
+        <h2>{feedback.correct
+          ? currentCase.truth.primaryClue
+          : feedback.decision === feedback.expectedDecision
+            ? 'Complete the required review steps'
+            : `Expected: ${titleCase(feedback.expectedDecision)}`}</h2>
         <output className={feedback.points >= 0 ? 'is-positive' : 'is-negative'}>{feedback.points >= 0 ? '+' : ''}{feedback.points} points</output>
         <p>{feedback.explanation}</p>
         {missing.length > 0 && <small>Skipped: {missing.join(' · ')}</small>}
@@ -82,7 +93,9 @@ export function GameDeskHud() {
           : 'Ramp prepared the exception. Make the final judgment here.'}</p>
       <ol>
         <li className={evidenceComplete ? 'is-complete' : ''}><b>{evidenceComplete ? '✓' : '1'}</b><span>{phase === 'manual' ? `Review records (${reviewedEvidence.length}/${currentCase.evidence.length})` : 'Review connected exception'}</span></li>
-        <li><b>2</b><span>Click Approve, Reject, or Fire</span></li>
+        {calculatorRequired && <li className={calculatorComplete ? 'is-complete' : ''}><b>{calculatorComplete ? '✓' : '2'}</b><span>Use the tape calculator</span></li>}
+        {requiredActions.length > 0 && <li className={actionsComplete ? 'is-complete' : ''}><b>{actionsComplete ? '✓' : calculatorRequired ? '3' : '2'}</b><span>Complete controls ({activeActions.length}/{requiredActions.length})</span></li>}
+        <li><b>{2 + Number(calculatorRequired) + Number(requiredActions.length > 0)}</b><span>Click Approve, Reject, or Fire</span></li>
       </ol>
       <details className="game-score-rules">
         <summary>Scoring rules</summary>

@@ -122,6 +122,17 @@ function ManualWorkspace({ currentCase }: { currentCase: GameCase }) {
 }
 
 function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
+  const activeActions = useGameStore((state) => state.activeActions)
+  const performAction = useGameStore((state) => state.performAction)
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const requiredActions = currentCase.truth.requiredActions ?? []
+
+  const handleAction = (action: string) => {
+    performAction(action)
+    requestGameAudioCue('evidence-link', 0.35)
+    triggerEffect('paper-drop')
+  }
+
   return (
     <main className="game-case-view game-ramp-workspace">
       <section className="game-ramp-automation">
@@ -157,6 +168,23 @@ function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
         </section>
       </div>
 
+      {requiredActions.length > 0 && (
+        <section className="game-case-actions">
+          <span>CONTROL ACTIONS · COMPLETE BEFORE YOUR FINAL JUDGMENT</span>
+          <div>{requiredActions.map((action) => (
+            <button
+              className={`${activeActions.includes(action) ? 'is-complete' : ''}${action === 'freeze-card' ? ' is-desk-only' : ''}`}
+              disabled={action === 'freeze-card'}
+              key={action}
+              onClick={() => handleAction(action)}
+              type="button"
+            >
+              {activeActions.includes(action) ? '✓ ' : ''}{currentCase.actionLabels[action] ?? titleCase(action)}
+              {action === 'freeze-card' && !activeActions.includes(action) ? ' · use physical control' : ''}
+            </button>
+          ))}</div>
+        </section>
+      )}
     </main>
   )
 }

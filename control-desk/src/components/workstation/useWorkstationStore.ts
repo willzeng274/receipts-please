@@ -25,7 +25,7 @@ import type {
 import type { AppId } from './workstationData'
 
 const SESSION_DURATION_MS = 5 * 60 * 1_000
-const STORAGE_VERSION = 5
+const STORAGE_VERSION = 6
 
 const APP_IDS: readonly AppId[] = [
   'expenses',
@@ -346,7 +346,11 @@ function sanitizePersistedState(value: unknown): Partial<WorkstationDataState> {
   if (isRecord(value.pinnedEvidenceIds)) {
     for (const [caseId, ids] of Object.entries(value.pinnedEvidenceIds)) {
       if (!isCaseId(caseId) || !Array.isArray(ids)) continue
-      const knownIds = new Set(WORKSTATION_CASES_BY_ID[caseId].evidence.map((evidence) => evidence.id))
+      const knownIds = new Set(
+        WORKSTATION_CASES_BY_ID[caseId].evidence
+          .filter((evidence) => evidence.sourceApp !== 'calculator')
+          .map((evidence) => evidence.id),
+      )
       pinnedEvidenceIds[caseId] = [...new Set(ids.filter((id): id is string => typeof id === 'string' && knownIds.has(id)))]
     }
   }
@@ -410,7 +414,7 @@ function sanitizePersistedState(value: unknown): Partial<WorkstationDataState> {
     decisionResults,
     decisions,
     pinnedEvidenceIds,
-    rampUnlocked: value.rampUnlocked === true,
+    rampUnlocked: value.rampUnlocked === true || WORKSTATION_CASE_IDS_BY_PHASE.ramp.some((caseId) => closedCaseIds.includes(caseId)),
     receiptNotifications,
     receiptNotificationRun: Math.max(0, finiteNumber(value.receiptNotificationRun, receiptNotifications.length)),
     session,

@@ -230,6 +230,8 @@
 
 .wsos-case-row:hover { background: #e4e1cc; }
 .wsos-case-row.is-active { box-shadow: inset 3px 0 #b54d3f; background: #ded8c5; }
+.wsos-case-row.is-closed { color: #68716b; background: #e5e3d6; }
+.wsos-case-row.is-closed b { color: #3f705c; }
 .wsos-case-row span { grid-row: 1 / 3; align-self: center; color: #8a8e84; font: 500 9px/1 'IBM Plex Mono', monospace; }
 .wsos-case-row strong { font-size: 11px; }
 .wsos-case-row b { color: #6f756d; font: 500 9px/1 'IBM Plex Mono', monospace; }
@@ -250,7 +252,8 @@
 .wsos-quiet-button:hover { background: #eee9d9; }
 
 .wsos-pin-button { min-height: 27px; padding: 0 9px; color: #334a43 !important; border: 1px solid #8d9992; border-radius: 4px; background: #e9e8dc; cursor: pointer; font: 650 7px/1 'IBM Plex Mono', monospace !important; text-transform: uppercase; }
-.wsos-pin-button:hover { border-color: #496b5f; background: #f7f5eb; }
+.wsos-pin-button:not(:disabled):hover { border-color: #496b5f; background: #f7f5eb; }
+.wsos-pin-button:disabled { opacity: .52; cursor: default; }
 .wsos-pin-button.is-pinned { color: #124c38 !important; border-color: #61a887; background: #d9eee2; }
 .wsos-pane--receipt > .wsos-pin-button { display: block; margin: 0 auto; }
 .wsos-receipt-evidence-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; padding: 0 12px; }
@@ -264,7 +267,8 @@
 .wsos-pane--manual-checks > button b { grid-column: 2; grid-row: 1 / 3; align-self: center; color: #a04a3e; font: 500 8px/1 'IBM Plex Mono', monospace; }
 .wsos-decision-strip { display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px; padding: 12px; }
 .wsos-decision-strip button { min-height: 34px; padding: 4px; border: 1px solid #999c92; background: #dedccd; cursor: pointer; font-size: 8px; }
-.wsos-decision-strip button:hover { color: white; background: #41544f; }
+.wsos-decision-strip button:not(:disabled):hover { color: white; background: #41544f; }
+.wsos-decision-strip button:disabled { color: #8b8f88; background: #cfcdc0; cursor: default; }
 .wsos-pane--manual-checks > p { margin: 0 12px; color: #777c74; font: 500 8px/1.4 'IBM Plex Mono', monospace; text-transform: uppercase; }
 
 .wsos-status { display: inline-flex; align-items: center; min-height: 21px; padding: 0 7px; color: #5f6964; border: 1px solid #9aa19c; border-radius: 10px; font: 650 7px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
@@ -319,7 +323,8 @@
 .wsos-recommendation > small { display: block; margin-top: 10px; color: #75988a; font: 500 7px/1 'IBM Plex Mono', monospace; text-transform: uppercase; }
 
 .wsos-action { min-height: 31px; padding: 0 10px; border: 1px solid #789287; border-radius: 5px; background: transparent; color: #e9f3ee !important; cursor: pointer; font-size: 8px !important; }
-.wsos-action:hover { border-color: white; background: rgba(255, 255, 255, .08); }
+.wsos-action:not(:disabled):hover { border-color: white; background: rgba(255, 255, 255, .08); }
+.wsos-action:disabled, .wsos-required-actions button:disabled { opacity: .52; cursor: default; }
 .wsos-action--primary { color: #0d241c !important; border-color: var(--wsos-green); background: #80d4af; }
 .wsos-action--danger { color: white !important; border-color: #c45448; background: #a94137; }
 
@@ -475,6 +480,8 @@
 .wsos-slack-receipt { color: #2a221d; border-left: 4px solid #cc4b32; background: #fff1e7; cursor: pointer; }
 .wsos-slack-receipt > strong { grid-column: 1 / -1; color: #b33425; font: 800 10px/1 'IBM Plex Mono', monospace; }
 .wsos-slack-view--ramp .wsos-slack-receipt { border-left-color: #438267; background: #e8f4ed; }
+.wsos-slack-archive { border-left: 4px solid #438267 !important; background: #e8f4ed !important; }
+.wsos-slack-archive > strong { grid-column: 1 / -1; color: #28684f; font: 750 10px/1.2 'IBM Plex Mono', monospace; }
 
 .wsos-receipt-alert { position: absolute; z-index: 110; top: 46px; right: 16px; width: 340px; padding: 15px 17px; color: white; border: 3px solid #ffe0b5; background: #b72f1f; box-shadow: 0 13px 0 rgba(67, 17, 11, .48), 0 24px 45px rgba(0, 0, 0, .5); animation: wsos-receipt-alarm .42s cubic-bezier(.2, .9, .25, 1.18) both; }
 .wsos-receipt-alert > span { color: #ffd7ae; font: 800 8px/1 'IBM Plex Mono', monospace; }
@@ -553,6 +560,13 @@
 .wsos-ramp-prompt > button:hover { background: #a0e9c9; transform: translateY(-1px); }
 .wsos-ramp-prompt > small { margin-top: 11px; color: #617d70; font: 550 7px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; }
 
+.wsos-pause-overlay { position: absolute; z-index: 120; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #edf4ef; background: rgba(8, 17, 14, .94); }
+.wsos-pause-overlay > span { color: var(--wsos-amber); font: 650 8px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; text-transform: uppercase; }
+.wsos-pause-overlay > strong { margin-top: 10px; font-size: 26px; }
+.wsos-pause-overlay > p { margin: 8px 0 18px; color: #9fb2aa; font-size: 10px; }
+.wsos-pause-overlay > button { min-width: 170px; min-height: 38px; color: #10241c; border: 1px solid #a1e5c6; border-radius: 5px; background: var(--wsos-green); cursor: pointer; font-weight: 750; }
+.wsos-pause-overlay > button:hover, .wsos-pause-overlay > button:focus-visible { background: #a7e9cb; }
+
 .wsos-focus-gate { position: absolute; z-index: 100; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; color: #edf3ef !important; border: 0; background: rgba(8, 16, 14, .22); cursor: pointer; }
 .wsos-focus-gate::before { content: ''; position: absolute; inset: 16px; border: 1px solid rgba(238, 189, 85, .38); border-radius: 8px; }
 .wsos-focus-gate span { color: var(--wsos-amber); font: 600 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .1em; }
@@ -598,8 +612,10 @@
   .wsos-window.has-side-rail .wsos-window-body { right: 190px; }
   .wsos-notice-rail { width: 180px; }
   .wsos-evidence-rail { width: 190px; }
-  .wsos-ramp-workspace { grid-template-columns: 30% 1fr; }
-  .wsos-recommendation { display: none; }
+  .wsos-ramp-workspace { height: auto; min-height: 100%; grid-template-columns: minmax(150px, 30%) minmax(0, 1fr); grid-template-rows: auto auto auto; }
+  .wsos-case-heading { grid-template-columns: minmax(0, 1fr) minmax(145px, 180px); }
+  .wsos-case-heading > .wsos-status { grid-column: 1 / -1; justify-self: start; }
+  .wsos-recommendation { grid-column: 1 / -1; width: 100%; margin: 0 0 14px; }
   .wsos-manual-grid { grid-template-columns: 28% 44% 28%; }
   .wsos-record-grid { grid-template-columns: repeat(2, 1fr); }
   .wsos-focus-hint { display: none; }

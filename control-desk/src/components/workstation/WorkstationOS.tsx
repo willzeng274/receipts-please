@@ -43,6 +43,7 @@ export type WorkstationOSProps = {
   onTryRamp: () => void
   onGameComplete?: () => void
   onManualQueueComplete?: () => void
+  onRestart?: () => void
   phase?: ExperiencePhase
   migrationStep?: number
   rampPromptVisible?: boolean
@@ -67,6 +68,7 @@ function CalculatorApp({
   const keys = ['C', 'Backspace', '%', '÷', '7', '8', '9', '×', '4', '5', '6', '−', '1', '2', '3', '+', '±', '0', '.', '=']
   const calculatorEvidence = activeCase.calculator
   const tape = calculator.tape
+  const tapeMatchesCase = calculatorTapeMatchesCase(activeCase, tape)
 
   return (
     <div className="wsos-calculator-app">
@@ -93,11 +95,11 @@ function CalculatorApp({
         <h3>{tape ? 'Printed calculation' : calculatorEvidence?.title ?? 'Case calculation'}</h3>
         <p>{tape?.expression ?? 'Enter the case values, then press ='}</p>
         <strong>{tape?.result ?? '--'}</strong>
-        <small>{tape?.note ?? 'No tape printed.'}</small>
+        <small>{tape && !tapeMatchesCase ? 'Result does not match the case calculation.' : tape?.note ?? 'No tape printed.'}</small>
         <button disabled={!calculatorEvidence} onClick={() => onInput('example')} type="button">
           Enter case values
         </button>
-        {calculatorEvidence && <EvidencePinButton disabled={!tape} evidenceId={calculatorEvidence.evidenceId} label="Pin printed tape" onToggle={onToggleEvidence} pinned={pinnedEvidenceIds.includes(calculatorEvidence.evidenceId)} />}
+        {calculatorEvidence && <EvidencePinButton disabled={!tapeMatchesCase} evidenceId={calculatorEvidence.evidenceId} label="Pin printed tape" onToggle={onToggleEvidence} pinned={pinnedEvidenceIds.includes(calculatorEvidence.evidenceId)} />}
       </aside>
     </div>
   )
@@ -112,6 +114,15 @@ function calculatorInputs(expression: string) {
     .match(/\d+(?:\.\d+)?|[+−×÷]/g) ?? []
 
   return [...tokens.flatMap((token) => /^[+−×÷]$/.test(token) ? [token] : [...token]), '=']
+}
+
+function calculatorTapeMatchesCase(activeCase: WorkstationCase, tape?: CalculatorTape | null) {
+  if (!activeCase.calculator || !tape) return false
+  const expectedTape = enterCalculatorSequence(
+    INITIAL_CALCULATOR,
+    calculatorInputs(activeCase.calculator.expression),
+  ).tape
+  return Boolean(expectedTape && tape.result === expectedTape.result)
 }
 
 function formatSessionTime(remainingMs: number) {
@@ -132,6 +143,7 @@ export function WorkstationOS({
   onFocus,
   onGameComplete,
   onManualQueueComplete,
+  onRestart,
   onTryRamp,
   phase = 'manual',
   rampPromptVisible = false,
@@ -144,6 +156,7 @@ export function WorkstationOS({
   const auditTrail = useWorkstationStore((state) => state.auditTrail)
   const cardFrozen = useWorkstationStore(selectActiveCardFrozen)
   const clearPinnedEvidence = useWorkstationStore((state) => state.clearPinnedEvidence)
+  const closedCaseIds = useWorkstationStore((state) => state.closedCaseIds)
   const completeCaseAction = useWorkstationStore((state) => state.completeCaseAction)
   const completedActionsByCase = useWorkstationStore((state) => state.completedActionsByCase)
   const decisions = useWorkstationStore((state) => state.decisions)
@@ -155,7 +168,9 @@ export function WorkstationOS({
   const receiptNotifications = useWorkstationStore((state) => state.receiptNotifications)
   const receiptNotificationRun = useWorkstationStore((state) => state.receiptNotificationRun)
   const rampQueueComplete = useWorkstationStore(selectRampQueueComplete)
+  const rampUnlocked = useWorkstationStore((state) => state.rampUnlocked)
   const recordDecision = useWorkstationStore((state) => state.recordDecision)
+  const resetWorkstation = useWorkstationStore((state) => state.resetWorkstation)
   const resumeSession = useWorkstationStore((state) => state.resumeSession)
   const session = useWorkstationStore((state) => state.session)
   const startSession = useWorkstationStore((state) => state.startSession)
@@ -189,10 +204,17 @@ export function WorkstationOS({
   const root = useRef<HTMLDivElement>(null)
   const rampPromptActive = phase === 'manual' && rampPromptVisible
   const activeCase = WORKSTATION_CASES_BY_ID[activeCaseId]
+  const activeCaseClosed = closedCaseIds.includes(activeCaseId)
   const decision = decisions[activeCaseId] ?? 'review'
   const pinnedEvidenceIds = pinnedEvidenceByCase[activeCaseId] ?? EMPTY_EVIDENCE_IDS
   const phaseCounts = settledPhase === 'ramp' ? rampCounts : manualCounts
-  const phaseCaseNumber = WORKSTATION_CASE_IDS_BY_PHASE[settledPhase].indexOf(activeCaseId) + 1
+  const phaseCaseIndex = WORKSTATION_CASE_IDS_BY_PHASE[settledPhase].indexOf(activeCaseId)
+  const phaseCaseNumber = phaseCaseIndex < 0 ? 1 : phaseCaseIndex + 1
+  const manualInboxCount = WORKSTATION_CASE_IDS_BY_PHASE.manual.filter((caseId) => (
+    submittedCaseIds.includes(caseId) && !closedCaseIds.includes(caseId)
+  )).length
+  const phaseInboxCount = settledPhase === 'manual' ? manualInboxCount : phaseCounts.open
+  const receiptNoticeCount = settledPhase === 'manual' ? unreadReceiptNotifications : 0
   const gameCompletionAvailable = rampQueueComplete && Boolean(onGameComplete)
   const completedActions = completedActionsByCase[activeCaseId] ?? EMPTY_REQUIRED_ACTIONS
 
@@ -212,7 +234,7 @@ export function WorkstationOS({
     enabled: focused
       && phase === 'manual'
       && !rampPromptActive
-      && (session.status === 'running' || session.status === 'complete')
+      && (session.status === 'running' || session.status === 'expired')
       && hasPendingManualSubmissions,
     onSubmit: handleReceiptSubmission,
     ordinal: receiptNotificationRun,
@@ -225,14 +247,18 @@ export function WorkstationOS({
   }, [receiptAlert])
 
   useEffect(() => {
-    if (phase === 'manual' && focused && !rampPromptActive) return
+    if (phase === 'manual' && focused && !rampPromptActive && session.status !== 'paused') return
     stopSound('notification')
     setReceiptAlert(null)
-  }, [focused, phase, rampPromptActive, stopSound])
+  }, [focused, phase, rampPromptActive, session.status, stopSound])
 
   useEffect(() => {
     if (!apps.some((app) => app.id === activeApp)) setActiveApp('expenses')
   }, [activeApp, apps, setActiveApp])
+
+  useEffect(() => {
+    if (settledPhase === 'ramp' && unreadReceiptNotifications > 0) markReceiptNotificationsRead()
+  }, [markReceiptNotificationsRead, settledPhase, unreadReceiptNotifications])
 
   useEffect(() => setCalculator(INITIAL_CALCULATOR), [activeCaseId])
 
@@ -256,14 +282,14 @@ export function WorkstationOS({
   }, [activeCase.phase, advanceToNextCase, phase, phaseCounts.open, settledPhase])
 
   useEffect(() => {
-    if (!manualQueueComplete) {
+    if (!manualQueueComplete || rampUnlocked) {
       manualCompletionSent.current = false
       return
     }
     if (manualCompletionSent.current || !onManualQueueComplete) return
     manualCompletionSent.current = true
     onManualQueueComplete()
-  }, [manualQueueComplete, onManualQueueComplete])
+  }, [manualQueueComplete, onManualQueueComplete, rampUnlocked])
 
   useEffect(() => {
     if (!gameCompletionAvailable) {
@@ -282,7 +308,7 @@ export function WorkstationOS({
   useEffect(() => {
     if (!effect || effectRun < 1) return
     const copy = effect === 'paper-drop'
-      ? `Receipt received - inbox ${phaseCounts.open}`
+      ? `Receipt received - inbox ${phaseInboxCount}`
       : effect === 'approve'
         ? `Case ${activeCase.caseNumber} approved - audit trail saved`
         : effect === 'reject'
@@ -295,7 +321,7 @@ export function WorkstationOS({
     setToast(copy)
     const timeout = window.setTimeout(() => setToast(null), effect === 'migration' ? 2100 : 1500)
     return () => window.clearTimeout(timeout)
-  }, [activeCase.caseNumber, effect, effectRun, phaseCounts.open])
+  }, [activeCase.caseNumber, effect, effectRun, phaseInboxCount])
 
   const openApp = useCallback((app: AppId) => {
     playSound('navigate')
@@ -317,6 +343,14 @@ export function WorkstationOS({
   }, [activeCase.calculator, playSound])
 
   const handleDecision = useCallback((nextDecision: WorkstationDecision) => {
+    if (session.status === 'paused') {
+      setToast('Resume the session before submitting a decision')
+      return
+    }
+    if (activeCaseClosed) {
+      setToast('Case is closed - the saved audit result is read-only')
+      return
+    }
     const result = recordDecision(nextDecision)
 
     if (!result?.evidenceComplete || !result.requiredActionsComplete) {
@@ -344,7 +378,7 @@ export function WorkstationOS({
     setToast(result.isCorrect
       ? `Decision saved - ${result.scoreDelta} points added`
       : 'Decision saved - audit trail marked for review')
-  }, [activeCase.evidence, playSound, recordDecision])
+  }, [activeCase.evidence, activeCaseClosed, playSound, recordDecision, session.status])
 
   useEffect(() => {
     if (!stampedDecisionRequest || stampedDecisionRequest.run <= handledStampedDecisionRun.current) return
@@ -356,15 +390,21 @@ export function WorkstationOS({
     playSound('pin')
     const calculatorEvidence = activeCase.evidence.some((evidence) => evidence.id === evidenceId && evidence.sourceApp === 'calculator')
     if (calculatorEvidence) {
+      const removingEvidence = pinnedEvidenceIds.includes(evidenceId)
+      if (!removingEvidence && !calculatorTapeMatchesCase(activeCase, calculator.tape)) {
+        setValidationMessage('Print the case calculation before pinning this tape.')
+        setToast('Calculator result does not match this case')
+        return
+      }
       setPinnedCalculatorTapes((current) => {
         const next = { ...current }
-        if (pinnedEvidenceIds.includes(evidenceId)) delete next[activeCaseId]
+        if (removingEvidence) delete next[activeCaseId]
         else if (calculator.tape) next[activeCaseId] = calculator.tape
         return next
       })
     }
     togglePinnedEvidence(evidenceId)
-  }, [activeCase.evidence, activeCaseId, calculator.tape, pinnedEvidenceIds, playSound, togglePinnedEvidence])
+  }, [activeCase, activeCaseId, calculator.tape, pinnedEvidenceIds, playSound, togglePinnedEvidence])
 
   const handleClearEvidence = useCallback(() => {
     clearPinnedEvidence()
@@ -376,11 +416,19 @@ export function WorkstationOS({
   }, [activeCaseId, clearPinnedEvidence])
 
   const handleCardToggle = useCallback(() => {
+    if (activeCaseClosed) {
+      setToast('Case is closed - card controls are read-only')
+      return
+    }
     if (!cardFrozen) playSound('freeze')
     setCardFrozen(!cardFrozen, activeCaseId)
-  }, [activeCaseId, cardFrozen, playSound, setCardFrozen])
+  }, [activeCaseClosed, activeCaseId, cardFrozen, playSound, setCardFrozen])
 
   const handleCaseAction = useCallback((action: WorkstationRequiredAction) => {
+    if (activeCaseClosed) {
+      setToast('Case is closed - required actions are read-only')
+      return
+    }
     if (action === 'freeze-card') {
       if (!cardFrozen) playSound('freeze')
       setCardFrozen(true, activeCaseId)
@@ -388,13 +436,29 @@ export function WorkstationOS({
     }
     playSound('pin')
     completeCaseAction(action, true, activeCaseId)
-  }, [activeCaseId, cardFrozen, completeCaseAction, playSound, setCardFrozen])
+  }, [activeCaseClosed, activeCaseId, cardFrozen, completeCaseAction, playSound, setCardFrozen])
 
   const handleGameComplete = useCallback(() => {
     if (gameCompletionSent.current || !onGameComplete) return
     gameCompletionSent.current = true
     onGameComplete()
   }, [onGameComplete])
+
+  const handleRestart = useCallback(() => {
+    resetWorkstation()
+    setCalculator(INITIAL_CALCULATOR)
+    setPinnedCalculatorTapes({})
+    setDismissedNotices([])
+    setEvidenceRailOpen(true)
+    setNoticeRailOpen(false)
+    setReceiptAlert(null)
+    setToast('New five-minute session ready')
+    setValidationMessage(null)
+    gameCompletionSent.current = false
+    manualCompletionSent.current = false
+    rampCompletionAnnounced.current = false
+    onRestart?.()
+  }, [onRestart, resetWorkstation])
 
   const handleTryRamp = useCallback(() => {
     playSound('migration')
@@ -451,6 +515,8 @@ export function WorkstationOS({
       return
     }
 
+    if (session.status === 'paused' && event.key !== 'Escape') return
+
     if (event.key === 'Escape') {
       event.preventDefault()
       onExit()
@@ -493,7 +559,7 @@ export function WorkstationOS({
       event.preventDefault()
       sendCalculatorInput(input)
     }
-  }, [activeApp, apps, focused, onExit, openApp, rampPromptActive, sendCalculatorInput])
+  }, [activeApp, apps, focused, onExit, openApp, rampPromptActive, sendCalculatorInput, session.status])
 
   const activeDefinition = apps.find((app) => app.id === activeApp) ?? apps[0]
 
@@ -516,9 +582,9 @@ export function WorkstationOS({
       tabIndex={focused && !rampPromptActive ? 0 : -1}
     >
       <div
-        aria-hidden={rampPromptActive ? true : undefined}
+        aria-hidden={rampPromptActive || session.status === 'paused' ? true : undefined}
         className="wsos-interactive-surface"
-        inert={rampPromptActive || !focused ? true : undefined}
+        inert={rampPromptActive || !focused || session.status === 'paused' ? true : undefined}
       >
         <header className="wsos-menu-bar">
           <div className="wsos-menu-left">
@@ -527,19 +593,19 @@ export function WorkstationOS({
             <span>Case</span><span>Evidence</span><span>Window</span>
           </div>
           <div className="wsos-menu-right">
-            <span className="wsos-case-number">CASE {phaseCaseNumber} / {phaseCounts.total} · INBOX {phaseCounts.open}</span>
+            <span className="wsos-case-number">CASE {phaseCaseNumber} / {phaseCounts.total} · INBOX {phaseInboxCount}</span>
             <label className="wsos-cortisol"><span>Cortisol</span><i><b /></i><em>{settledPhase === 'ramp' ? '22%' : '88%'}</em></label>
             <button aria-label={soundEnabled ? 'Mute workstation sounds' : 'Enable workstation sounds'} onClick={() => setSoundEnabled((value) => !value)} type="button">{soundEnabled ? 'VOL' : 'MUTE'}</button>
             <button
-              aria-label={session.status === 'paused' ? 'Resume session timer' : 'Pause session timer'}
-              disabled={session.status === 'idle' || session.status === 'complete'}
-              onClick={() => session.status === 'paused' ? resumeSession(Date.now()) : pauseSession(Date.now())}
+              aria-label={session.status === 'complete' ? 'Start a new session' : session.status === 'paused' ? 'Resume session timer' : session.status === 'expired' ? 'Session timer expired' : 'Pause session timer'}
+              disabled={session.status === 'idle' || session.status === 'expired'}
+              onClick={() => session.status === 'complete' ? handleRestart() : session.status === 'paused' ? resumeSession(Date.now()) : pauseSession(Date.now())}
               type="button"
             >
-              {session.status === 'paused' ? 'RESUME' : session.status === 'complete' ? 'DONE' : 'PAUSE'}
+              {session.status === 'paused' ? 'RESUME' : session.status === 'complete' ? 'RESTART' : session.status === 'expired' ? 'TIME' : 'PAUSE'}
             </button>
             <button aria-label="Toggle evidence scratchpad" className={pinnedEvidenceIds.length ? 'has-notices' : ''} onClick={toggleEvidenceRail} type="button">EVD {pinnedEvidenceIds.length}</button>
-            <button aria-label="Toggle notifications" className={notices.length || unreadReceiptNotifications || gameCompletionAvailable ? 'has-notices' : ''} onClick={toggleNoticeRail} type="button">NTF {notices.length + unreadReceiptNotifications + (gameCompletionAvailable ? 1 : 0)}</button>
+            <button aria-label="Toggle notifications" className={notices.length || receiptNoticeCount || gameCompletionAvailable ? 'has-notices' : ''} onClick={toggleNoticeRail} type="button">NTF {notices.length + receiptNoticeCount + (gameCompletionAvailable ? 1 : 0)}</button>
             <span aria-label={`${session.score} points`}>{session.score} PTS</span>
             <time dateTime={`PT${Math.ceil(session.remainingMs / 1000)}S`}>{formatSessionTime(session.remainingMs)}</time>
             {!rampPromptVisible && <button aria-label="Exit workstation focus" className="wsos-exit" onClick={onExit} type="button">×</button>}
@@ -553,13 +619,14 @@ export function WorkstationOS({
           <header className="wsos-window-bar">
             <div aria-hidden="true"><i /><i /><i /></div>
             <strong>{activeDefinition.label}</strong>
-            <span>{settledPhase === 'ramp' ? `SYNCED · ${phaseCounts.open} NEED ATTENTION` : `LOCAL · ${phaseCounts.open} IN QUEUE`}</span>
+            <span>{settledPhase === 'ramp' ? `SYNCED · ${phaseInboxCount} NEED ATTENTION` : `LOCAL · ${phaseInboxCount} IN QUEUE`}</span>
           </header>
 
           <div className="wsos-window-body">
             {activeApp === 'expenses' ? (
               <ExpenseWorkspace
                 activeCase={activeCase}
+                closedCaseIds={closedCaseIds}
                 decision={decision}
                 onDecision={handleDecision}
                 onOpenApp={openApp}
@@ -584,6 +651,7 @@ export function WorkstationOS({
                 activeCase={activeCase}
                 app={activeApp}
                 cardFrozen={cardFrozen}
+                closedCaseIds={closedCaseIds}
                 onCardToggle={handleCardToggle}
                 onSelectCase={setActiveCase}
                 onToggleEvidence={handleToggleEvidence}
@@ -618,13 +686,18 @@ export function WorkstationOS({
                   <button onClick={() => openApp(notice.app)} type="button">Open</button>
                 </article>
               ))}
-              {[...receiptNotifications].reverse().map((notification) => (
+              {settledPhase === 'manual' ? [...receiptNotifications].reverse().map((notification) => (
                 <article className="is-urgent wsos-receipt-notice" key={notification.id}>
                   <div><span>New receipt submitted</span></div>
                   <p>{notification.employeeName} submitted {notification.merchant} for {notification.amount}.</p>
                   <button onClick={() => { setActiveCase(notification.caseId); openApp('expenses') }} type="button">Review receipt</button>
                 </article>
-              ))}
+              )) : receiptNotifications.length > 0 && (
+                <article className="wsos-receipt-notice">
+                  <div><span>Manual inbox archived</span></div>
+                  <p>{receiptNotifications.length} receipt submissions are preserved in the pre-migration audit trail.</p>
+                </article>
+              )}
               {gameCompletionAvailable && (
                 <article className="is-urgent">
                   <div><span>CEO / urgent</span></div>
@@ -655,6 +728,15 @@ export function WorkstationOS({
         <div className="wsos-focus-hint"><kbd>Esc</kbd> exit screen <span>·</span> <kbd>{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'} {apps.length > 9 ? '1–9, 0' : `1–${apps.length}`}</kbd> switch apps</div>
         </main>
       </div>
+
+      {focused && session.status === 'paused' && (
+        <section aria-labelledby="wsos-pause-title" aria-modal="true" className="wsos-pause-overlay" role="dialog">
+          <span>Expense OS</span>
+          <strong id="wsos-pause-title">Session paused</strong>
+          <p>The clock and workstation controls are stopped.</p>
+          <button autoFocus onClick={() => resumeSession(Date.now())} type="button">Resume session</button>
+        </section>
+      )}
 
       {rampPromptActive && (
         <section aria-labelledby="ramp-intro-title" aria-modal="true" className="wsos-ramp-prompt" role="dialog">

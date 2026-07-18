@@ -107,6 +107,7 @@ function ReceiptDocument({ activeCase }: { activeCase: WorkstationCase }) {
 
 export function ExpenseWorkspace({
   activeCase,
+  closedCaseIds,
   completedActions,
   decision,
   onAction,
@@ -119,6 +120,7 @@ export function ExpenseWorkspace({
   submittedCaseIds,
 }: {
   activeCase: WorkstationCase
+  closedCaseIds: readonly WorkstationCaseId[]
   completedActions: readonly WorkstationRequiredAction[]
   decision: WorkstationDecision
   onAction: (action: WorkstationRequiredAction) => void
@@ -132,6 +134,7 @@ export function ExpenseWorkspace({
 }) {
   const [selectedEvidenceId, setSelectedEvidenceId] = useState(activeCase.evidence[0]?.id ?? '')
   const presentation = getCasePresentation(activeCase.id)
+  const activeCaseClosed = closedCaseIds.includes(activeCase.id)
 
   useEffect(() => setSelectedEvidenceId(activeCase.evidence[0]?.id ?? ''), [activeCase])
 
@@ -144,15 +147,15 @@ export function ExpenseWorkspace({
         <section className="wsos-pane wsos-pane--queue">
           <header><span>Expense inbox</span><strong>{submittedCases.length} submitted</strong></header>
           {submittedCases.map((expenseCase) => (
-            <button className={`wsos-case-row${expenseCase.id === activeCase.id ? ' is-active' : ''}`} key={expenseCase.id} onClick={() => onSelectCase(expenseCase.id)} type="button">
-              <span>{expenseCase.caseNumber}</span><strong>{expenseCase.merchant}</strong><b>{expenseCase.amount}</b>
+            <button className={`wsos-case-row${expenseCase.id === activeCase.id ? ' is-active' : ''}${closedCaseIds.includes(expenseCase.id) ? ' is-closed' : ''}`} key={expenseCase.id} onClick={() => onSelectCase(expenseCase.id)} type="button">
+              <span>{expenseCase.caseNumber}</span><strong>{expenseCase.merchant}</strong><b>{expenseCase.amount}{closedCaseIds.includes(expenseCase.id) ? ' · closed' : ''}</b>
             </button>
           ))}
           <p className="wsos-system-note">New submissions interrupt this queue without warning.</p>
         </section>
 
         <section className="wsos-pane wsos-pane--receipt">
-          <header><span>{activeCase.source.receiptId}.jpg</span><StatusPill tone="risk">unmatched</StatusPill></header>
+          <header><span>{activeCase.source.receiptId}.jpg</span><StatusPill tone={activeCaseClosed ? 'good' : 'risk'}>{activeCaseClosed ? 'closed' : 'unmatched'}</StatusPill></header>
           <ReceiptDocument activeCase={activeCase} />
           <div className="wsos-receipt-evidence-actions">
             {activeCase.evidence.filter((item) => item.sourceApp === 'expenses').map((item) => (
@@ -177,12 +180,12 @@ export function ExpenseWorkspace({
             </button>
           ))}
           <div className="wsos-decision-strip">
-            <button onClick={() => onDecision('approve')} type="button">Approve</button>
-            <button onClick={() => onDecision('reject')} type="button">Reject</button>
-            <button onClick={() => onDecision('investigate')} type="button">Investigate</button>
-            <button onClick={() => onDecision('request-receipt')} type="button">Request receipt</button>
+            <button disabled={activeCaseClosed} onClick={() => onDecision('approve')} type="button">Approve</button>
+            <button disabled={activeCaseClosed} onClick={() => onDecision('reject')} type="button">Reject</button>
+            <button disabled={activeCaseClosed} onClick={() => onDecision('investigate')} type="button">Investigate</button>
+            <button disabled={activeCaseClosed} onClick={() => onDecision('request-receipt')} type="button">Request receipt</button>
           </div>
-          <p>Case state: <strong>{decisionLabel(decision)}</strong></p>
+          <p>Case state: <strong>{decisionLabel(decision)}{activeCaseClosed ? ' · read only' : ''}</strong></p>
         </section>
       </div>
     )
@@ -195,8 +198,8 @@ export function ExpenseWorkspace({
     <div className="wsos-ramp-workspace">
       <section className="wsos-case-heading">
         <div><span>Case {activeCase.caseNumber} - {activeCase.employee.name}</span><h2>{activeCase.ramp.title}</h2><p>{activeCase.ramp.summary}</p></div>
-        <label className="wsos-case-switcher"><span>Review case</span><select aria-label="Select Ramp review case" onChange={(event) => onSelectCase(event.target.value as WorkstationCaseId)} value={activeCase.id}>{rampCases.map((expenseCase) => <option key={expenseCase.id} value={expenseCase.id}>Case {expenseCase.caseNumber} - {expenseCase.title}</option>)}</select></label>
-        <StatusPill tone={decision === 'review' ? 'risk' : 'good'}>{decision === 'review' ? 'Needs review' : decisionLabel(decision)}</StatusPill>
+        <label className="wsos-case-switcher"><span>Review case</span><select aria-label="Select Ramp review case" onChange={(event) => onSelectCase(event.target.value as WorkstationCaseId)} value={activeCase.id}>{rampCases.map((expenseCase) => <option key={expenseCase.id} value={expenseCase.id}>Case {expenseCase.caseNumber} - {expenseCase.title}{closedCaseIds.includes(expenseCase.id) ? ' (closed)' : ''}</option>)}</select></label>
+        <StatusPill tone={decision === 'review' ? 'risk' : 'good'}>{decision === 'review' ? 'Needs review' : `${decisionLabel(decision)} · read only`}</StatusPill>
       </section>
 
       <section aria-label="Connected case evidence" className="wsos-evidence-thread">
@@ -212,9 +215,9 @@ export function ExpenseWorkspace({
 
       <section className="wsos-recommendation">
         <span>Suggested next step</span><strong>{activeCase.ramp.recommendation}</strong><p>{activeCase.ramp.explanation}</p>
-        {(activeCase.validation.requiredActions ?? []).length > 0 && <div className="wsos-required-actions">{activeCase.validation.requiredActions?.map((action) => <button className={completedActions.includes(action) ? 'is-complete' : ''} key={action} onClick={() => onAction(action)} type="button">{completedActions.includes(action) ? 'Done: ' : ''}{ACTION_LABELS[action]}</button>)}</div>}
-        <div><button className="wsos-action wsos-action--primary" onClick={() => onDecision(activeCase.suggestedDecision)} type="button">{activeCase.suggestedDecision === 'request-receipt' ? 'Request receipt' : activeCase.suggestedDecision}</button><button className="wsos-action" onClick={() => onDecision('approve')} type="button">Approve</button><button className="wsos-action" onClick={() => onDecision('reject')} type="button">Reject</button></div>
-        <small>Case state - {decisionLabel(decision)}</small>
+        {(activeCase.validation.requiredActions ?? []).length > 0 && <div className="wsos-required-actions">{activeCase.validation.requiredActions?.map((action) => <button className={completedActions.includes(action) ? 'is-complete' : ''} disabled={activeCaseClosed} key={action} onClick={() => onAction(action)} type="button">{completedActions.includes(action) ? 'Done: ' : ''}{ACTION_LABELS[action]}</button>)}</div>}
+        <div><button className="wsos-action wsos-action--primary" disabled={activeCaseClosed} onClick={() => onDecision(activeCase.suggestedDecision)} type="button">{activeCase.suggestedDecision === 'request-receipt' ? 'Request receipt' : activeCase.suggestedDecision}</button><button className="wsos-action" disabled={activeCaseClosed} onClick={() => onDecision('approve')} type="button">Approve</button><button className="wsos-action" disabled={activeCaseClosed} onClick={() => onDecision('reject')} type="button">Reject</button></div>
+        <small>Case state - {decisionLabel(decision)}{activeCaseClosed ? ' · read only' : ''}</small>
       </section>
     </div>
   )
@@ -224,6 +227,7 @@ export function RecordsApp({
   activeCase,
   app,
   cardFrozen,
+  closedCaseIds,
   onCardToggle,
   onSelectCase,
   onToggleEvidence,
@@ -234,6 +238,7 @@ export function RecordsApp({
   activeCase: WorkstationCase
   app: AppId
   cardFrozen: boolean
+  closedCaseIds: readonly WorkstationCaseId[]
   onCardToggle: () => void
   onSelectCase: (caseId: WorkstationCaseId) => void
   onToggleEvidence: (evidenceId: string) => void
@@ -242,9 +247,10 @@ export function RecordsApp({
   receiptNotifications: readonly WorkstationReceiptNotification[]
 }) {
   const presentation = getCasePresentation(activeCase.id)
+  const activeCaseClosed = closedCaseIds.includes(activeCase.id)
 
   if (app === 'slack') {
-    return <div className={`wsos-slack-view wsos-slack-view--${phase}`}><aside><strong>Slack</strong><span>Finance workspace</span><b># {presentation.slack.channel}</b><span># finance-inbox</span><span># policy-help</span></aside><section><header><div><strong># {presentation.slack.channel}</strong><span>{phase === 'manual' ? 'notifications on: every message' : 'grouped summary'}</span></div><StatusPill tone={phase === 'manual' ? 'risk' : 'good'}>{phase === 'manual' ? 'LOUD' : 'Synced'}</StatusPill></header><div className="wsos-slack-thread">{presentation.slack.messages.map((message, index) => <article className={message.tone === 'risk' ? 'is-risk' : ''} key={`${message.sender}-${index}`}><b>{message.sender}</b><time>{message.time}</time><p>{message.body}</p></article>)}{[...receiptNotifications].reverse().map((notification) => <button className="wsos-slack-receipt" key={notification.id} onClick={() => onSelectCase(notification.caseId)} type="button"><b>Finance Inbox Bot</b><time>{new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><strong>NEW RECEIPT SUBMITTED</strong><span>{notification.employeeName} / {notification.merchant} / {notification.amount}</span></button>)}</div><SourceEvidence activeCase={activeCase} app="slack" onToggleEvidence={onToggleEvidence} pinnedEvidenceIds={pinnedEvidenceIds} /></section></div>
+    return <div className={`wsos-slack-view wsos-slack-view--${phase}`}><aside><strong>Slack</strong><span>Finance workspace</span><b># {presentation.slack.channel}</b><span># finance-inbox</span><span># policy-help</span></aside><section><header><div><strong># {presentation.slack.channel}</strong><span>{phase === 'manual' ? 'notifications on: every message' : 'grouped summary'}</span></div><StatusPill tone={phase === 'manual' ? 'risk' : 'good'}>{phase === 'manual' ? 'LOUD' : 'Synced'}</StatusPill></header><div className="wsos-slack-thread">{presentation.slack.messages.map((message, index) => <article className={message.tone === 'risk' ? 'is-risk' : ''} key={`${message.sender}-${index}`}><b>{message.sender}</b><time>{message.time}</time><p>{message.body}</p></article>)}{phase === 'manual' ? [...receiptNotifications].reverse().map((notification) => <button className="wsos-slack-receipt" key={notification.id} onClick={() => onSelectCase(notification.caseId)} type="button"><b>Finance Inbox Bot</b><time>{new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</time><strong>NEW RECEIPT SUBMITTED</strong><span>{notification.employeeName} / {notification.merchant} / {notification.amount}</span></button>) : receiptNotifications.length > 0 && <article className="wsos-slack-archive"><b>Finance Inbox</b><strong>{receiptNotifications.length} manual submissions archived</strong><p>Receipt history is preserved in the completed manual queue.</p></article>}</div><SourceEvidence activeCase={activeCase} app="slack" onToggleEvidence={onToggleEvidence} pinnedEvidenceIds={pinnedEvidenceIds} /></section></div>
   }
 
   if (app === 'transactions') {
@@ -271,7 +277,7 @@ export function RecordsApp({
     return <div className="wsos-record-view"><header><div><span>Vendor intelligence</span><h2>{vendor?.title ?? activeCase.merchant}</h2></div><StatusPill tone={vendor?.tone ?? 'neutral'}>{vendor?.status ?? 'Known vendor'}</StatusPill></header>{vendor && <dl className="wsos-record-grid">{vendor.fields.map((field) => <div key={field.label}><dt>{field.label}</dt><dd className={field.tone === 'risk' ? 'is-risk' : ''}>{field.value}</dd></div>)}</dl>}<div className="wsos-record-warning"><strong>{vendor?.warning ?? activeCase.ramp.summary}</strong><span>{activeCase.ramp.explanation}</span></div><SourceEvidence activeCase={activeCase} app="vendor" onToggleEvidence={onToggleEvidence} pinnedEvidenceIds={pinnedEvidenceIds} /></div>
   }
 
-  if (app === 'cards') return <div className="wsos-card-view"><header><div><span>Card control - {activeCase.employee.name}</span><h2>Corporate card **** {activeCase.receipt.cardLast4}</h2></div><StatusPill tone={cardFrozen ? 'risk' : 'good'}>{cardFrozen ? 'Frozen' : 'Active'}</StatusPill></header><div className={`wsos-card-graphic${cardFrozen ? ' is-frozen' : ''}`}><span>COMPANY CARD</span><strong>**** {activeCase.receipt.cardLast4}</strong><small>{activeCase.employee.name.toUpperCase()}</small></div><dl><div><dt>Monthly limit</dt><dd>{activeCase.card.monthlyLimit}</dd></div><div><dt>Current case</dt><dd>{activeCase.amount}</dd></div><div><dt>Risk state</dt><dd>{activeCase.ramp.summary}</dd></div></dl><button className="wsos-action wsos-action--danger" onClick={onCardToggle} type="button">{cardFrozen ? 'Unfreeze card' : 'Freeze card'}</button></div>
+  if (app === 'cards') return <div className="wsos-card-view"><header><div><span>Card control - {activeCase.employee.name}</span><h2>Corporate card **** {activeCase.receipt.cardLast4}</h2></div><StatusPill tone={cardFrozen ? 'risk' : 'good'}>{cardFrozen ? 'Frozen' : 'Active'}</StatusPill></header><div className={`wsos-card-graphic${cardFrozen ? ' is-frozen' : ''}`}><span>COMPANY CARD</span><strong>**** {activeCase.receipt.cardLast4}</strong><small>{activeCase.employee.name.toUpperCase()}</small></div><dl><div><dt>Monthly limit</dt><dd>{activeCase.card.monthlyLimit}</dd></div><div><dt>Current case</dt><dd>{activeCase.amount}</dd></div><div><dt>Risk state</dt><dd>{activeCase.ramp.summary}</dd></div></dl><button className="wsos-action wsos-action--danger" disabled={activeCaseClosed} onClick={onCardToggle} type="button">{activeCaseClosed ? 'Case closed' : cardFrozen ? 'Unfreeze card' : 'Freeze card'}</button></div>
 
   return null
 }

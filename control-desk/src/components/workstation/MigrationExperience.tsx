@@ -6,7 +6,7 @@ const CAPABILITY_DETAILS = [
   { code: 'PO', detail: 'Relevant policy rules attached', label: 'Policy' },
   { code: 'TR', detail: 'Itineraries mapped to charges', label: 'Travel' },
   { code: 'VN', detail: 'Vendor context connected', label: 'Vendors' },
-  { code: 'TX', detail: 'Six cases ready for judgment', label: 'Transactions' },
+  { code: 'TX', detail: 'Five cases ready for judgment', label: 'Transactions' },
 ] as const
 
 export function MigrationExperience({

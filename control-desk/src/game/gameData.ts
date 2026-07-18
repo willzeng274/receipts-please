@@ -93,6 +93,7 @@ const CASE_PRESENTATION: Record<string, {
   employee: string
   evidence: GameEvidence[]
   queueLabel: string
+  requiredActions?: string[]
   workflow: GameWorkflow
 }> = {
   'manual-01-amount-mismatch': {
@@ -199,6 +200,7 @@ const CASE_PRESENTATION: Record<string, {
       'flag-transaction': 'Flag transaction',
       'escalate-employee': 'Escalate employee',
     },
+    requiredActions: ['freeze-card', 'flag-transaction', 'escalate-employee'],
     evidence: [
       { label: 'MacBooks', value: '24 bought / 11 found', detail: '13 serial numbers missing.', tone: 'risk' },
       { label: 'Monitors', value: '40 bought / 19 found', detail: '21 units unaccounted for.', tone: 'risk' },
@@ -248,6 +250,7 @@ const CASE_PRESENTATION: Record<string, {
       'approve-coffee': 'Approve coffee',
       'cancel-ai-vendor': 'Cancel AI vendor',
     },
+    requiredActions: ['approve-coffee', 'cancel-ai-vendor'],
     evidence: [
       { label: 'Coffee', value: '$8.50', detail: 'Legitimate client expense.', tone: 'good' },
       { label: 'AI review cost', value: '$51.50', detail: 'Six automated processing charges.', tone: 'risk' },
@@ -282,6 +285,7 @@ const CASE_PRESENTATION: Record<string, {
       'freeze-card': 'Freeze all seven cards',
       'escalate-approval': 'Escalate CEO approval',
     },
+    requiredActions: ['freeze-card', 'escalate-approval'],
     evidence: [
       { label: 'Card profile', value: '7 active · $40k limit', detail: 'Policy limit is $500 per month.', tone: 'risk' },
       { label: 'Purchases', value: 'Forklift · alpaca', detail: 'Plus 600 hoodies and energy drinks.', tone: 'risk' },
@@ -299,6 +303,10 @@ export const GAME_CASES: readonly GameCase[] = PLAYABLE_CASE_IDS.map((caseId) =>
     ...presentation,
     actionLabels: presentation.actionLabels ?? {},
     era: caseId.startsWith('manual-') ? 'manual' : 'ramp',
+    truth: {
+      ...source.truth,
+      ...(presentation.requiredActions ? { requiredActions: presentation.requiredActions } : {}),
+    },
     workflow: presentation.workflow,
   }
 })

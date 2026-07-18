@@ -44,6 +44,7 @@ type LabState = {
   exitGiraffeFocus: () => void
   queueRampIntroduction: () => void
   resetExperience: () => void
+  resetExpenseExperience: () => void
   runGiraffeReveal: () => void
   setAssetId: (assetId: string) => void
   setCameraPreset: (cameraPreset: CameraPreset) => void
@@ -143,10 +144,22 @@ export const useLabStore = create<LabState>((set) => ({
     experiencePhase: 'manual',
     giraffeFocused: false,
     lightingPreset: 'manual',
+    rampMigrationLocked: false,
     rampMigrationStep: 0,
     rampPromptVisible: false,
     rampTransitionRun: 0,
     workstationFocused: false,
+  }),
+  resetExpenseExperience: () => set({
+    effectPreset: 'paper-drop',
+    experiencePhase: 'manual',
+    giraffeFocused: false,
+    lightingPreset: 'manual',
+    rampMigrationLocked: false,
+    rampMigrationStep: 0,
+    rampPromptVisible: false,
+    rampTransitionRun: 0,
+    workstationFocused: true,
   }),
   runGiraffeReveal: () => set((state) => ({
     effectPreset: 'migration',
