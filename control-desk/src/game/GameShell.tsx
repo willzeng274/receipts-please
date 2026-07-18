@@ -159,6 +159,16 @@ export function GameShell() {
     playCue(feedback.correct ? 'decision-correct' : 'decision-wrong', 0.62)
     if (!feedback.correct) playCue('paper-crumple', 0.34)
     playCue(feedback.decision === 'approve' ? 'approve-stamp' : feedback.decision === 'reject' ? 'reject-stamp' : 'fraud-stamp', 0.55)
+    if (feedback.decision === 'fire') {
+      const honkTimer = window.setTimeout(() => playCue('termination-honk', 0.78), 110)
+      const airhornTimer = window.setTimeout(() => playCue('termination-airhorn', 0.88), 330)
+      const awkwardSilenceTimer = window.setTimeout(() => playCue('employee-cough', 0.5), 2760)
+      return () => {
+        window.clearTimeout(honkTimer)
+        window.clearTimeout(airhornTimer)
+        window.clearTimeout(awkwardSilenceTimer)
+      }
+    }
   }, [feedback, playCue])
 
   useEffect(() => {

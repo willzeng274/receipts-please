@@ -294,6 +294,58 @@
       "auditioned": false
     },
     {
+      "id": "termination-honk",
+      "title": "Termination honk",
+      "kind": "sfx",
+      "role": "Absurd HR goose alarm for firing an employee",
+      "tags": [
+        "decision",
+        "fire",
+        "comedy",
+        "honk"
+      ],
+      "path": "/audio/sfx/termination-honk--fc4fff11ad4d.wav",
+      "sha256": "fc4fff11ad4d558e63226e104a82e82dccfc92d55278acefca58e0ffa2b8d6fa",
+      "bytes": 177644,
+      "mimeType": "audio/wav",
+      "durationSeconds": 1.85,
+      "sampleRateHz": 48000,
+      "channels": 1,
+      "peakDbfs": -1.11,
+      "rmsDbfs": -12.19,
+      "loop": false,
+      "creator": "Receipts, Please procedural audio generator",
+      "license": "Project-owned source",
+      "status": "prototype-review",
+      "auditioned": false
+    },
+    {
+      "id": "termination-airhorn",
+      "title": "Termination airhorn",
+      "kind": "sfx",
+      "role": "Obnoxious corporate airhorn and modem meltdown",
+      "tags": [
+        "decision",
+        "fire",
+        "comedy",
+        "airhorn"
+      ],
+      "path": "/audio/sfx/termination-airhorn--3c9b1a92b8ba.wav",
+      "sha256": "3c9b1a92b8ba29b955de4d0bb15b0979b3a181ae6a3a134f1dac4bd54efcbcbf",
+      "bytes": 283244,
+      "mimeType": "audio/wav",
+      "durationSeconds": 2.95,
+      "sampleRateHz": 48000,
+      "channels": 1,
+      "peakDbfs": -1.11,
+      "rmsDbfs": -16.96,
+      "loop": false,
+      "creator": "Receipts, Please procedural audio generator",
+      "license": "Project-owned source",
+      "status": "prototype-review",
+      "auditioned": false
+    },
+    {
       "id": "freeze-cover",
       "title": "Freeze cover open",
       "kind": "sfx",

@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react'
 import { useLabStore } from '../store/useLabStore'
 import { GAME_CASES, MANUAL_CASE_COUNT } from './gameData'
 import { requestGameAudioCue } from './gameAudio'
@@ -7,18 +8,20 @@ function titleCase(value: string) {
   return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
+const FIRE_GAGS = [
+  'Their Slack dot has gone spiritually offline. Their lunch is now communal property.',
+  'IT has converted their chair into an available resource and their laptop into “refurbished.”',
+  'Their calendar is now impressively open through the end of time.',
+  'LinkedIn detected a 900% increase in motivational posting.',
+]
+
 export function GameDeskHud() {
   const acknowledgeOverload = useGameStore((state) => state.acknowledgeOverload)
-  const activeActions = useGameStore((state) => state.activeActions)
   const advanceCase = useGameStore((state) => state.advanceCase)
-  const calculatorComplete = useGameStore((state) => state.calculatorComplete)
   const caseIndex = useGameStore((state) => state.caseIndex)
-  const decisions = useGameStore((state) => state.decisions)
   const feedback = useGameStore((state) => state.feedback)
   const phase = useGameStore((state) => state.phase)
-  const reviewedEvidence = useGameStore((state) => state.reviewedEvidence)
   const score = useGameStore((state) => state.score)
-  const focused = useLabStore((state) => state.workstationFocused)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
 
@@ -45,67 +48,76 @@ export function GameDeskHud() {
     )
   }
 
-  if (focused || !['manual', 'ramp'].includes(phase)) return null
+  if (!feedback) return null
 
-  const evidenceComplete = phase === 'ramp' || reviewedEvidence.length >= currentCase.evidence.length
-  const calculatorRequired = currentCase.workflow.requiredDeskTool === 'calculator'
-  const requiredActions = currentCase.truth.requiredActions ?? []
-  const actionsComplete = requiredActions.every((action) => activeActions.includes(action))
+  const missing: string[] = []
+  if (feedback.missingEvidence.length) missing.push(`${feedback.missingEvidence.length} unopened record${feedback.missingEvidence.length === 1 ? '' : 's'}`)
+  if (feedback.missingDeskTool) missing.push('calculator tape')
+  if (feedback.missingActions.length) missing.push(...feedback.missingActions.map(titleCase))
+  const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
+    ? 'Face the backlog'
+    : caseIndex === GAME_CASES.length - 1
+      ? 'Clear the inbox'
+      : 'Load next receipt'
+  const fired = feedback.decision === 'fire'
+  const firedName = currentCase.employee.split(' · ')[0]
+  const feedbackTitle = feedback.correct
+    ? currentCase.truth.primaryClue
+    : feedback.decision === feedback.expectedDecision
+      ? 'Complete the required review steps'
+      : `Expected: ${titleCase(feedback.expectedDecision)}`
 
-  if (feedback) {
-    const missing: string[] = []
-    if (feedback.missingEvidence.length) missing.push(`${feedback.missingEvidence.length} unopened record${feedback.missingEvidence.length === 1 ? '' : 's'}`)
-    if (feedback.missingDeskTool) missing.push('calculator tape')
-    if (feedback.missingActions.length) missing.push(...feedback.missingActions.map(titleCase))
-    const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
-      ? 'Face the backlog'
-      : caseIndex === GAME_CASES.length - 1
-        ? 'Clear the inbox'
-        : 'Load next receipt'
-
-    return (
-      <section aria-live="polite" className={`game-desk-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
-        <span>{feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
-        <h2>{feedback.correct
-          ? currentCase.truth.primaryClue
-          : feedback.decision === feedback.expectedDecision
-            ? 'Complete the required review steps'
-            : `Expected: ${titleCase(feedback.expectedDecision)}`}</h2>
+  return (
+    <section aria-live="polite" className={`game-desk-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'} ${fired ? 'is-fired' : ''}`}>
+      {fired && (
+        <>
+          <div aria-hidden="true" className="game-fire-ticker">
+            <span>BREAKING NEWS · LOCAL EMPLOYEE DISCOVERS UNLIMITED PTO · HEADCOUNT OPTIMIZED · VIBES: IMMACULATE · PAYROLL HATES THIS ONE WEIRD TRICK · </span>
+          </div>
+          <div aria-hidden="true" className="game-fire-rain">
+            {Array.from({ length: 32 }, (_, index) => (
+              <i
+                key={index}
+                style={{
+                  '--fire-delay': `${(index % 9) * -.22}s`,
+                  '--fire-drift': `${((index % 3) - 1) * 80}px`,
+                  '--fire-duration': `${1.5 + (index % 7) * .18}s`,
+                  '--fire-size': `${18 + (index % 5) * 7}px`,
+                  '--fire-x': `${(index * 37) % 100}%`,
+                } as CSSProperties}
+              >{index % 4 === 0 ? '🗑️' : index % 3 === 0 ? '📉' : '🔥'}</i>
+            ))}
+          </div>
+          <div aria-hidden="true" className="game-fire-mega-stamp"><span>YOU’RE</span><strong>FIRED</strong></div>
+          <div aria-hidden="true" className="game-fire-popups">
+            <article className="is-slack"><b>SLACK</b><strong>{firedName} left the workspace.</strong><small>Everyone reacted with 👀</small></article>
+            <article className="is-linkedin"><b>LINKEDIN</b><strong>Profile updated 0.2 seconds ago</strong><small>“Open to work, revenge, and coffee chats.”</small></article>
+            <article className="is-it"><b>IT HELPDESK</b><strong>Laptop listed on Facebook Marketplace</strong><small>Condition: emotionally refurbished</small></article>
+            <article className="is-calendar"><b>CALENDAR</b><strong>37 recurring meetings deleted</strong><small>This could have been an email. It no longer can.</small></article>
+          </div>
+        </>
+      )}
+      <div className="game-feedback-card">
+        <span>{fired ? 'HUMAN RESOURCES HAS LEFT THE CHAT' : feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
+        <h2>{fired ? `${firedName} has been promoted to customer.` : feedbackTitle}</h2>
         <output className={feedback.points >= 0 ? 'is-positive' : 'is-negative'}>{feedback.points >= 0 ? '+' : ''}{feedback.points} points</output>
         <p>{feedback.explanation}</p>
+        {fired && (
+          <div className="game-fire-gag">
+            <span aria-hidden="true">🫡</span>
+            <div>
+              <strong>{firedName.toUpperCase()} HAS BEEN EJECTED FROM THE SPREADSHEET</strong>
+              <small>{FIRE_GAGS[caseIndex % FIRE_GAGS.length]}</small>
+            </div>
+          </div>
+        )}
+        {fired && <div className="game-fire-payroll"><span>UNSUBSCRIBING FROM PAYROLL</span><i><b /></i><strong>404: EMPLOYEE NOT FOUND</strong></div>}
         {missing.length > 0 && <small>Skipped: {missing.join(' · ')}</small>}
         <button onClick={() => {
           advanceCase()
           requestGameAudioCue('receipt-drop', 0.38)
-        }} type="button">{nextLabel}</button>
-      </section>
-    )
-  }
-
-  return (
-    <aside className={`game-desk-hud game-desk-hud--${phase}`}>
-      <span>{phase === 'manual' ? 'PHYSICAL DESK · MANUAL SHIFT' : 'PHYSICAL DESK · EXCEPTION CONTROL'} · SCORE {score}</span>
-      <h2>{currentCase.title}</h2>
-      <p>{decisions.length === 0
-        ? 'The monitor has the records. Approve, Reject, and Fire are the only decisions on your desk.'
-        : phase === 'manual'
-          ? 'Review the records, then return here and make one decision.'
-          : 'Ramp prepared the exception. Make the final judgment here.'}</p>
-      <ol>
-        <li className={evidenceComplete ? 'is-complete' : ''}><b>{evidenceComplete ? '✓' : '1'}</b><span>{phase === 'manual' ? `Review records (${reviewedEvidence.length}/${currentCase.evidence.length})` : 'Review connected exception'}</span></li>
-        {calculatorRequired && <li className={calculatorComplete ? 'is-complete' : ''}><b>{calculatorComplete ? '✓' : '2'}</b><span>Use the tape calculator</span></li>}
-        {requiredActions.length > 0 && <li className={actionsComplete ? 'is-complete' : ''}><b>{actionsComplete ? '✓' : calculatorRequired ? '3' : '2'}</b><span>Complete controls ({activeActions.length}/{requiredActions.length})</span></li>}
-        <li><b>{2 + Number(calculatorRequired) + Number(requiredActions.length > 0)}</b><span>Click Approve, Reject, or Fire</span></li>
-      </ol>
-      <details className="game-score-rules">
-        <summary>Scoring rules</summary>
-        <p><b>+100</b> correct Approve or Reject · <b>+200</b> correct Fire · <b>−75</b> wrong decision · <b>−200</b> firing the wrong person</p>
-      </details>
-      <button onClick={() => {
-        setFocused(true)
-        requestGameAudioCue('paper-slide', 0.32)
-      }} type="button">{phase === 'manual' ? 'Open Expense OS' : 'Open Ramp exception'}</button>
-      <small>Drag left or right to look across the desk. Glowing labels are anchored to the actual tools.</small>
-    </aside>
+        }} type="button">{fired ? 'NEXT CORPORATE CASUALTY' : nextLabel}</button>
+      </div>
+    </section>
   )
 }

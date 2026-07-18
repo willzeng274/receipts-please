@@ -195,39 +195,53 @@ export function GameWorkstation() {
   const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
-  const reviewedEvidence = useGameStore((state) => state.reviewedEvidence)
   const score = useGameStore((state) => state.score)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const togglePause = useGameStore((state) => state.togglePause)
   const toggleSound = useGameStore((state) => state.toggleSound)
   const beginMigration = useGameStore((state) => state.beginMigration)
   const beginRampTransition = useLabStore((state) => state.beginRampTransition)
+  const workstationFocused = useLabStore((state) => state.workstationFocused)
   const setWorkstationFocused = useLabStore((state) => state.setWorkstationFocused)
   const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
   const rampActive = phase === 'ramp'
   const inboxCount = rampActive ? Math.max(0, GAME_CASES.length - caseIndex) : Math.max(12, 12 + Math.floor(elapsedSeconds / 18) - Math.floor(decisions.length / 2))
   const cortisol = rampActive ? Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6) : Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
-  const recordsComplete = reviewedEvidence.length >= currentCase.evidence.length
 
   const handleTryRamp = () => {
     beginMigration()
     beginRampTransition()
   }
 
-  const returnToDesk = () => {
-    requestGameAudioCue('paper-slide', 0.32)
-    setWorkstationFocused(false)
-  }
+  useEffect(() => {
+    if (!workstationFocused) return
+    const returnToDesk = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      event.preventDefault()
+      setWorkstationFocused(false)
+      requestGameAudioCue('paper-slide', 0.32)
+    }
+    window.addEventListener('keydown', returnToDesk)
+    return () => window.removeEventListener('keydown', returnToDesk)
+  }, [setWorkstationFocused, workstationFocused])
 
   return (
     <div
-      aria-label="Receipts, Please game workstation"
-      className={`game-workstation game-workstation--${rampActive ? 'ramp' : 'manual'}`}
+      aria-label={workstationFocused ? 'Receipt details. Press Escape to return to the desk.' : 'Click to inspect receipt details.'}
+      className={`game-workstation game-workstation--${rampActive ? 'ramp' : 'manual'} ${workstationFocused ? 'is-focused' : 'is-preview'}`}
+      onClickCapture={(event) => {
+        if (workstationFocused) return
+        event.preventDefault()
+        event.stopPropagation()
+        setWorkstationFocused(true)
+        requestGameAudioCue('paper-slide', 0.32)
+      }}
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
       onWheel={(event) => event.stopPropagation()}
       role="application"
+      title={workstationFocused ? 'Press Escape to return to the desk' : 'Click to inspect receipt details'}
     >
       <header className="game-os-bar">
         <div><b>{rampActive ? 'R' : 'R/P'}</b><strong>{rampActive ? 'Ramp · Expenses' : 'Expense OS'}</strong><span>{rampActive ? 'CONNECTED EXCEPTION WORKSPACE' : 'LOCAL FILES · MANUAL MATCHING'}</span></div>
@@ -245,14 +259,6 @@ export function GameWorkstation() {
         <CaseQueue caseIndex={caseIndex} currentCase={currentCase} decisions={decisions} />
         {rampActive ? <RampWorkspace currentCase={currentCase} /> : <ManualWorkspace currentCase={currentCase} />}
       </div>
-
-      <footer className="game-workstation-footer">
-        <div>
-          <span>{rampActive ? 'RAMP DID THE MATCHING' : `${reviewedEvidence.length}/${currentCase.evidence.length} RECORDS OPENED`}</span>
-          <small>{rampActive ? 'Review the connected exception, take any control actions, then make the judgment at your desk.' : recordsComplete ? 'Records checked. Return to the physical desk to calculate or stamp.' : 'Open every relevant application before leaving the monitor.'}</small>
-        </div>
-        <button onClick={returnToDesk} type="button">Return to desk</button>
-      </footer>
 
       {phase === 'migration-prompt' && (
         <section aria-labelledby="game-ramp-title" aria-modal="true" className="game-migration-prompt" role="dialog">

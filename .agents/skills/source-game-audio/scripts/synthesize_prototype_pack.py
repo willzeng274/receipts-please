@@ -41,6 +41,8 @@ CUES = (
     Cue("approve-stamp", "Approve stamp", 0.62, "Solid approval impact", ("stamp", "impact")),
     Cue("reject-stamp", "Reject stamp", 0.58, "Sharp rejection impact", ("stamp", "impact")),
     Cue("fraud-stamp", "Fraud stamp", 1.05, "Heavy fraud impact and metal ring", ("stamp", "impact", "fraud")),
+    Cue("termination-honk", "Termination honk", 1.85, "Absurd HR goose alarm for firing an employee", ("decision", "fire", "comedy", "honk")),
+    Cue("termination-airhorn", "Termination airhorn", 2.95, "Obnoxious corporate airhorn and modem meltdown", ("decision", "fire", "comedy", "airhorn")),
     Cue("freeze-cover", "Freeze cover open", 0.45, "Protective cover opening", ("freeze", "mechanical")),
     Cue("freeze-button", "Freeze button", 0.82, "Card-freeze button impact", ("freeze", "impact")),
     Cue("card-decline", "Card decline", 0.65, "Declined card response", ("system", "decline")),
@@ -165,6 +167,27 @@ def synthesize(cue: Cue) -> list[float]:
             _tone(samples, 0.045, 0.90, 54.0, 0.88, sweep=-12.0, release=0.52)
             _tone(samples, 0.065, 0.88, 365.0, 0.24, sweep=-45.0, release=0.62)
             _tone(samples, 0.072, 0.82, 612.0, 0.15, sweep=-80.0, release=0.58)
+    elif cue.id == "termination-honk":
+        _tone(samples, 0.02, 0.48, 186.0, 0.52, sweep=540.0, attack=0.04, release=0.52)
+        _tone(samples, 0.04, 0.46, 93.0, 0.30, sweep=270.0, attack=0.04, release=0.50)
+        _tone(samples, 0.43, 1.08, 720.0, 0.48, sweep=-610.0, attack=0.03, release=0.76)
+        _tone(samples, 0.47, 1.12, 118.0, 0.58, sweep=-62.0, attack=0.04, release=0.82)
+        for index, at in enumerate((0.92, 1.08, 1.24)):
+            _tone(samples, at, 0.34, 248.0 - index * 31.0, 0.24, sweep=-72.0, release=0.26)
+        _noise(samples, 1.42, 0.34, 0.38, cue_seed, decay=0.09, highpass=True)
+        _tone(samples, 1.46, 0.32, 54.0, 0.44, sweep=-18.0, release=0.20)
+    elif cue.id == "termination-airhorn":
+        for index, at in enumerate((0.02, 0.30, 0.58)):
+            _tone(samples, at, 0.38, 172.0 + index * 8.0, 0.72, sweep=18.0, attack=0.015, release=0.24)
+            _tone(samples, at, 0.38, 344.0 + index * 16.0, 0.42, sweep=36.0, attack=0.015, release=0.24)
+            _tone(samples, at, 0.35, 86.0, 0.46, sweep=-4.0, attack=0.015, release=0.22)
+        _noise(samples, 0.02, 0.96, 0.28, cue_seed, decay=0.75, highpass=True)
+        for index, (at, frequency) in enumerate(((1.05, 980.0), (1.17, 1420.0), (1.29, 720.0), (1.41, 1880.0), (1.54, 1120.0), (1.67, 2260.0))):
+            _tone(samples, at, 0.19, frequency, 0.24 + (index % 2) * 0.08, sweep=(-1 if index % 2 else 1) * 420.0, release=0.15)
+        _tone(samples, 1.82, 1.02, 330.0, 0.48, sweep=-252.0, attack=0.025, release=0.78)
+        _tone(samples, 1.86, 1.00, 165.0, 0.52, sweep=-126.0, attack=0.025, release=0.76)
+        _tone(samples, 2.16, 0.70, 74.0, 0.62, sweep=-34.0, release=0.45)
+        _click(samples, 2.67, 0.76, cue_seed + 1)
     elif cue.id == "freeze-cover":
         _click(samples, 0.025, 0.56, cue_seed)
         _tone(samples, 0.03, 0.34, 430.0, 0.21, sweep=260.0, release=0.35)

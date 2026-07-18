@@ -751,7 +751,49 @@ function DeskGameHotspot({ id, label, onActivate, tone = 'neutral' }: {
   if (!position) return null
   return (
     <Html center position={[position[0], position[1] + (id === 'desk-computer' ? 0.48 : 0.2), position[2]]} zIndexRange={[24, 1]}>
-      <button className={`game-world-hotspot is-${tone}`} onClick={(event) => { event.stopPropagation(); onActivate() }} type="button">{label}</button>
+      <button
+        className={`game-world-hotspot is-${tone}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onActivate()
+        }}
+        type="button"
+      >
+        {label}
+      </button>
+    </Html>
+  )
+}
+
+const DESK_DECISION_POSITIONS = Object.fromEntries(
+  DESK_ASSET_PLACEMENTS
+    .filter((placement) => ['approval-stamp', 'fraud-stamp', 'reject-stamp'].includes(placement.id) && placement.position)
+    .map((placement) => [placement.id, placement.position]),
+) as Record<string, [number, number, number]>
+
+function DeskDecisionLabel({ hint, id, label, onActivate, tone }: {
+  hint: string
+  id: 'approval-stamp' | 'fraud-stamp' | 'reject-stamp'
+  label: string
+  onActivate: () => void
+  tone: 'approve' | 'fire' | 'reject'
+}) {
+  const position = DESK_DECISION_POSITIONS[id]
+  if (!position) return null
+  return (
+    <Html center position={[position[0], position[1] + 0.24, position[2]]} zIndexRange={[24, 1]}>
+      <button
+        aria-label={`${label}: ${hint}`}
+        className={`game-decision-label is-${tone}`}
+        onClick={(event) => {
+          event.stopPropagation()
+          onActivate()
+        }}
+        type="button"
+      >
+        <strong>{label}</strong>
+        <small>{hint}</small>
+      </button>
     </Html>
   )
 }
@@ -767,7 +809,6 @@ function DeskGameControls() {
   const phase = useGameStore((state) => state.phase)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const focused = useLabStore((state) => state.workstationFocused)
-  const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const gameActive = window.location.pathname === '/game'
   const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
@@ -798,16 +839,15 @@ function DeskGameControls() {
 
   return (
     <>
-      <DeskGameHotspot id="desk-computer" label="OPEN EXPENSE OS" onActivate={() => setFocused(true)} />
       {currentCase.workflow.requiredDeskTool === 'calculator' && !calculatorComplete && (
         <DeskGameHotspot id="desk-calculator" label="USE CALCULATOR" onActivate={useCalculator} tone="warn" />
       )}
       {requiredActions.includes('freeze-card') && !activeActions.includes('freeze-card') && (
         <DeskGameHotspot id="freeze-card-button" label="FREEZE CARD" onActivate={freezeCard} tone="danger" />
       )}
-      <DeskGameHotspot id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
-      <DeskGameHotspot id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="danger" />
-      <DeskGameHotspot id="fraud-stamp" label="FIRE" onActivate={() => decide('fire')} tone="danger" />
+      <DeskDecisionLabel hint="Pay this expense" id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
+      <DeskDecisionLabel hint="Send it back" id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="reject" />
+      <DeskDecisionLabel hint="Terminate employee" id="fraud-stamp" label="FIRE" onActivate={() => decide('fire')} tone="fire" />
     </>
   )
 }
@@ -901,6 +941,7 @@ function DeskEnvironment() {
     if (!gameActive || focused || paused || feedback || !['manual', 'ramp'].includes(phase)) return
     if (id === 'desk-computer') {
       setFocused(true)
+      requestGameAudioCue('paper-slide', 0.32)
       return
     }
     if (id === 'desk-calculator') {
@@ -923,6 +964,7 @@ function DeskEnvironment() {
     }
     const decision = decisions[id]
     if (!decision) return
+    requestGameAudioCue('stamp-pickup', 0.46)
     submitDecision(decision)
     triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
   }
