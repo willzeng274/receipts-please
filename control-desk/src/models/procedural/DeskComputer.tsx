@@ -1,8 +1,11 @@
-import modelFont from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff?url'
-import { RoundedBox, Text } from '@react-three/drei'
-import { useFrame } from '@react-three/fiber'
+import {
+  RoundedBox as DreiRoundedBox,
+  type RoundedBoxProps,
+} from '@react-three/drei'
+import { useFrame, type ThreeElements } from '@react-three/fiber'
 import {
   Children,
+  forwardRef,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -15,6 +18,18 @@ import { useLabStore } from '../../store/useLabStore'
 import type { ProceduralAssetProps } from '../types'
 
 const HALF_PI = Math.PI / 2
+
+const RoundedBox = forwardRef<THREE.Mesh, RoundedBoxProps>(
+  function RoundedBox({ bevelSegments = 2, ...props }, ref) {
+    return (
+      <DreiRoundedBox
+        ref={ref}
+        bevelSegments={bevelSegments}
+        {...props}
+      />
+    )
+  },
+)
 
 // Root-local desk-fit contract. With the scene root at [0, .85, -.10], the
 // keyboard occupies world z .045….223 and the mouse .096….235: both sit in the
@@ -369,6 +384,269 @@ const MANUAL_WINDOW_BASES = {
   notification: [0.11, -0.104, 0.004] as const,
 }
 
+const LABEL_ATLAS_SIZE = [1024, 512] as const
+
+const LABEL_ATLAS_REGIONS = {
+  manualHeader: { x: 0, y: 0, width: 512, height: 32 },
+  rampHeader: { x: 512, y: 0, width: 512, height: 32 },
+  rearDisplay: { x: 0, y: 32, width: 320, height: 32 },
+  frontDisplay: { x: 320, y: 32, width: 200, height: 32 },
+  notification: { x: 520, y: 32, width: 280, height: 48 },
+  towerRevision: { x: 800, y: 32, width: 224, height: 32 },
+  transaction: { x: 0, y: 80, width: 256, height: 160 },
+  policy: { x: 256, y: 80, width: 256, height: 120 },
+  rampSummary: { x: 512, y: 80, width: 256, height: 160 },
+  mismatch: { x: 768, y: 80, width: 256, height: 80 },
+  evidence: { x: 768, y: 160, width: 256, height: 80 },
+  towerArchive: { x: 256, y: 200, width: 240, height: 40 },
+  keyboardBadge: { x: 0, y: 240, width: 240, height: 40 },
+  standBadge: { x: 240, y: 240, width: 200, height: 40 },
+  escape: { x: 440, y: 240, width: 64, height: 40 },
+  statusPaper: { x: 0, y: 288, width: 320, height: 48 },
+  statusApprove: { x: 320, y: 288, width: 320, height: 48 },
+  statusReject: { x: 640, y: 288, width: 320, height: 48 },
+  statusFraud: { x: 0, y: 336, width: 320, height: 48 },
+  statusJam: { x: 320, y: 336, width: 320, height: 48 },
+  statusReady: { x: 640, y: 336, width: 320, height: 48 },
+} as const
+
+type LabelAtlasKey = keyof typeof LABEL_ATLAS_REGIONS
+
+type LabelDefinition = {
+  key: LabelAtlasKey
+  text: string
+  color: string
+  align?: CanvasTextAlign
+  outline?: boolean
+}
+
+const LABEL_DEFINITIONS: readonly LabelDefinition[] = [
+  {
+    key: 'manualHeader',
+    text: 'EXPENSE OS / INBOX 47 / 11:54',
+    color: '#daf0e9',
+    align: 'left',
+  },
+  {
+    key: 'rampHeader',
+    text: 'UNIFIED WORKFLOW 6 NEED ATTENTION',
+    color: '#e0f8ed',
+    align: 'left',
+  },
+  {
+    key: 'rearDisplay',
+    text: 'EXPENSE OS / DISPLAY 29',
+    color: '#9daaa2',
+  },
+  {
+    key: 'frontDisplay',
+    text: 'EXPENSE OS 29',
+    color: '#d6ddd5',
+  },
+  {
+    key: 'notification',
+    text: '9 UNREAD / FINANCE OPS',
+    color: '#ffb2a5',
+  },
+  {
+    key: 'towerRevision',
+    text: 'FINANCE DOCK / REV 04',
+    color: '#91a89e',
+  },
+  {
+    key: 'transaction',
+    text: 'TRANSACTION\nCHOPPED    $18.40\nRECEIPT    $81.40\nSTATUS     REVIEW',
+    color: '#f1dc97',
+    align: 'left',
+  },
+  {
+    key: 'policy',
+    text: 'POLICY.PDF\nMEALS $35 / PERSON\nTIP >25%  REVIEW',
+    color: '#dce2eb',
+    align: 'left',
+  },
+  {
+    key: 'rampSummary',
+    text: '47 CHECKED\nRECEIPT MATCH  ✓\nPOLICY STATUS  !\nTRAVEL LINKED  ✓',
+    color: '#eafaf3',
+    align: 'left',
+  },
+  {
+    key: 'mismatch',
+    text: 'AMOUNT MISMATCH\n$18.40 / $81.40',
+    color: '#7fe2a9',
+    align: 'left',
+  },
+  {
+    key: 'evidence',
+    text: 'EVIDENCE CONNECTED\nREADY FOR JUDGMENT',
+    color: '#c7ded5',
+    align: 'left',
+  },
+  {
+    key: 'towerArchive',
+    text: 'ARCHIVE / CARD I-O',
+    color: '#28302c',
+  },
+  {
+    key: 'keyboardBadge',
+    text: 'EXPENSE OS / K104',
+    color: '#303733',
+  },
+  {
+    key: 'standBadge',
+    text: 'EXPENSE OS',
+    color: '#dde2d9',
+  },
+  {
+    key: 'escape',
+    text: 'Esc',
+    color: '#edf4ed',
+  },
+  {
+    key: 'statusPaper',
+    text: 'INBOX +1',
+    color: '#f5fff9',
+    outline: true,
+  },
+  {
+    key: 'statusApprove',
+    text: 'APPROVED  ✓',
+    color: '#f5fff9',
+    outline: true,
+  },
+  {
+    key: 'statusReject',
+    text: 'REJECTED  ×',
+    color: '#f5fff9',
+    outline: true,
+  },
+  {
+    key: 'statusFraud',
+    text: 'FRAUD FLAGGED',
+    color: '#f5fff9',
+    outline: true,
+  },
+  {
+    key: 'statusJam',
+    text: 'PRINTER JAM',
+    color: '#f5fff9',
+    outline: true,
+  },
+  {
+    key: 'statusReady',
+    text: 'WORKSPACE READY',
+    color: '#f5fff9',
+    outline: true,
+  },
+]
+
+function makeWorkstationLabelAtlas() {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_SIZE[0]
+  canvas.height = LABEL_ATLAS_SIZE[1]
+
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Unable to create workstation label atlas')
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  context.textBaseline = 'middle'
+  context.lineJoin = 'round'
+
+  LABEL_DEFINITIONS.forEach((definition) => {
+    const region = LABEL_ATLAS_REGIONS[definition.key]
+    const lines = definition.text.split('\n')
+    const longestLine = Math.max(...lines.map((line) => line.length))
+    const lineHeight = 1.28
+    const fontSize = Math.max(
+      10,
+      Math.floor(
+        Math.min(
+          (region.width - 12) / Math.max(longestLine * 0.62, 1),
+          (region.height - 8) / Math.max(lines.length * lineHeight, 1),
+        ),
+      ),
+    )
+    const totalHeight = fontSize * lineHeight * lines.length
+    const align = definition.align ?? 'center'
+    const x = align === 'left' ? region.x + 6 : region.x + region.width / 2
+    const firstY =
+      region.y +
+      (region.height - totalHeight) / 2 +
+      (fontSize * lineHeight) / 2
+
+    context.textAlign = align
+    context.font = `600 ${fontSize}px "IBM Plex Mono", "SFMono-Regular", monospace`
+    context.fillStyle = definition.color
+    context.strokeStyle = '#15211e'
+    context.lineWidth = definition.outline ? 3 : 0
+
+    lines.forEach((line, lineIndex) => {
+      const y = firstY + lineIndex * fontSize * lineHeight
+      if (definition.outline) context.strokeText(line, x, y)
+      context.fillText(line, x, y)
+    })
+  })
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.needsUpdate = true
+  return texture
+}
+
+function makeAtlasPlaneGeometry(
+  width: number,
+  height: number,
+  key: LabelAtlasKey,
+) {
+  const geometry = new THREE.PlaneGeometry(width, height)
+  const uv = geometry.getAttribute('uv')
+  const region = LABEL_ATLAS_REGIONS[key]
+  const atlasWidth = LABEL_ATLAS_SIZE[0]
+  const atlasHeight = LABEL_ATLAS_SIZE[1]
+  const uMin = region.x / atlasWidth
+  const uMax = (region.x + region.width) / atlasWidth
+  const vMin = 1 - (region.y + region.height) / atlasHeight
+  const vMax = 1 - region.y / atlasHeight
+
+  for (let index = 0; index < uv.count; index += 1) {
+    const sourceU = uv.getX(index)
+    const sourceV = uv.getY(index)
+    uv.setXY(
+      index,
+      THREE.MathUtils.lerp(uMin, uMax, sourceU),
+      THREE.MathUtils.lerp(vMin, vMax, sourceV),
+    )
+  }
+  uv.needsUpdate = true
+  return geometry
+}
+
+function LabelPlane({
+  atlasKey,
+  height,
+  material,
+  width,
+  ...meshProps
+}: Omit<ThreeElements['mesh'], 'geometry' | 'material' | 'ref'> & {
+  atlasKey: LabelAtlasKey
+  height: number
+  material: THREE.MeshBasicMaterial
+  width: number
+}) {
+  const geometry = useMemo(
+    () => makeAtlasPlaneGeometry(width, height, atlasKey),
+    [atlasKey, height, width],
+  )
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return <mesh geometry={geometry} material={material} {...meshProps} />
+}
+
 type AnimationState = {
   active: boolean
   elapsed: number
@@ -435,8 +713,8 @@ function makeRoundedKeyGeometry() {
 
 function makeKeyboardLegendTexture(keys: readonly KeySpec[]) {
   const canvas = document.createElement('canvas')
-  canvas.width = 2048
-  canvas.height = 672
+  canvas.width = 1024
+  canvas.height = 336
 
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Unable to create keyboard legend canvas')
@@ -480,8 +758,9 @@ function makeKeyboardLegendTexture(keys: readonly KeySpec[]) {
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 8
-  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.anisotropy = 1
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.needsUpdate = true
   return texture
@@ -585,6 +864,18 @@ export function DeskComputer({
   const keyboardLegendTexture = useMemo(
     () => makeKeyboardLegendTexture(KEY_LAYOUT),
     [],
+  )
+  const labelAtlasTexture = useMemo(makeWorkstationLabelAtlas, [])
+  const labelMaterial = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        alphaTest: 0.04,
+        depthWrite: false,
+        map: labelAtlasTexture,
+        toneMapped: false,
+        transparent: true,
+      }),
+    [labelAtlasTexture],
   )
   const keyboardCableGeometry = useMemo(
     () =>
@@ -719,11 +1010,25 @@ export function DeskComputer({
         return { color: '#55dc8a', label: 'WORKSPACE READY' }
     }
   }, [effectPreset])
+  const statusAtlasKey: LabelAtlasKey =
+    effectPreset === 'paper-drop'
+      ? 'statusPaper'
+      : effectPreset === 'approve'
+        ? 'statusApprove'
+        : effectPreset === 'reject'
+          ? 'statusReject'
+          : effectPreset === 'fraud'
+            ? 'statusFraud'
+            : effectPreset === 'printer-jam'
+              ? 'statusJam'
+              : 'statusReady'
 
   useEffect(
     () => () => {
       keyGeometry.dispose()
       keyboardLegendTexture.dispose()
+      labelAtlasTexture.dispose()
+      labelMaterial.dispose()
       keyboardCableGeometry.dispose()
       mouseCableGeometry.dispose()
       mouseShellSeamGeometry.dispose()
@@ -734,6 +1039,8 @@ export function DeskComputer({
       keyGeometry,
       keyboardCableGeometry,
       keyboardLegendTexture,
+      labelAtlasTexture,
+      labelMaterial,
       materials,
       mouseCableGeometry,
       mouseShellSeamGeometry,
@@ -1215,17 +1522,14 @@ export function DeskComputer({
           smoothness={6}
           castShadow
         />
-        <Text
-          anchorX="center"
-          anchorY="middle"
-          color="#9daaa2"
-          font={modelFont}
-          fontSize={0.0095}
+        <LabelPlane
+          atlasKey="rearDisplay"
+          width={0.2}
+          height={0.018}
+          material={labelMaterial}
           position={[-0.08, 0.486, -0.038]}
           rotation={[0, Math.PI, 0]}
-        >
-          EXPENSE OS / DISPLAY 29
-        </Text>
+        />
 
         <RoundedBox
           args={[0.046, 0.026, 0.014]}
@@ -1277,16 +1581,13 @@ export function DeskComputer({
           smoothness={4}
           castShadow
         />
-        <Text
-          anchorX="center"
-          anchorY="middle"
-          color="#d6ddd5"
-          font={modelFont}
-          fontSize={0.0084}
+        <LabelPlane
+          atlasKey="frontDisplay"
+          width={0.096}
+          height={0.016}
+          material={labelMaterial}
           position={[-0.22, 0.205, 0.095]}
-        >
-          EXPENSE OS 29
-        </Text>
+        />
         <mesh position={[0.218, 0.205, 0.096]}>
           <sphereGeometry args={[0.0045, 18, 12]} />
           <meshStandardMaterial
@@ -1322,16 +1623,13 @@ export function DeskComputer({
                 position={[0, 0.15, 0.001]}
                 width={0.604}
               />
-              <Text
-                anchorX="left"
-                anchorY="middle"
-                color="#daf0e9"
-                font={modelFont}
-                fontSize={0.015}
-                position={[-0.292, 0.15, 0.004]}
-              >
-                EXPENSE OS / INBOX 47 / 11:54
-              </Text>
+              <LabelPlane
+                atlasKey="manualHeader"
+                width={0.58}
+                height={0.026}
+                material={labelMaterial}
+                position={[0, 0.15, 0.004]}
+              />
 
               <group
                 ref={manualTransactionRef}
@@ -1349,19 +1647,13 @@ export function DeskComputer({
                   position={[0, 0.084, 0.002]}
                   width={0.278}
                 />
-                <Text
-                  anchorX="left"
-                  anchorY="middle"
-                  color="#f1dc97"
-                  font={modelFont}
-                  fontSize={0.017}
-                  lineHeight={1.5}
-                  position={[-0.126, 0.012, 0.005]}
-                >
-                  {
-                    'TRANSACTION\nCHOPPED    $18.40\nRECEIPT    $81.40\nSTATUS     REVIEW'
-                  }
-                </Text>
+                <LabelPlane
+                  atlasKey="transaction"
+                  width={0.252}
+                  height={0.16}
+                  material={labelMaterial}
+                  position={[0, 0.004, 0.005]}
+                />
               </group>
 
               <group
@@ -1380,17 +1672,13 @@ export function DeskComputer({
                   position={[0, 0.061, 0.002]}
                   width={0.236}
                 />
-                <Text
-                  anchorX="left"
-                  anchorY="middle"
-                  color="#dce2eb"
-                  font={modelFont}
-                  fontSize={0.0135}
-                  lineHeight={1.55}
-                  position={[-0.108, 0.004, 0.005]}
-                >
-                  {'POLICY.PDF\nMEALS $35 / PERSON\nTIP >25%  REVIEW'}
-                </Text>
+                <LabelPlane
+                  atlasKey="policy"
+                  width={0.216}
+                  height={0.11}
+                  material={labelMaterial}
+                  position={[0, 0, 0.005]}
+                />
               </group>
 
               <group
@@ -1403,16 +1691,13 @@ export function DeskComputer({
                   position={[0, 0, 0]}
                   width={0.28}
                 />
-                <Text
-                  anchorX="center"
-                  anchorY="middle"
-                  color="#ffb2a5"
-                  font={modelFont}
-                  fontSize={0.013}
+                <LabelPlane
+                  atlasKey="notification"
+                  width={0.26}
+                  height={0.038}
+                  material={labelMaterial}
                   position={[0, 0, 0.004]}
-                >
-                  9 UNREAD / FINANCE OPS
-                </Text>
+                />
               </group>
             </group>
 
@@ -1432,35 +1717,26 @@ export function DeskComputer({
                 position={[0, 0.148, 0.001]}
                 width={0.604}
               />
-              <Text
-                anchorX="left"
-                anchorY="middle"
-                color="#e0f8ed"
-                font={modelFont}
-                fontSize={0.0155}
-                position={[-0.29, 0.148, 0.004]}
-              >
-                UNIFIED WORKFLOW 6 NEED ATTENTION
-              </Text>
+              <LabelPlane
+                atlasKey="rampHeader"
+                width={0.58}
+                height={0.026}
+                material={labelMaterial}
+                position={[0, 0.148, 0.004]}
+              />
               <ScreenPanel
                 color="#18352e"
                 height={0.246}
                 position={[-0.154, -0.015, 0.001]}
                 width={0.276}
               />
-              <Text
-                anchorX="left"
-                anchorY="middle"
-                color="#eafaf3"
-                font={modelFont}
-                fontSize={0.016}
-                lineHeight={1.58}
-                position={[-0.272, -0.005, 0.004]}
-              >
-                {
-                  '47 CHECKED\n\nRECEIPT MATCH  ✓\nPOLICY STATUS  !\nTRAVEL LINKED  ✓'
-                }
-              </Text>
+              <LabelPlane
+                atlasKey="rampSummary"
+                width={0.24}
+                height={0.2}
+                material={labelMaterial}
+                position={[-0.154, -0.005, 0.004]}
+              />
               <ScreenPanel
                 color="#1e3e34"
                 height={0.113}
@@ -1473,28 +1749,20 @@ export function DeskComputer({
                 position={[0.155, -0.078, 0.001]}
                 width={0.292}
               />
-              <Text
-                anchorX="left"
-                anchorY="middle"
-                color="#7fe2a9"
-                font={modelFont}
-                fontSize={0.0145}
-                lineHeight={1.5}
-                position={[0.025, 0.052, 0.004]}
-              >
-                {'AMOUNT MISMATCH\n$18.40 / $81.40'}
-              </Text>
-              <Text
-                anchorX="left"
-                anchorY="middle"
-                color="#c7ded5"
-                font={modelFont}
-                fontSize={0.0135}
-                lineHeight={1.5}
-                position={[0.025, -0.078, 0.004]}
-              >
-                {'EVIDENCE CONNECTED\nREADY FOR JUDGMENT'}
-              </Text>
+              <LabelPlane
+                atlasKey="mismatch"
+                width={0.26}
+                height={0.075}
+                material={labelMaterial}
+                position={[0.155, 0.052, 0.004]}
+              />
+              <LabelPlane
+                atlasKey="evidence"
+                width={0.26}
+                height={0.07}
+                material={labelMaterial}
+                position={[0.155, -0.078, 0.004]}
+              />
             </group>
 
             <group
@@ -1518,18 +1786,13 @@ export function DeskComputer({
                   roughness={0.4}
                 />
               </RoundedBox>
-              <Text
-                anchorX="center"
-                anchorY="middle"
-                color="#f5fff9"
-                font={modelFont}
-                fontSize={0.027}
-                outlineColor="#15211e"
-                outlineWidth={0.0008}
+              <LabelPlane
+                atlasKey={statusAtlasKey}
+                width={0.4}
+                height={0.06}
+                material={labelMaterial}
                 position={[0, 0, 0.004]}
-              >
-                {statusStyle.label}
-              </Text>
+              />
             </group>
 
             <mesh position={[0, 0, 0.015]}>
@@ -1619,16 +1882,13 @@ export function DeskComputer({
           smoothness={5}
           castShadow
         />
-        <Text
-          anchorX="center"
-          anchorY="middle"
-          color="#28302c"
-          font={modelFont}
-          fontSize={0.0078}
+        <LabelPlane
+          atlasKey="towerArchive"
+          width={0.1}
+          height={0.018}
+          material={labelMaterial}
           position={[0.389, 0.125, 0.136]}
-        >
-          ARCHIVE / CARD I-O
-        </Text>
+        />
         <RoundedBox
           args={[0.044, 0.012, 0.008]}
           material={materials.metal}
@@ -1646,16 +1906,13 @@ export function DeskComputer({
             roughness={0.35}
           />
         </mesh>
-        <Text
-          anchorX="center"
-          anchorY="middle"
-          color="#91a89e"
-          font={modelFont}
-          fontSize={0.0076}
+        <LabelPlane
+          atlasKey="towerRevision"
+          width={0.14}
+          height={0.016}
+          material={labelMaterial}
           position={[0.4, 0.041, 0.133]}
-        >
-          FINANCE DOCK / REV 04
-        </Text>
+        />
         <instancedMesh
           ref={towerVentsRef}
           args={[undefined, undefined, TOWER_SIDE_VENTS.length]}
@@ -1701,17 +1958,14 @@ export function DeskComputer({
               castShadow
               receiveShadow
             />
-            <Text
-              anchorX="center"
-              anchorY="middle"
-              color="#edf4ed"
-              font={modelFont}
-              fontSize={0.0054}
+            <LabelPlane
+              atlasKey="escape"
+              width={0.016}
+              height={0.009}
+              material={labelMaterial}
               position={[0, 0.0087, 0]}
               rotation={[-HALF_PI, 0, 0]}
-            >
-              Esc
-            </Text>
+            />
           </group>
 
           <mesh
@@ -1744,17 +1998,14 @@ export function DeskComputer({
             smoothness={4}
             castShadow
           />
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color="#303733"
-            font={modelFont}
-            fontSize={0.0062}
+          <LabelPlane
+            atlasKey="keyboardBadge"
+            width={0.075}
+            height={0.012}
+            material={labelMaterial}
             position={[-0.205, 0.026, 0.082]}
             rotation={[-HALF_PI, 0, 0]}
-          >
-            EXPENSE OS / K104
-          </Text>
+          />
           <RoundedBox
             args={[0.052, 0.018, 0.019]}
             material={materials.rubber}
@@ -1941,17 +2192,14 @@ export function DeskComputer({
             roughness={0.7}
           />
         </RoundedBox>
-        <Text
-          anchorX="center"
-          anchorY="middle"
-          color="#dde2d9"
-          font={modelFont}
-          fontSize={0.0068}
+        <LabelPlane
+          atlasKey="standBadge"
+          width={0.08}
+          height={0.012}
+          material={labelMaterial}
           position={[-0.08, 0.043, 0.048]}
           rotation={[-HALF_PI, 0, 0]}
-        >
-          EXPENSE OS
-        </Text>
+        />
       </group>
     </group>
   )

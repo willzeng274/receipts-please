@@ -58,7 +58,7 @@ The official white Ramp lockup lives at `control-desk/public/brand/ramp-lockup-w
 10. Update this file when a decision changes. Do not leave abandoned alternatives in new docs.
 11. Do not move the camera when the selected asset or animation composition changes. Free-orbit state persists; only an explicit camera preset choice or `Reset view` may animate to a saved camera.
 12. Keep the labs distinct: Model Floor is the isolated construction/material/all-angle register with per-model replay controls; Animation Stage owns solo mechanisms plus deliberately authored multi-model sequence scenes; Desk Scene owns the real-scale workstation, seated reach, environment layout, controllable lighting, and workstation-screen focus; System FX owns coupled selected-object, DOM/screen, camera-impulse, and postprocessing response testing. “Model Floor” and “System FX” are not alternate names for the same view.
-13. Show the performance profiler by default in 3D labs. Initial load size can be optimized later, but interaction must remain smooth in the representative desk scene.
+13. Keep the performance profiler available in every 3D lab, but default it off so profiling does not tax normal interaction. The render-quality selector owns the shared budget: Low favors constrained devices, Default targets smooth review, and Capture restores expensive shadows, DPR, and postprocessing for authored screenshots.
 
 ## Project skills in use
 

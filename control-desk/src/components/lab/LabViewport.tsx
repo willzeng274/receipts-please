@@ -16,6 +16,7 @@ export function LabViewport() {
   const exitGiraffeFocus = useLabStore((state) => state.exitGiraffeFocus)
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
   const mode = useLabStore((state) => state.mode)
+  const renderQuality = useLabStore((state) => state.renderQuality)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
   const rampTransitionRun = useLabStore((state) => state.rampTransitionRun)
   const activeAsset = getAssetDefinition(assetId)
@@ -36,6 +37,13 @@ export function LabViewport() {
     : mode === 'animation'
       ? 'Deterministic sequence / replay stage'
       : `${activeAsset.category} / procedural source`
+  const dpr: [number, number] = renderQuality === 'capture'
+    ? [1, 2]
+    : renderQuality === 'low'
+      ? [1, 1]
+      : [1, 1.5]
+  const realtimeShadows = renderQuality === 'capture'
+    || (renderQuality === 'default' && mode !== 'scene')
 
   useEffect(() => {
     if (!giraffeFocused) return
@@ -92,7 +100,7 @@ export function LabViewport() {
       <CanvasErrorBoundary>
         <Canvas
           camera={{ fov: 34, near: 0.05, far: 120, position: [3.4, 2.35, 4.3] }}
-          dpr={[1, 2]}
+          dpr={dpr}
           fallback={<div className="webgl-fallback">WebGL is unavailable. Use a current Chrome build with hardware acceleration.</div>}
           gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
           onCreated={({ gl }) => {
@@ -100,7 +108,7 @@ export function LabViewport() {
             gl.toneMapping = ACESFilmicToneMapping
             gl.toneMappingExposure = 1.16
           }}
-          shadows
+          shadows={realtimeShadows}
         >
           <LabScene />
         </Canvas>

@@ -482,6 +482,7 @@ export function FilingCabinet({
   const previousRunRef = useRef(effectRun)
   const lockBaseIntensityRef = useRef(selected ? 0.24 : 0.06)
   const manualOpenRef = useRef<DrawerId | null>(null)
+  const manualSettledRef = useRef(true)
   const manualTravelRef = useRef<DrawerTravel>({ ...CLOSED_DRAWER_TRAVEL })
   const effectBaselineRef = useRef<DrawerTravel>({ ...CLOSED_DRAWER_TRAVEL })
   const reducedMotion = useLabStore((state) => state.reducedMotion)
@@ -627,6 +628,7 @@ export function FilingCabinet({
 
   const toggleDrawer = useCallback((drawerId: DrawerId) => {
     manualOpenRef.current = manualOpenRef.current === drawerId ? null : drawerId
+    manualSettledRef.current = false
   }, [])
 
   const resetPose = useCallback((travel: Readonly<DrawerTravel> = CLOSED_DRAWER_TRAVEL) => {
@@ -707,6 +709,7 @@ export function FilingCabinet({
 
   useFrame((_, delta) => {
     const motion = motionRef.current
+    if ((!motion.active || !motion.preset) && manualSettledRef.current) return
     const shell = shellRef.current
     const top = topRef.current
     const topDrawer = topDrawerRef.current
@@ -741,6 +744,7 @@ export function FilingCabinet({
       const travel = manualTravelRef.current
       const otherDrawersClosed = (drawerId: DrawerId) =>
         DRAWER_IDS.every((otherId) => otherId === drawerId || travel[otherId] < 0.0025)
+      let allDrawersSettled = true
 
       DRAWER_IDS.forEach((drawerId) => {
         const target =
@@ -754,9 +758,11 @@ export function FilingCabinet({
           frameDelta,
         )
         if (Math.abs(travel[drawerId] - target) < 0.0001) travel[drawerId] = target
+        else allDrawersSettled = false
       })
 
       resetPose(travel)
+      manualSettledRef.current = allDrawersSettled
       return
     }
 
@@ -921,6 +927,7 @@ export function FilingCabinet({
     if (time >= 1) {
       motion.active = false
       resetPose(baseline)
+      manualSettledRef.current = false
     }
   })
 

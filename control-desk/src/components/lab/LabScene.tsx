@@ -2,7 +2,7 @@ import { ContactShadows, Grid, Html, OrbitControls } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing'
 import gsap from 'gsap'
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AmbientLight, DirectionalLight, Group, PerspectiveCamera, PointLight, SpotLight } from 'three'
 import { Color, Vector3 } from 'three'
 import { BlendFunction } from 'postprocessing'
@@ -333,6 +333,7 @@ function CameraRig() {
 function Lighting({ preset }: { preset: LightingPreset }) {
   const fillLightScale = useLabStore((state) => state.fillLightScale)
   const keyLightScale = useLabStore((state) => state.keyLightScale)
+  const renderQuality = useLabStore((state) => state.renderQuality)
   const ambientRef = useRef<AmbientLight>(null)
   const fillRef = useRef<DirectionalLight>(null)
   const keyRef = useRef<DirectionalLight>(null)
@@ -346,6 +347,7 @@ function Lighting({ preset }: { preset: LightingPreset }) {
   })[preset], [preset])
   const initialSetup = useRef(setup)
   const initialSpotIntensity = useRef(preset === 'night' ? 13 : 2.6)
+  const shadowMapSize = renderQuality === 'capture' ? 2048 : renderQuality === 'low' ? 512 : 1024
 
   const scene = useThree((state) => state.scene)
   useEffect(() => {
@@ -393,8 +395,8 @@ function Lighting({ preset }: { preset: LightingPreset }) {
         intensity={initialSetup.current.intensity}
         position={[4, 7, 5]}
         shadow-bias={-0.00015}
-        shadow-mapSize-height={2048}
-        shadow-mapSize-width={2048}
+        shadow-mapSize-height={shadowMapSize}
+        shadow-mapSize-width={shadowMapSize}
       />
       <directionalLight ref={fillRef} color="#e9fff5" intensity={0.62} position={[0, 3, 5]} />
       <pointLight ref={pointRef} color={initialSetup.current.fill} intensity={initialSetup.current.intensity * 1.45} position={[-2.7, 2.8, 1.5]} distance={9} decay={2} />
@@ -457,6 +459,9 @@ type RegisteredAssetProps = {
 }
 
 const DESK_ASSET_PLACEMENTS: SceneAssetPlacement[] = [...SCENE_LAYOUT_MANIFEST.assets]
+const LOW_SCENE_ASSETS = new Set([
+  'desk-computer',
+])
 
 function RegisteredAsset({ children, id, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, selected = false, visible = true }: RegisteredAssetProps) {
   const definition = findAssetDefinition(id)
@@ -592,13 +597,42 @@ function AnimationFloor() {
   )
 }
 
-function DeskEnvironment() {
-  const giraffeFocused = useLabStore((state) => state.giraffeFocused)
+function LowSceneEnvironment() {
+  const [deskX, deskY, deskZ] = SCENE_LAYOUT_MANIFEST.desk.origin
+  const deskSurfaceY = SCENE_LAYOUT_MANIFEST.desk.surfaceY
 
   return (
     <group>
+      <mesh position={[0, 0.01, -1.5]} receiveShadow>
+        <boxGeometry args={[9, 0.02, 8]} />
+        <meshStandardMaterial color="#202925" metalness={0.02} roughness={0.94} />
+      </mesh>
+      <mesh position={[deskX, deskSurfaceY - 0.045, deskZ]} receiveShadow>
+        <boxGeometry args={[3.05, 0.09, 1.38]} />
+        <meshStandardMaterial color="#4b5149" metalness={0.08} roughness={0.78} />
+      </mesh>
+      {[-1.28, 1.28].map((x) => (
+        <mesh key={x} position={[deskX + x, deskY + 0.38, deskZ]} receiveShadow>
+          <boxGeometry args={[0.09, 0.76, 1.06]} />
+          <meshStandardMaterial color="#313a35" metalness={0.18} roughness={0.72} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function DeskEnvironment() {
+  const giraffeFocused = useLabStore((state) => state.giraffeFocused)
+  const renderQuality = useLabStore((state) => state.renderQuality)
+  const placements = renderQuality === 'low'
+    ? DESK_ASSET_PLACEMENTS.filter((placement) => LOW_SCENE_ASSETS.has(placement.id))
+    : DESK_ASSET_PLACEMENTS
+
+  return (
+    <group>
+      {renderQuality === 'low' && <LowSceneEnvironment />}
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
-      {DESK_ASSET_PLACEMENTS.map((placement, index) => (
+      {placements.map((placement, index) => (
         <RegisteredAsset
           key={`${placement.id}-${index}`}
           {...placement}
@@ -645,12 +679,57 @@ function ImpactRig({ children }: { children: React.ReactNode }) {
   return <group ref={group}>{children}</group>
 }
 
+function SceneContactShadows() {
+  const assetId = useLabStore((state) => state.assetId)
+  const compositionId = useLabStore((state) => state.compositionId)
+  const effectRun = useLabStore((state) => state.effectRun)
+  const lightingPreset = useLabStore((state) => state.lightingPreset)
+  const mode = useLabStore((state) => state.mode)
+  const renderQuality = useLabStore((state) => state.renderQuality)
+  const [effectFrames, setEffectFrames] = useState(1)
+
+  useEffect(() => {
+    if (effectRun < 1 || renderQuality !== 'default') return
+    setEffectFrames(72)
+    const timeout = window.setTimeout(() => setEffectFrames(1), 1400)
+    return () => window.clearTimeout(timeout)
+  }, [effectRun, renderQuality])
+
+  const frames = renderQuality === 'capture'
+    ? Infinity
+    : renderQuality === 'low'
+      ? 1
+      : effectFrames
+  const resolution = renderQuality === 'capture' ? 1024 : renderQuality === 'low' ? 256 : 512
+  const refreshKey = `${mode}:${assetId}:${compositionId}:${effectRun}:${lightingPreset}:${renderQuality}`
+
+  // The assembled office already uses the directional shadow map. Rendering
+  // every scene mesh through a second contact-shadow camera can exhaust WebGL
+  // contexts on constrained GPUs, so reserve that pass for capture review.
+  if (mode === 'scene' && renderQuality !== 'capture') return null
+
+  return (
+    <ContactShadows
+      key={refreshKey}
+      blur={2.8}
+      far={8}
+      frames={frames}
+      opacity={0.48}
+      position={[0, mode === 'scene' ? 0.073 : -0.205, 0]}
+      resolution={resolution}
+      scale={13}
+    />
+  )
+}
+
 export function LabScene() {
   const effectPreset = useLabStore((state) => state.effectPreset)
   const gridVisible = useLabStore((state) => state.gridVisible)
   const lightingPreset = useLabStore((state) => state.lightingPreset)
   const mode = useLabStore((state) => state.mode)
   const performanceVisible = useLabStore((state) => state.performanceVisible)
+  const renderQuality = useLabStore((state) => state.renderQuality)
+  const postprocessingEnabled = renderQuality === 'capture' || (renderQuality === 'default' && mode === 'effects')
 
   return (
     <>
@@ -678,20 +757,15 @@ export function LabScene() {
           sectionThickness={0.8}
         />
       )}
-      <ContactShadows
-        blur={2.8}
-        far={8}
-        opacity={0.48}
-        position={[0, mode === 'scene' ? 0.073 : -0.205, 0]}
-        resolution={1024}
-        scale={13}
-      />
+      <SceneContactShadows />
 
-      <EffectComposer multisampling={0}>
-        <Bloom intensity={effectPreset === 'migration' ? 0.35 : 0.16} luminanceThreshold={1.05} mipmapBlur />
-        <Noise blendFunction={BlendFunction.SOFT_LIGHT} opacity={lightingPreset === 'manual' ? 0.08 : 0.025} />
-        <Vignette darkness={lightingPreset === 'manual' ? 0.55 : 0.34} eskil={false} offset={0.26} />
-      </EffectComposer>
+      {postprocessingEnabled && (
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={effectPreset === 'migration' ? 0.35 : 0.16} luminanceThreshold={1.05} mipmapBlur />
+          <Noise blendFunction={BlendFunction.SOFT_LIGHT} opacity={lightingPreset === 'manual' ? 0.08 : 0.025} />
+          <Vignette darkness={lightingPreset === 'manual' ? 0.55 : 0.34} eskil={false} offset={0.26} />
+        </EffectComposer>
+      )}
     </>
   )
 }

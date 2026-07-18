@@ -638,7 +638,7 @@ export function OfficePlant({
     const reaction = reactionRef.current
     const canopy = canopyRef.current
     const motion = motionRef.current
-    if (!reaction || !canopy) return
+    if (!reaction || !canopy || !motion.active || !motion.preset) return
 
     reaction.position.set(0, 0, 0)
     reaction.rotation.set(0, 0, 0)

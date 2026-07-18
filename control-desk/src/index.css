@@ -176,7 +176,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 
 .effect-deck { height: 166px; display: grid; grid-template-columns: minmax(620px, 1fr) 520px; border-top: 1px solid var(--line); background: #121b19; position: relative; z-index: 20; }
 .effect-deck--compact { height: 106px; display: block; }
-.effect-deck--compact .deck-section--settings { height: 100%; grid-template-columns: 150px repeat(5, minmax(120px, 1fr)) 180px; padding-block: 15px; }
+.effect-deck--compact .deck-section--settings { height: 100%; grid-template-columns: 150px repeat(6, minmax(112px, 1fr)) 180px; padding-block: 15px; }
 .deck-context { align-self: center; color: var(--amber); font: 500 9px/1.35 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
 .deck-section { padding: 16px 22px; min-width: 0; }
 .deck-section--effects { border-right: 1px solid var(--line); }
@@ -222,7 +222,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .lab-shell--effects .lab-body { height: calc(100svh - 224px); }
   .effect-deck { height: 152px; grid-template-columns: 1fr; }
   .effect-deck--compact { height: 106px; }
-  .effect-deck--compact .deck-section--settings { display: grid; grid-template-columns: 130px 1fr 1fr; }
+  .effect-deck--compact .deck-section--settings { display: grid; grid-template-columns: 130px repeat(3, 1fr); }
   .effect-deck--compact .lab-toggle, .effect-deck--compact .camera-reset { display: none; }
   .deck-section--settings { display: none; }
   .deck-buttons button { height: 78px; }

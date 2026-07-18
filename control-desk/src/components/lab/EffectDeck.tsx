@@ -1,4 +1,4 @@
-import type { CameraPreset, LabMode, LightingPreset } from '../../store/useLabStore'
+import type { CameraPreset, LabMode, LightingPreset, RenderQuality } from '../../store/useLabStore'
 import { useLabStore } from '../../store/useLabStore'
 import { EFFECTS } from './effectOptions'
 
@@ -26,6 +26,11 @@ const CAMERAS: Record<LabMode, { id: CameraPreset; label: string }[]> = {
   ],
 }
 const LIGHTS: LightingPreset[] = ['manual', 'studio', 'ramp', 'night']
+const QUALITY_LEVELS: { id: RenderQuality; label: string }[] = [
+  { id: 'low', label: 'Low' },
+  { id: 'default', label: 'Default' },
+  { id: 'capture', label: 'Capture' },
+]
 
 export function EffectDeck() {
   const cameraPreset = useLabStore((state) => state.cameraPreset)
@@ -34,12 +39,14 @@ export function EffectDeck() {
   const lightingPreset = useLabStore((state) => state.lightingPreset)
   const mode = useLabStore((state) => state.mode)
   const performanceVisible = useLabStore((state) => state.performanceVisible)
+  const renderQuality = useLabStore((state) => state.renderQuality)
   const reducedMotion = useLabStore((state) => state.reducedMotion)
   const resetCamera = useLabStore((state) => state.resetCamera)
   const setCameraPreset = useLabStore((state) => state.setCameraPreset)
   const setGridVisible = useLabStore((state) => state.setGridVisible)
   const setLightingPreset = useLabStore((state) => state.setLightingPreset)
   const setPerformanceVisible = useLabStore((state) => state.setPerformanceVisible)
+  const setRenderQuality = useLabStore((state) => state.setRenderQuality)
   const setReducedMotion = useLabStore((state) => state.setReducedMotion)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
 
@@ -77,6 +84,12 @@ export function EffectDeck() {
           <span>Light</span>
           <select value={lightingPreset} onChange={(event) => setLightingPreset(event.target.value as LightingPreset)}>
             {LIGHTS.map((light) => <option key={light}>{light}</option>)}
+          </select>
+        </label>
+        <label>
+          <span>Quality</span>
+          <select value={renderQuality} onChange={(event) => setRenderQuality(event.target.value as RenderQuality)}>
+            {QUALITY_LEVELS.map((quality) => <option key={quality.id} value={quality.id}>{quality.label}</option>)}
           </select>
         </label>
         <label className="lab-toggle">

@@ -1,6 +1,6 @@
 import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -309,12 +309,7 @@ export function OfficeChair({
     ],
   )
 
-  useEffect(() => {
-    const motion = motionRef.current
-    motion.active = effectRun > 0
-    motion.elapsed = 0
-    motion.preset = effectPreset
-
+  const resetReaction = useCallback(() => {
     if (groundReactionRef.current) {
       groundReactionRef.current.position.set(0, 0, 0)
       groundReactionRef.current.rotation.set(0, 0, 0)
@@ -325,24 +320,30 @@ export function OfficeChair({
       tiltRef.current.position.set(0, 0, 0)
       tiltRef.current.rotation.set(0, 0, 0)
     }
-  }, [effectPreset, effectRun])
+  }, [])
+
+  useEffect(() => {
+    const motion = motionRef.current
+    motion.active = effectRun > 0
+    motion.elapsed = 0
+    motion.preset = effectPreset
+    resetReaction()
+  }, [effectPreset, effectRun, resetReaction])
 
   useFrame((_, delta) => {
+    const motion = motionRef.current
+    if (!motion.active || !motion.preset) return
     const ground = groundReactionRef.current
     const casterReaction = casterReactionRef.current
     const swivel = swivelRef.current
     const tilt = tiltRef.current
-    const motion = motionRef.current
     if (!ground || !casterReaction || !swivel || !tilt) return
 
-    ground.position.set(0, 0, 0)
-    ground.rotation.set(0, 0, 0)
-    casterReaction.rotation.set(0, 0, 0)
-    swivel.rotation.set(0, 0, 0)
-    tilt.position.set(0, 0, 0)
-    tilt.rotation.set(0, 0, 0)
-
-    if (!motion.active || !motion.preset) return
+    resetReaction()
+    const finishMotion = () => {
+      motion.active = false
+      resetReaction()
+    }
 
     motion.elapsed += Math.min(delta, 0.05)
     const time = motion.elapsed
@@ -355,7 +356,7 @@ export function OfficeChair({
       ground.position.z = -0.003 * amount * envelope
       casterReaction.rotation.y = 0.018 * amount * settle
       swivel.rotation.y = -0.009 * amount * settle
-      if (time > 0.62) motion.active = false
+      if (time > 0.62) finishMotion()
       return
     }
 
@@ -366,7 +367,7 @@ export function OfficeChair({
       swivel.rotation.y = amount * (-0.022 * anticipation + 0.09 * turn + 0.009 * settle)
       tilt.rotation.x = amount * (-0.018 * turn - 0.006 * settle)
       tilt.rotation.z = amount * 0.006 * turn
-      if (time > 0.95) motion.active = false
+      if (time > 0.95) finishMotion()
       return
     }
 
@@ -377,7 +378,7 @@ export function OfficeChair({
       swivel.rotation.y = amount * (0.025 * anticipation - 0.115 * turn - 0.012 * snap)
       tilt.rotation.x = amount * (0.026 * turn + 0.008 * snap)
       tilt.rotation.z = amount * -0.009 * turn
-      if (time > 0.72) motion.active = false
+      if (time > 0.72) finishMotion()
       return
     }
 
@@ -392,7 +393,7 @@ export function OfficeChair({
       tilt.position.y = amount * -0.004 * recoil
       tilt.rotation.x = amount * (-0.06 * recoil - 0.012 * settle)
       tilt.rotation.z = amount * (0.018 * recoil + 0.007 * settle)
-      if (time > 1.12) motion.active = false
+      if (time > 1.12) finishMotion()
       return
     }
 
@@ -405,7 +406,7 @@ export function OfficeChair({
       swivel.rotation.y = amount * 0.008 * envelope * Math.sin(time * 51)
       tilt.rotation.x = amount * 0.005 * envelope * Math.sin(time * 77 + 0.5)
       tilt.rotation.z = amount * 0.004 * envelope * shudder
-      if (time > 1.02) motion.active = false
+      if (time > 1.02) finishMotion()
       return
     }
 
@@ -417,7 +418,7 @@ export function OfficeChair({
     tilt.rotation.x = amount * (-0.024 * composedTurn - 0.007 * settle)
     ground.position.z = amount * 0.007 * composedTurn
     casterReaction.rotation.y = amount * -0.014 * composedTurn
-    if (time > 1.72) motion.active = false
+    if (time > 1.72) finishMotion()
   })
 
   return (

@@ -5,6 +5,7 @@ export type LightingPreset = 'manual' | 'studio' | 'ramp' | 'night'
 export type CameraPreset = 'overview' | 'inspection' | 'player' | 'profile' | 'left' | 'rear' | 'high' | 'low'
 export type EffectPreset = 'paper-drop' | 'approve' | 'reject' | 'fraud' | 'printer-jam' | 'migration'
 export type ExperiencePhase = 'manual' | 'migrating' | 'ramp'
+export type RenderQuality = 'low' | 'default' | 'capture'
 
 export const RAMP_MIGRATION_STEPS = [
   'Importing cards',
@@ -29,6 +30,7 @@ type LabState = {
   lightingPreset: LightingPreset
   mode: LabMode
   performanceVisible: boolean
+  renderQuality: RenderQuality
   rampPromptVisible: boolean
   rampMigrationStep: number
   rampTransitionRun: number
@@ -50,6 +52,7 @@ type LabState = {
   setLightingPreset: (lightingPreset: LightingPreset) => void
   setMode: (mode: LabMode) => void
   setPerformanceVisible: (performanceVisible: boolean) => void
+  setRenderQuality: (renderQuality: RenderQuality) => void
   setReducedMotion: (reducedMotion: boolean) => void
   resetCamera: () => void
   triggerEffect: (effectPreset: EffectPreset) => void
@@ -70,7 +73,8 @@ export const useLabStore = create<LabState>((set) => ({
   keyLightScale: 1,
   lightingPreset: 'studio',
   mode: 'models',
-  performanceVisible: true,
+  performanceVisible: false,
+  renderQuality: 'low',
   rampPromptVisible: false,
   rampMigrationStep: 0,
   rampTransitionRun: 0,
@@ -140,6 +144,7 @@ export const useLabStore = create<LabState>((set) => ({
     workstationFocused: mode === 'scene' ? state.workstationFocused : false,
   })),
   setPerformanceVisible: (performanceVisible) => set({ performanceVisible }),
+  setRenderQuality: (renderQuality) => set({ renderQuality }),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   resetCamera: () => set((state) => ({ cameraRun: state.cameraRun + 1 })),
   triggerEffect: (effectPreset) => set((state) => ({ effectPreset, effectRun: state.effectRun + 1 })),

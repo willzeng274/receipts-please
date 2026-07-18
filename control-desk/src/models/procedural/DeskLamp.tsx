@@ -541,14 +541,19 @@ export function DeskLamp({
   }, [effectPreset, effectRun, resetAssembly])
 
   useFrame((_, delta) => {
-    resetAssembly()
-
+    const motion = motionRef.current
+    if (!motion.active || !motion.preset) return
     const lowerArm = lowerArmRef.current
     const upperArm = upperArmRef.current
     const shade = shadeRef.current
     const rocker = switchRef.current
-    const motion = motionRef.current
-    if (!lowerArm || !upperArm || !shade || !rocker || !motion.active || !motion.preset) return
+    if (!lowerArm || !upperArm || !shade || !rocker) return
+
+    resetAssembly()
+    const finishMotion = () => {
+      motion.active = false
+      resetAssembly()
+    }
 
     motion.elapsed += Math.min(delta, 0.05)
     const time = motion.elapsed
@@ -561,7 +566,7 @@ export function DeskLamp({
       upperArm.rotation.x += motionScale * 0.011 * dip
       const intensity = baseLightIntensity * (1 - 0.72 * dip + 0.16 * acknowledgement)
       applyLightCue(JAM_AMBER, dip * 0.38, intensity)
-      if (time > 0.72) motion.active = false
+      if (time > 0.72) finishMotion()
       return
     }
 
@@ -575,7 +580,7 @@ export function DeskLamp({
       shade.rotation.x += motionScale * (0.018 * anticipation - 0.075 * focus + 0.009 * settle)
       rocker.position.y -= 0.0025 * focus
       applyLightCue(APPROVE_GREEN, focus, baseLightIntensity + 1.85 * lightIntensityScale * focus)
-      if (time > 1.08) motion.active = false
+      if (time > 1.08) finishMotion()
       return
     }
 
@@ -589,7 +594,7 @@ export function DeskLamp({
       shade.rotation.z += motionScale * (0.055 * snap - 0.01 * recoil)
       rocker.position.y -= 0.003 * snap
       applyLightCue(REJECT_RED, snap, baseLightIntensity + 1.7 * lightIntensityScale * snap)
-      if (time > 0.9) motion.active = false
+      if (time > 0.9) finishMotion()
       return
     }
 
@@ -608,7 +613,7 @@ export function DeskLamp({
         alarm,
         baseLightIntensity + 2.25 * lightIntensityScale * alarm * alarmPulse,
       )
-      if (time > 1.45) motion.active = false
+      if (time > 1.45) finishMotion()
       return
     }
 
@@ -624,7 +629,7 @@ export function DeskLamp({
       const flicker = reducedMotion ? 0.8 + rawFlicker * 0.2 : 0.16 + rawFlicker * 0.84
       const intensity = baseLightIntensity * (1 - rattleEnvelope + rattleEnvelope * flicker)
       applyLightCue(JAM_AMBER, rattleEnvelope * 0.9, intensity)
-      if (time > 1.34) motion.active = false
+      if (time > 1.34) finishMotion()
       return
     }
 
@@ -642,7 +647,7 @@ export function DeskLamp({
     const intensity = baseLightIntensity * (1 - 0.94 * blackout)
       + 1.55 * lightIntensityScale * cleanLight
     applyLightCue(MIGRATION_MINT, cleanLight, intensity)
-    if (time > 1.75) motion.active = false
+    if (time > 1.75) finishMotion()
   })
 
   return (
