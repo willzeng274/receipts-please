@@ -1,0 +1,1484 @@
+{
+  "schemaVersion": "1.1.0",
+  "catalogId": "receipt-cases-v1",
+  "description": "Deterministic receipt-generation data for every primary, optional, and Ramp-era case in the Receipts, Please design brief.",
+  "generation": {
+    "deterministic": true,
+    "seedStrategy": "catalogId:caseId:variantId",
+    "defaultLocale": "en-US",
+    "defaultCurrency": "USD",
+    "moneyUnit": "integer-cents",
+    "timeFormat": "ISO-8601-with-offset",
+    "rendererContract": {
+      "excludeFromPlayerView": [
+        "truth",
+        "comparisonRecords",
+        "generationNotes"
+      ],
+      "calculateLineTotal": "quantity * unitPriceCents",
+      "calculateReceiptTotal": "subtotalCents + taxCents + tipCents + feesCents - discountCents",
+      "applyOrder": [
+        "base receipt data",
+        "template defaults",
+        "variant overrides",
+        "visual treatments",
+        "anomaly treatments"
+      ]
+    },
+    "constraints": {
+      "maximumPrimaryCluesPerOpeningCase": 1,
+      "maximumSecondaryCluesPerOpeningCase": 1,
+      "requireUniqueCaseIds": true,
+      "requireUniqueReceiptIds": true,
+      "requireIntegerMoneyValues": true,
+      "requireReproducibleVisualNoise": true
+    }
+  },
+  "decisionValues": [
+    "approve",
+    "reject",
+    "investigate"
+  ],
+  "coverage": {
+    "primaryManualCases": 8,
+    "optionalManualCases": 5,
+    "rampEraCases": 6,
+    "endingCases": 1,
+    "totalCases": 20,
+    "generatedReceiptArtifacts": 23
+  },
+  "templates": {
+    "thermal-restaurant": {
+      "paper": {
+        "widthMm": 80,
+        "baseLengthMm": 190,
+        "color": "#f2eedf",
+        "roughness": 0.86,
+        "edgeStyle": "soft-torn"
+      },
+      "layout": {
+        "alignment": "centered-header-tabular-body",
+        "bodyFont": "receipt-mono",
+        "headingFont": "receipt-mono-bold",
+        "fontSizePx": 24,
+        "lineHeight": 1.18
+      }
+    },
+    "thermal-retail": {
+      "paper": {
+        "widthMm": 80,
+        "baseLengthMm": 235,
+        "color": "#f0ecdc",
+        "roughness": 0.84,
+        "edgeStyle": "serrated"
+      },
+      "layout": {
+        "alignment": "left-header-tabular-body",
+        "bodyFont": "receipt-mono",
+        "headingFont": "receipt-sans-bold",
+        "fontSizePx": 23,
+        "lineHeight": 1.16
+      }
+    },
+    "premium-restaurant": {
+      "paper": {
+        "widthMm": 85,
+        "baseLengthMm": 260,
+        "color": "#f7f2e6",
+        "roughness": 0.78,
+        "edgeStyle": "clean-cut"
+      },
+      "layout": {
+        "alignment": "spacious-centered-header",
+        "bodyFont": "receipt-sans",
+        "headingFont": "receipt-serif",
+        "fontSizePx": 22,
+        "lineHeight": 1.3
+      }
+    },
+    "handwritten-napkin": {
+      "paper": {
+        "widthMm": 165,
+        "baseLengthMm": 165,
+        "color": "#ddd3bb",
+        "roughness": 0.96,
+        "edgeStyle": "creased-napkin"
+      },
+      "layout": {
+        "alignment": "freeform",
+        "bodyFont": "handwritten-marker",
+        "headingFont": "handwritten-marker",
+        "fontSizePx": 34,
+        "lineHeight": 1.34
+      }
+    },
+    "hotel-folio": {
+      "paper": {
+        "widthMm": 210,
+        "baseLengthMm": 297,
+        "color": "#f5f3ea",
+        "roughness": 0.8,
+        "edgeStyle": "clean-cut"
+      },
+      "layout": {
+        "alignment": "left-header-tabular-body",
+        "bodyFont": "receipt-sans",
+        "headingFont": "receipt-sans-bold",
+        "fontSizePx": 20,
+        "lineHeight": 1.24
+      }
+    },
+    "corporate-invoice": {
+      "paper": {
+        "widthMm": 210,
+        "baseLengthMm": 297,
+        "color": "#f7f6f0",
+        "roughness": 0.76,
+        "edgeStyle": "clean-cut"
+      },
+      "layout": {
+        "alignment": "business-letter-tabular-body",
+        "bodyFont": "receipt-sans",
+        "headingFont": "receipt-sans-bold",
+        "fontSizePx": 19,
+        "lineHeight": 1.28
+      }
+    },
+    "taxi-thermal": {
+      "paper": {
+        "widthMm": 58,
+        "baseLengthMm": 150,
+        "color": "#eee9d8",
+        "roughness": 0.89,
+        "edgeStyle": "soft-torn"
+      },
+      "layout": {
+        "alignment": "compact-tabular-body",
+        "bodyFont": "receipt-mono",
+        "headingFont": "receipt-mono-bold",
+        "fontSizePx": 22,
+        "lineHeight": 1.12
+      }
+    }
+  },
+  "visualTreatments": {
+    "clean": {
+      "rotationDegrees": 0,
+      "blurPx": 0,
+      "contrast": 1,
+      "thermalFade": 0.04,
+      "stains": [],
+      "creases": []
+    },
+    "handled": {
+      "rotationDegrees": -1.2,
+      "blurPx": 0.15,
+      "contrast": 0.96,
+      "thermalFade": 0.12,
+      "stains": [
+        {
+          "kind": "finger-smudge",
+          "anchor": "bottom-right",
+          "opacity": 0.1
+        }
+      ],
+      "creases": [
+        {
+          "axis": "horizontal",
+          "positionRatio": 0.57,
+          "strength": 0.18
+        }
+      ]
+    },
+    "phone-photo": {
+      "rotationDegrees": 2.4,
+      "blurPx": 0.8,
+      "contrast": 0.82,
+      "thermalFade": 0.18,
+      "perspectiveSkew": 0.035,
+      "stains": [],
+      "creases": []
+    },
+    "unacceptable-photo": {
+      "rotationDegrees": -7.5,
+      "blurPx": 3.8,
+      "contrast": 0.58,
+      "exposure": 0.72,
+      "shadowOcclusion": 0.34,
+      "perspectiveSkew": 0.11,
+      "stains": [
+        {
+          "kind": "grease",
+          "anchor": "center-left",
+          "opacity": 0.31
+        }
+      ],
+      "creases": [
+        {
+          "axis": "diagonal",
+          "positionRatio": 0.46,
+          "strength": 0.68
+        }
+      ]
+    },
+    "duplicate-crop": {
+      "rotationDegrees": 4.8,
+      "blurPx": 0.55,
+      "contrast": 0.9,
+      "thermalFade": 0.16,
+      "cropInsetRatio": 0.08,
+      "perspectiveSkew": 0.045,
+      "stains": [
+        {
+          "kind": "salsa",
+          "anchor": "top-right",
+          "opacity": 0.2
+        }
+      ],
+      "creases": []
+    },
+    "synthetic-image": {
+      "rotationDegrees": 0.4,
+      "blurPx": 0.2,
+      "contrast": 1.08,
+      "thermalFade": 0,
+      "edgeHalo": 0.18,
+      "perspectiveSkew": 0.01,
+      "stains": [],
+      "creases": []
+    }
+  },
+  "anomalyTypes": {
+    "overwritten-value": {
+      "category": "document-tampering",
+      "renderer": "draw replacement ink over selected glyphs"
+    },
+    "pre-employment-date": {
+      "category": "record-mismatch",
+      "renderer": "no visual mutation; clue comes from employee comparison"
+    },
+    "policy-limit": {
+      "category": "policy",
+      "renderer": "no visual mutation; clue comes from policy comparison"
+    },
+    "extreme-tip": {
+      "category": "arithmetic",
+      "renderer": "no visual mutation; clue comes from calculator comparison"
+    },
+    "mixed-typography": {
+      "category": "document-tampering",
+      "renderer": "apply per-field font, weight, rotation, or baseline overrides"
+    },
+    "insufficient-documentation": {
+      "category": "receipt-quality",
+      "renderer": "degrade legibility while preserving authored handwritten copy"
+    },
+    "duplicate-document": {
+      "category": "duplicate",
+      "renderer": "derive crops, rotations, and stains from one shared source receipt"
+    },
+    "synthetic-impossibility": {
+      "category": "document-tampering",
+      "renderer": "render impossible dates, currencies, addresses, filler copy, and arithmetic"
+    },
+    "location-mismatch": {
+      "category": "travel",
+      "renderer": "no visual mutation; clue comes from itinerary comparison"
+    },
+    "personal-purchase": {
+      "category": "policy",
+      "renderer": "no visual mutation; clue comes from memo, attendee, or item comparison"
+    },
+    "cross-department-duplicate": {
+      "category": "duplicate",
+      "renderer": "no visual mutation; clue comes from receipt fingerprint comparison"
+    },
+    "one-cent-policy-overage": {
+      "category": "policy",
+      "renderer": "no visual mutation; clue comes from exact cent comparison"
+    },
+    "inventory-theft-signal": {
+      "category": "inventory",
+      "renderer": "no visual mutation; clue comes from purchase, inventory, and resale comparisons"
+    },
+    "suspicious-vendor": {
+      "category": "vendor",
+      "renderer": "no visual mutation; clue comes from vendor ownership and approval records"
+    },
+    "impossible-travel": {
+      "category": "travel",
+      "renderer": "no visual mutation; clue comes from location and time comparisons"
+    },
+    "review-cost-paradox": {
+      "category": "arithmetic",
+      "renderer": "no visual mutation; clue comes from summing related processing charges"
+    },
+    "procurement-quantity-mismatch": {
+      "category": "procurement",
+      "renderer": "no visual mutation; clue comes from purchase order, invoice, delivery, and inventory comparisons"
+    },
+    "intern-card-catastrophe": {
+      "category": "card-policy",
+      "renderer": "no visual mutation; clue comes from card limits, purchase categories, and approval metadata"
+    },
+    "livestock-policy": {
+      "category": "policy",
+      "renderer": "no visual mutation; clue comes from category, approval, and facilities comparisons"
+    }
+  },
+  "generationPools": {
+    "cardLast4": [
+      "4812",
+      "1038",
+      "6621",
+      "7754",
+      "2910"
+    ],
+    "authorizationCodes": [
+      "A71K2P",
+      "Q93F8M",
+      "T44J6R",
+      "B20N5X"
+    ],
+    "legitimateWear": [
+      "clean",
+      "handled",
+      "phone-photo"
+    ],
+    "restaurantItems": [
+      {
+        "description": "HARVEST BOWL",
+        "unitPriceCents": 1640
+      },
+      {
+        "description": "CHICKEN CAESAR",
+        "unitPriceCents": 1725
+      },
+      {
+        "description": "GREEN GODDESS",
+        "unitPriceCents": 1580
+      },
+      {
+        "description": "SPARKLING WATER",
+        "unitPriceCents": 325
+      }
+    ],
+    "footerCopy": [
+      "THANK YOU",
+      "KEEP THIS RECEIPT FOR YOUR RECORDS",
+      "NO CASH VALUE",
+      "WE APPRECIATE YOUR BUSINESS"
+    ]
+  },
+  "cases": [
+    {
+      "caseId": "manual-01-amount-mismatch",
+      "sequence": 1,
+      "title": "Amount mismatch",
+      "difficulty": "tutorial",
+      "variantId": "overwritten-first-digit",
+      "seed": "receipt-cases-v1:manual-01-amount-mismatch:overwritten-first-digit",
+      "receipt": {
+        "receiptId": "receipt-chopped-20260618-4812",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "handled",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "CHOPPED",
+          "addressLines": [
+            "129 W 48TH STREET",
+            "NEW YORK, NY 10020"
+          ],
+          "phone": "212-555-0184"
+        },
+        "issuedAt": "2026-06-18T11:42:00-04:00",
+        "lineItems": [
+          {
+            "description": "HARVEST BOWL",
+            "quantity": 1,
+            "unitPriceCents": 1640,
+            "lineTotalCents": 1640
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 1640,
+          "taxCents": 200,
+          "tipCents": 0,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 1840,
+          "printedTotalCents": 8140
+        },
+        "payment": {
+          "method": "VISA",
+          "cardLast4": "4812",
+          "authorizationCode": "A71K2P"
+        },
+        "copy": {
+          "memo": "TEAM LUNCH",
+          "footer": "THANK YOU"
+        },
+        "anomalies": [
+          {
+            "type": "overwritten-value",
+            "target": "amounts.printedTotalCents:first-major-digit",
+            "parameters": {
+              "originalGlyph": "1",
+              "replacementGlyph": "8",
+              "inkColor": "#292b31",
+              "strokeJitter": 0.16,
+              "opacity": 0.92
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Chopped",
+          "amountCents": 1840,
+          "occurredAt": "2026-06-18T11:42:00-04:00",
+          "cardLast4": "4812",
+          "employeeId": "employee-maya-chen"
+        },
+        "employee": {
+          "employeeId": "employee-maya-chen",
+          "name": "Maya Chen",
+          "role": "Product Designer",
+          "startDate": "2025-09-08"
+        }
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "primaryClue": "The receipt total was altered from $18.40 to $81.40.",
+        "primaryEvidenceTargets": [
+          "receipt.amounts.printedTotalCents",
+          "comparisonRecords.transaction.amountCents"
+        ],
+        "secondaryClue": "The unaltered receipt arithmetic still totals $18.40.",
+        "explanation": "The printed receipt total does not match the card transaction, and the first digit shows visible overwriting."
+      },
+      "generationNotes": "Keep the overwritten digit readable enough to reward close inspection; do not make the ink treatment look like a normal thermal-print defect."
+    },
+    {
+      "caseId": "manual-02-impossible-date",
+      "sequence": 2,
+      "title": "Impossible date",
+      "difficulty": "easy",
+      "variantId": "three-days-before-start",
+      "seed": "receipt-cases-v1:manual-02-impossible-date:three-days-before-start",
+      "receipt": {
+        "receiptId": "receipt-metro-cafe-20260618-1038",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "METRO CAFE",
+          "addressLines": [
+            "51 MADISON AVENUE",
+            "NEW YORK, NY 10010"
+          ],
+          "phone": "212-555-0131"
+        },
+        "issuedAt": "2026-06-18T08:17:00-04:00",
+        "lineItems": [
+          {
+            "description": "BREAKFAST SANDWICH",
+            "quantity": 2,
+            "unitPriceCents": 1495,
+            "lineTotalCents": 2990
+          },
+          {
+            "description": "COLD BREW",
+            "quantity": 2,
+            "unitPriceCents": 525,
+            "lineTotalCents": 1050
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 4040,
+          "taxCents": 359,
+          "tipCents": 0,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 4399,
+          "printedTotalCents": 4399
+        },
+        "payment": {
+          "method": "VISA",
+          "cardLast4": "1038",
+          "authorizationCode": "Q93F8M"
+        },
+        "copy": {
+          "memo": "NEW HIRE BREAKFAST",
+          "footer": "KEEP THIS RECEIPT FOR YOUR RECORDS"
+        },
+        "anomalies": [
+          {
+            "type": "pre-employment-date",
+            "target": "issuedAt",
+            "parameters": {
+              "daysBeforeEmployeeStart": 3
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Metro Cafe",
+          "amountCents": 4399,
+          "occurredAt": "2026-06-18T08:17:00-04:00",
+          "cardLast4": "1038",
+          "employeeId": "employee-rowan-kim"
+        },
+        "employee": {
+          "employeeId": "employee-rowan-kim",
+          "name": "Rowan Kim",
+          "role": "Summer Intern",
+          "startDate": "2026-06-21"
+        }
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "primaryClue": "The purchase occurred three days before the employee started.",
+        "primaryEvidenceTargets": [
+          "receipt.issuedAt",
+          "comparisonRecords.employee.startDate"
+        ],
+        "secondaryClue": null,
+        "explanation": "The transaction and receipt agree with each other, but the employee was not employed when the purchase occurred."
+      },
+      "generationNotes": "The receipt itself should look ordinary. The clue must require opening the employee record."
+    },
+    {
+      "caseId": "manual-03-omakase-intern",
+      "sequence": 3,
+      "title": "Omakase intern",
+      "difficulty": "easy",
+      "variantId": "one-person-executive-dinner",
+      "seed": "receipt-cases-v1:manual-03-omakase-intern:one-person-executive-dinner",
+      "receipt": {
+        "receiptId": "receipt-kumo-omakase-20260624-1038",
+        "templateId": "premium-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "KUMO OMAKASE",
+          "addressLines": [
+            "17 E 21ST STREET",
+            "NEW YORK, NY 10010"
+          ],
+          "phone": "212-555-0177"
+        },
+        "issuedAt": "2026-06-24T21:38:00-04:00",
+        "lineItems": [
+          {
+            "description": "CHEF OMAKASE",
+            "quantity": 1,
+            "unitPriceCents": 42000,
+            "lineTotalCents": 42000
+          },
+          {
+            "description": "RESERVE PAIRING",
+            "quantity": 1,
+            "unitPriceCents": 15000,
+            "lineTotalCents": 15000
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 57000,
+          "taxCents": 5059,
+          "tipCents": 6341,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 68400,
+          "printedTotalCents": 68400
+        },
+        "payment": {
+          "method": "VISA",
+          "cardLast4": "1038",
+          "authorizationCode": "T44J6R"
+        },
+        "copy": {
+          "memo": "EXECUTIVE RELATIONSHIP DINNER",
+          "attendees": [
+            "Me"
+          ],
+          "footer": "WE APPRECIATE YOUR BUSINESS"
+        },
+        "anomalies": [
+          {
+            "type": "policy-limit",
+            "target": "amounts.calculatedTotalCents",
+            "parameters": {
+              "attendeeCount": 1,
+              "mealLimitPerAttendeeCents": 3500
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Kumo Omakase",
+          "amountCents": 68400,
+          "occurredAt": "2026-06-24T21:38:00-04:00",
+          "cardLast4": "1038",
+          "employeeId": "employee-rowan-kim",
+          "memo": "Executive relationship dinner",
+          "attendees": [
+            "Me"
+          ]
+        },
+        "employee": {
+          "employeeId": "employee-rowan-kim",
+          "name": "Rowan Kim",
+          "role": "Summer Intern",
+          "startDate": "2026-06-21"
+        },
+        "policy": {
+          "policyId": "meal-limit",
+          "limitPerAttendeeCents": 3500
+        }
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "primaryClue": "A one-person meal exceeds the $35-per-attendee policy by $649.",
+        "primaryEvidenceTargets": [
+          "receipt.amounts.calculatedTotalCents",
+          "receipt.copy.attendees",
+          "comparisonRecords.policy.limitPerAttendeeCents"
+        ],
+        "secondaryClue": "The submitter is a summer intern describing dinner alone as an executive relationship dinner.",
+        "explanation": "The receipt is arithmetically valid, but the expense is far beyond policy for one attendee."
+      },
+      "generationNotes": "Keep the premium receipt visually credible. The comedy should come from the amount, memo, attendee list, and employee role."
+    },
+    {
+      "caseId": "manual-04-infinite-tip",
+      "sequence": 4,
+      "title": "Infinite tip",
+      "difficulty": "medium",
+      "variantId": "four-thousand-percent",
+      "seed": "receipt-cases-v1:manual-04-infinite-tip:four-thousand-percent",
+      "receipt": {
+        "receiptId": "receipt-corner-diner-20260625-6621",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "phone-photo",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "CORNER DINER",
+          "addressLines": [
+            "308 8TH AVENUE",
+            "NEW YORK, NY 10001"
+          ],
+          "phone": "212-555-0158"
+        },
+        "issuedAt": "2026-06-25T13:06:00-04:00",
+        "lineItems": [
+          {
+            "description": "LUNCH SPECIAL",
+            "quantity": 1,
+            "unitPriceCents": 2180,
+            "lineTotalCents": 2180
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 2180,
+          "taxCents": 0,
+          "tipCents": 98000,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 100180,
+          "printedTotalCents": 100180
+        },
+        "payment": {
+          "method": "MASTERCARD",
+          "cardLast4": "6621",
+          "authorizationCode": "B20N5X"
+        },
+        "copy": {
+          "memo": "INVESTING IN THE RELATIONSHIP",
+          "footer": "THANK YOU"
+        },
+        "anomalies": [
+          {
+            "type": "extreme-tip",
+            "target": "amounts.tipCents",
+            "parameters": {
+              "tipBasis": "subtotalCents",
+              "reviewThresholdPercent": 25,
+              "actualTipPercentRounded": 4495
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Corner Diner",
+          "amountCents": 100180,
+          "occurredAt": "2026-06-25T13:06:00-04:00",
+          "cardLast4": "6621",
+          "employeeId": "employee-devon-lee",
+          "memo": "Investing in the relationship"
+        },
+        "employee": {
+          "employeeId": "employee-devon-lee",
+          "name": "Devon Lee",
+          "role": "Director of Partnerships",
+          "startDate": "2022-03-14"
+        },
+        "policy": {
+          "policyId": "tip-review",
+          "reviewThresholdPercent": 25
+        }
+      },
+      "truth": {
+        "expectedDecision": "investigate",
+        "primaryClue": "The $980 tip is approximately 4,495 percent of the $21.80 meal.",
+        "primaryEvidenceTargets": [
+          "receipt.amounts.subtotalCents",
+          "receipt.amounts.tipCents",
+          "comparisonRecords.policy.reviewThresholdPercent"
+        ],
+        "secondaryClue": "The memo describes the tip as an investment in the relationship.",
+        "calculatorOperation": {
+          "operation": "percentage",
+          "numeratorPath": "receipt.amounts.tipCents",
+          "denominatorPath": "receipt.amounts.subtotalCents",
+          "resultDisplay": "4,495 percent tip. Concerning."
+        },
+        "explanation": "The card charge and receipt match, but the tip exceeds the review threshold by an extreme margin."
+      },
+      "generationNotes": "The tip line should be plainly legible. This case teaches the physical calculator rather than visual forgery detection."
+    },
+    {
+      "caseId": "manual-05-frankenstein-receipt",
+      "sequence": 5,
+      "title": "Frankenstein receipt",
+      "difficulty": "medium",
+      "variantId": "five-font-forgery",
+      "seed": "receipt-cases-v1:manual-05-frankenstein-receipt:five-font-forgery",
+      "receipt": {
+        "receiptId": "receipt-helvetica-bistro-20260626-7754",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "handled",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "HELVETICA BISTRO",
+          "addressLines": [
+            "404 TYPESETTER LANE",
+            "BROOKLYN, NY 11201"
+          ],
+          "phone": "718-555-0140"
+        },
+        "issuedAt": "2026-06-26T19:24:00-04:00",
+        "lineItems": [
+          {
+            "description": "CLIENT DINNER",
+            "quantity": 2,
+            "unitPriceCents": 4800,
+            "lineTotalCents": 9600
+          },
+          {
+            "description": "SPARKLING WATER",
+            "quantity": 2,
+            "unitPriceCents": 650,
+            "lineTotalCents": 1300
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 10900,
+          "taxCents": 967,
+          "tipCents": 2178,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 14045,
+          "printedTotalCents": 14045
+        },
+        "payment": {
+          "method": "VISA",
+          "cardLast4": "7754",
+          "authorizationCode": "Q93F8M"
+        },
+        "copy": {
+          "memo": "CLIENT DINNER",
+          "footer": "NO CASH VALUE"
+        },
+        "anomalies": [
+          {
+            "type": "mixed-typography",
+            "target": "multiple-fields",
+            "parameters": {
+              "requiredEvidenceSelections": 2,
+              "fieldOverrides": [
+                {
+                  "target": "merchant.name",
+                  "font": "Helvetica",
+                  "weight": 500
+                },
+                {
+                  "target": "amounts.subtotalCents",
+                  "font": "Times New Roman",
+                  "weight": 400
+                },
+                {
+                  "target": "amounts.printedTotalCents",
+                  "font": "Comic Sans MS",
+                  "weight": 700
+                },
+                {
+                  "target": "amounts.taxCents",
+                  "rotationDegrees": -2.2,
+                  "baselineOffsetPx": 3
+                },
+                {
+                  "target": "payment.cardLast4",
+                  "font": "Arial",
+                  "weight": 300
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Helvetica Bistro",
+          "amountCents": 14045,
+          "occurredAt": "2026-06-26T19:24:00-04:00",
+          "cardLast4": "7754",
+          "employeeId": "employee-alex-morgan"
+        },
+        "employee": {
+          "employeeId": "employee-alex-morgan",
+          "name": "Alex Morgan",
+          "role": "Account Executive",
+          "startDate": "2023-01-09"
+        }
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "primaryClue": "The receipt combines incompatible typefaces, weights, rotations, and baselines.",
+        "primaryEvidenceTargets": [
+          "receipt.merchant.name",
+          "receipt.amounts.subtotalCents",
+          "receipt.amounts.printedTotalCents",
+          "receipt.amounts.taxCents",
+          "receipt.payment.cardLast4"
+        ],
+        "minimumEvidenceSelections": 2,
+        "secondaryClue": null,
+        "explanation": "Although the arithmetic and transaction data match, the receipt image was assembled from inconsistent typographic sources."
+      },
+      "generationNotes": "Typography differences must be visible at inspection zoom but subtle enough that the player has to compare regions."
+    },
+    {
+      "caseId": "manual-06-garbage-receipt",
+      "sequence": 6,
+      "title": "Garbage receipt",
+      "difficulty": "easy",
+      "variantId": "napkin-trust-me",
+      "seed": "receipt-cases-v1:manual-06-garbage-receipt:napkin-trust-me",
+      "receipt": {
+        "receiptId": "receipt-dave-20260627-2910",
+        "templateId": "handwritten-napkin",
+        "visualTreatmentId": "unacceptable-photo",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "DAVE",
+          "addressLines": [],
+          "phone": null
+        },
+        "issuedAt": "2026-06-27T16:11:00-04:00",
+        "lineItems": [
+          {
+            "description": "LAPTOP",
+            "quantity": 7,
+            "unitPriceCents": 200000,
+            "lineTotalCents": 1400000
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 1400000,
+          "taxCents": 0,
+          "tipCents": 0,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 1400000,
+          "printedTotalCents": 1400000
+        },
+        "payment": {
+          "method": "UNKNOWN",
+          "cardLast4": null,
+          "authorizationCode": null
+        },
+        "copy": {
+          "rawLines": [
+            "7 laptop",
+            "$14,000",
+            "paid",
+            "trust me"
+          ],
+          "memo": "REPLACEMENT COMPUTERS",
+          "footer": null
+        },
+        "anomalies": [
+          {
+            "type": "insufficient-documentation",
+            "target": "entire-document",
+            "parameters": {
+              "missingFields": [
+                "merchant legal name",
+                "merchant address",
+                "item model or serial numbers",
+                "tax breakdown",
+                "payment method",
+                "authorization code"
+              ],
+              "legibility": 0.43
+            }
+          }
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Dave",
+          "amountCents": 1400000,
+          "occurredAt": "2026-06-27T16:11:00-04:00",
+          "cardLast4": "2910",
+          "employeeId": "employee-sam-patel",
+          "category": "Technology"
+        },
+        "employee": {
+          "employeeId": "employee-sam-patel",
+          "name": "Sam Patel",
+          "role": "IT Director",
+          "startDate": "2021-05-03"
+        },
+        "policy": {
+          "policyId": "technology-inventory",
+          "requiresInventoryRecords": true
+        }
+      },
+      "truth": {
+        "expectedDecision": "investigate",
+        "primaryClue": "A blurry handwritten napkin is not adequate documentation for a $14,000 technology purchase.",
+        "primaryEvidenceTargets": [
+          "receipt.copy.rawLines",
+          "comparisonRecords.policy.requiresInventoryRecords"
+        ],
+        "secondaryClue": "The transaction has a card ending, but the submitted document contains no payment details.",
+        "explanation": "The amount matches the transaction, but the document cannot establish a legitimate merchant, payment, or inventory trail."
+      },
+      "generationNotes": "The words must remain decipherable after blur so the joke lands. The photo can be bad, but the player should never have to guess what it says."
+    },
+    {
+      "caseId": "manual-07-duplicate-receipt-ring",
+      "sequence": 7,
+      "title": "Duplicate receipt ring",
+      "difficulty": "medium",
+      "variantId": "three-intern-crops",
+      "seed": "receipt-cases-v1:manual-07-duplicate-receipt-ring:three-intern-crops",
+      "receipt": {
+        "receiptId": "receipt-chipotle-source-20260628-4401",
+        "duplicateFamilyId": "duplicate-chipotle-0628",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "CHIPOTLE",
+          "addressLines": ["350 5TH AVENUE", "NEW YORK, NY 10118"],
+          "phone": "212-555-0112"
+        },
+        "issuedAt": "2026-06-28T12:21:00-04:00",
+        "lineItems": [
+          {"description": "CHICKEN BURRITO BOWL", "quantity": 1, "unitPriceCents": 1395, "lineTotalCents": 1395},
+          {"description": "GUACAMOLE", "quantity": 1, "unitPriceCents": 275, "lineTotalCents": 275}
+        ],
+        "amounts": {"subtotalCents": 1670, "taxCents": 148, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 1818, "printedTotalCents": 1818},
+        "payment": {"method": "VISA", "cardLast4": "4401", "authorizationCode": "D81C4L"},
+        "copy": {"memo": "CROSS-FUNCTIONAL OFFSITE", "footer": "THANK YOU"},
+        "anomalies": []
+      },
+      "relatedReceipts": [
+        {
+          "receiptId": "receipt-chipotle-crop-20260628-6620",
+          "duplicateFamilyId": "duplicate-chipotle-0628",
+          "derivedFromReceiptId": "receipt-chipotle-source-20260628-4401",
+          "templateId": "thermal-restaurant",
+          "visualTreatmentId": "duplicate-crop",
+          "locale": "en-US",
+          "currency": "USD",
+          "merchant": {"name": "CHIPOTLE", "addressLines": ["350 5TH AVENUE", "NEW YORK, NY 10118"], "phone": "212-555-0112"},
+          "issuedAt": "2026-06-28T12:21:00-04:00",
+          "lineItems": [
+            {"description": "CHICKEN BURRITO BOWL", "quantity": 1, "unitPriceCents": 1395, "lineTotalCents": 1395},
+            {"description": "GUACAMOLE", "quantity": 1, "unitPriceCents": 275, "lineTotalCents": 275}
+          ],
+          "amounts": {"subtotalCents": 1670, "taxCents": 148, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 1818, "printedTotalCents": 1818},
+          "payment": {"method": "VISA", "cardLast4": "4401", "authorizationCode": "D81C4L"},
+          "copy": {"memo": "EXTERNAL STAKEHOLDER LUNCH", "footer": "THANK YOU"},
+          "anomalies": [{"type": "duplicate-document", "target": "entire-document", "parameters": {"duplicateFamilyId": "duplicate-chipotle-0628", "crop": "upper-left", "rotationDegrees": 4.8}}]
+        },
+        {
+          "receiptId": "receipt-chipotle-rotate-20260628-8824",
+          "duplicateFamilyId": "duplicate-chipotle-0628",
+          "derivedFromReceiptId": "receipt-chipotle-source-20260628-4401",
+          "templateId": "thermal-restaurant",
+          "visualTreatmentId": "phone-photo",
+          "locale": "en-US",
+          "currency": "USD",
+          "merchant": {"name": "CHIPOTLE", "addressLines": ["350 5TH AVENUE", "NEW YORK, NY 10118"], "phone": "212-555-0112"},
+          "issuedAt": "2026-06-28T12:21:00-04:00",
+          "lineItems": [
+            {"description": "CHICKEN BURRITO BOWL", "quantity": 1, "unitPriceCents": 1395, "lineTotalCents": 1395},
+            {"description": "GUACAMOLE", "quantity": 1, "unitPriceCents": 275, "lineTotalCents": 275}
+          ],
+          "amounts": {"subtotalCents": 1670, "taxCents": 148, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 1818, "printedTotalCents": 1818},
+          "payment": {"method": "VISA", "cardLast4": "4401", "authorizationCode": "D81C4L"},
+          "copy": {"memo": "TEAM CULTURE ACTIVATION", "footer": "THANK YOU"},
+          "anomalies": [{"type": "duplicate-document", "target": "entire-document", "parameters": {"duplicateFamilyId": "duplicate-chipotle-0628", "crop": "lower-right", "rotationDegrees": -6.2}}]
+        }
+      ],
+      "comparisonRecords": {
+        "transactions": [
+          {"employeeId": "employee-rowan-kim", "amountCents": 1818, "cardLast4": "4401", "memo": "Cross-functional offsite"},
+          {"employeeId": "employee-jules-park", "amountCents": 1818, "cardLast4": "6620", "memo": "External stakeholder lunch"},
+          {"employeeId": "employee-noah-reed", "amountCents": 1818, "cardLast4": "8824", "memo": "Team culture activation"}
+        ]
+      },
+      "truth": {
+        "expectedDecision": "investigate",
+        "primaryClue": "All three submissions share the same merchant, timestamp, item lines, tax, and authorization code.",
+        "primaryEvidenceTargets": ["receipt", "relatedReceipts"],
+        "secondaryClue": "The photos use different crops, rotations, stains, and memos to disguise one source receipt.",
+        "explanation": "The first submission may be valid, but the other two are derived from the same physical receipt."
+      },
+      "generationNotes": "Generate all three from one canonical render so identical thermal-print defects survive the crop and rotation treatments."
+    },
+    {
+      "caseId": "manual-08-ai-generated-receipt",
+      "sequence": 8,
+      "title": "AI-generated receipt",
+      "difficulty": "medium",
+      "variantId": "february-31-atlantic",
+      "seed": "receipt-cases-v1:manual-08-ai-generated-receipt:february-31-atlantic",
+      "receipt": {
+        "receiptId": "receipt-ocean-table-synthetic-9034",
+        "templateId": "premium-restaurant",
+        "visualTreatmentId": "synthetic-image",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "OCEAN TABLE & GRILL", "addressLines": ["31.0000 N, 40.0000 W", "NORTH ATLANTIC OCEAN"], "phone": "+1 000 555 0000"},
+        "issuedAt": "2026-03-03T20:14:00-05:00",
+        "printedIssuedAt": "FEBRUARY 31, 2026 8:14 PM",
+        "lineItems": [
+          {"description": "CLIENT DINNER", "quantity": 1, "unitPriceCents": 6200, "lineTotalCents": 6200},
+          {"description": "SPARKLING WATER", "quantity": 2, "unitPriceCents": 625, "lineTotalCents": 1250}
+        ],
+        "amounts": {"subtotalCents": 7450, "printedSubtotalCents": 7950, "taxCents": 661, "tipCents": 1119, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 9230, "printedTotalCents": 9730},
+        "payment": {"method": "VISA / EUR", "cardLast4": "9034", "authorizationCode": "LOREM"},
+        "copy": {"memo": "CLIENT DINNER", "paymentMethodText": "Lorem ipsum dolor sit amet", "currencyMarks": ["$", "€"], "footer": "THANK YOU FOR IMAGINING US"},
+        "anomalies": [
+          {"type": "synthetic-impossibility", "target": "entire-document", "parameters": {"invalidPrintedDate": true, "mixedCurrencies": true, "oceanAddress": true, "fillerPaymentText": true, "printedSubtotalMismatchCents": 500}}
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {"merchant": "Ocean Table & Grill", "amountCents": 9730, "occurredAt": "2026-03-03T20:14:00-05:00", "cardLast4": "9034", "employeeId": "employee-alex-morgan"}
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "primaryClue": "The document contains several mutually impossible fields characteristic of a synthetic receipt.",
+        "primaryEvidenceTargets": ["receipt.printedIssuedAt", "receipt.merchant.addressLines", "receipt.copy.paymentMethodText", "receipt.amounts"],
+        "secondaryClue": "The printed total is $5.00 greater than the receipt arithmetic.",
+        "explanation": "February 31, two currencies, an Atlantic Ocean address, filler text, and broken arithmetic make the document invalid."
+      },
+      "generationNotes": "Keep individual errors discoverable without turning the image into visual noise; two selected regions are enough to establish the forgery."
+    },
+    {
+      "caseId": "optional-01-taxi-location-mismatch",
+      "sequence": 101,
+      "title": "New York taxi during London trip",
+      "difficulty": "optional",
+      "variantId": "queens-while-london",
+      "seed": "receipt-cases-v1:optional-01-taxi-location-mismatch:queens-while-london",
+      "receipt": {
+        "receiptId": "receipt-nyc-taxi-20260702-3008",
+        "templateId": "taxi-thermal",
+        "visualTreatmentId": "handled",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "NYC TAXI 7A18", "addressLines": ["QUEENS, NEW YORK"], "phone": "311"},
+        "issuedAt": "2026-07-02T22:18:00-04:00",
+        "lineItems": [{"description": "JFK TO MIDTOWN", "quantity": 1, "unitPriceCents": 7200, "lineTotalCents": 7200}],
+        "amounts": {"subtotalCents": 7200, "taxCents": 250, "tipCents": 1450, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 8900, "printedTotalCents": 8900},
+        "payment": {"method": "VISA", "cardLast4": "3008", "authorizationCode": "NY7A18"},
+        "copy": {"memo": "AIRPORT TRANSFER", "footer": "TLC LICENSE 7A18"},
+        "anomalies": [{"type": "location-mismatch", "target": "merchant.addressLines", "parameters": {"receiptLocation": "New York", "approvedTripLocation": "London"}}]
+      },
+      "comparisonRecords": {"approvedTrip": {"origin": "New York", "destination": "London", "startDate": "2026-07-01", "endDate": "2026-07-05"}},
+      "truth": {"expectedDecision": "investigate", "primaryClue": "The employee was scheduled to be in London when this New York taxi ride occurred.", "primaryEvidenceTargets": ["receipt.issuedAt", "receipt.merchant.addressLines", "comparisonRecords.approvedTrip"], "secondaryClue": null, "explanation": "The charge location conflicts with the approved itinerary."},
+      "generationNotes": "Render as a credible taxi slip; the discrepancy exists only across systems."
+    },
+    {
+      "caseId": "optional-02-minibar-workspace-supplies",
+      "sequence": 102,
+      "title": "Minibar workspace supplies",
+      "difficulty": "optional",
+      "variantId": "hotel-minibar-recategory",
+      "seed": "receipt-cases-v1:optional-02-minibar-workspace-supplies:hotel-minibar-recategory",
+      "receipt": {
+        "receiptId": "receipt-harbor-hotel-minibar-1844",
+        "templateId": "hotel-folio",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "HARBOR HOTEL", "addressLines": ["88 SOUTH STREET", "NEW YORK, NY 10038"], "phone": "212-555-0199"},
+        "issuedAt": "2026-07-06T07:40:00-04:00",
+        "lineItems": [
+          {"description": "MINIBAR - CHAMPAGNE", "quantity": 1, "unitPriceCents": 6800, "lineTotalCents": 6800},
+          {"description": "MINIBAR - CASHEWS", "quantity": 2, "unitPriceCents": 1050, "lineTotalCents": 2100}
+        ],
+        "amounts": {"subtotalCents": 8900, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 8900, "printedTotalCents": 8900},
+        "payment": {"method": "ROOM CHARGE", "cardLast4": "6402", "authorizationCode": "RM1412"},
+        "copy": {"memo": "WORKSPACE SUPPLIES", "footer": "ROOM 1412"},
+        "anomalies": [{"type": "personal-purchase", "target": "lineItems", "parameters": {"submittedCategory": "Workspace supplies", "actualCategory": "Hotel minibar"}}]
+      },
+      "comparisonRecords": {"transaction": {"category": "Workspace supplies", "amountCents": 8900, "employeeId": "employee-devon-lee"}},
+      "truth": {"expectedDecision": "reject", "primaryClue": "The folio explicitly identifies the purchase as minibar alcohol and snacks.", "primaryEvidenceTargets": ["receipt.lineItems", "receipt.copy.memo"], "secondaryClue": null, "explanation": "The submitted category does not change the personal nature of the hotel minibar items."},
+      "generationNotes": "The item descriptions should be prominent enough to defeat the misleading memo."
+    },
+    {
+      "caseId": "optional-03-dog-attendee",
+      "sequence": 103,
+      "title": "Client dinner with the employee's dog",
+      "difficulty": "optional",
+      "variantId": "biscuit-client-dinner",
+      "seed": "receipt-cases-v1:optional-03-dog-attendee:biscuit-client-dinner",
+      "receipt": {
+        "receiptId": "receipt-copper-table-5506",
+        "templateId": "premium-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "COPPER TABLE", "addressLines": ["22 GREENWICH AVENUE", "NEW YORK, NY 10011"], "phone": "212-555-0164"},
+        "issuedAt": "2026-07-07T20:05:00-04:00",
+        "lineItems": [{"description": "DINNER FOR TWO", "quantity": 1, "unitPriceCents": 16800, "lineTotalCents": 16800}],
+        "amounts": {"subtotalCents": 16800, "taxCents": 1491, "tipCents": 3209, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 21500, "printedTotalCents": 21500},
+        "payment": {"method": "VISA", "cardLast4": "5506", "authorizationCode": "DOG220"},
+        "copy": {"memo": "CLIENT DINNER", "attendees": ["Alex Morgan", "Biscuit"], "footer": "WE APPRECIATE YOUR BUSINESS"},
+        "anomalies": [{"type": "personal-purchase", "target": "copy.attendees", "parameters": {"questionableAttendee": "Biscuit", "relationship": "employee's dog"}}]
+      },
+      "comparisonRecords": {"employeeProfile": {"employeeId": "employee-alex-morgan", "emergencyContactNotes": "Dog: Biscuit"}},
+      "truth": {"expectedDecision": "reject", "primaryClue": "The second attendee is the employee's dog, not a client.", "primaryEvidenceTargets": ["receipt.copy.attendees", "comparisonRecords.employeeProfile"], "secondaryClue": null, "explanation": "A personal dinner cannot be justified by listing a pet as a business attendee."},
+      "generationNotes": "Do not visually signal the joke on the receipt; it should emerge from the employee record."
+    },
+    {
+      "caseId": "optional-04-cross-department-duplicate",
+      "sequence": 104,
+      "title": "Same receipt, two departments",
+      "difficulty": "optional",
+      "variantId": "sales-and-marketing",
+      "seed": "receipt-cases-v1:optional-04-cross-department-duplicate:sales-and-marketing",
+      "receipt": {
+        "receiptId": "receipt-blue-bottle-sales-6112",
+        "duplicateFamilyId": "duplicate-blue-bottle-0708",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "handled",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "BLUE BOTTLE COFFEE", "addressLines": ["10 ROCKEFELLER PLAZA", "NEW YORK, NY 10020"], "phone": "212-555-0108"},
+        "issuedAt": "2026-07-08T09:31:00-04:00",
+        "lineItems": [{"description": "COFFEE SERVICE", "quantity": 6, "unitPriceCents": 575, "lineTotalCents": 3450}],
+        "amounts": {"subtotalCents": 3450, "taxCents": 306, "tipCents": 744, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 4500, "printedTotalCents": 4500},
+        "payment": {"method": "VISA", "cardLast4": "6112", "authorizationCode": "BB0708"},
+        "copy": {"memo": "SALES PLANNING", "footer": "THANK YOU"},
+        "anomalies": []
+      },
+      "relatedReceipts": [
+        {
+          "receiptId": "receipt-blue-bottle-marketing-9420",
+          "duplicateFamilyId": "duplicate-blue-bottle-0708",
+          "derivedFromReceiptId": "receipt-blue-bottle-sales-6112",
+          "templateId": "thermal-restaurant",
+          "visualTreatmentId": "duplicate-crop",
+          "locale": "en-US",
+          "currency": "USD",
+          "merchant": {"name": "BLUE BOTTLE COFFEE", "addressLines": ["10 ROCKEFELLER PLAZA", "NEW YORK, NY 10020"], "phone": "212-555-0108"},
+          "issuedAt": "2026-07-08T09:31:00-04:00",
+          "lineItems": [{"description": "COFFEE SERVICE", "quantity": 6, "unitPriceCents": 575, "lineTotalCents": 3450}],
+          "amounts": {"subtotalCents": 3450, "taxCents": 306, "tipCents": 744, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 4500, "printedTotalCents": 4500},
+          "payment": {"method": "VISA", "cardLast4": "6112", "authorizationCode": "BB0708"},
+          "copy": {"memo": "MARKETING OFFSITE", "footer": "THANK YOU"},
+          "anomalies": [{"type": "cross-department-duplicate", "target": "entire-document", "parameters": {"duplicateFamilyId": "duplicate-blue-bottle-0708"}}]
+        }
+      ],
+      "comparisonRecords": {"departments": ["Sales", "Marketing"], "submissionCount": 2},
+      "truth": {"expectedDecision": "investigate", "primaryClue": "Both departments submitted the same receipt fingerprint and authorization code.", "primaryEvidenceTargets": ["receipt", "relatedReceipts"], "secondaryClue": null, "explanation": "Only one department can claim the physical receipt."},
+      "generationNotes": "The second image should appear independently photographed while retaining identical source defects."
+    },
+    {
+      "caseId": "optional-05-one-cent-over-policy",
+      "sequence": 105,
+      "title": "One cent over policy",
+      "difficulty": "optional",
+      "variantId": "thirty-five-oh-one",
+      "seed": "receipt-cases-v1:optional-05-one-cent-over-policy:thirty-five-oh-one",
+      "receipt": {
+        "receiptId": "receipt-daily-provisions-1148",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "DAILY PROVISIONS", "addressLines": ["103 E 19TH STREET", "NEW YORK, NY 10003"], "phone": "212-555-0148"},
+        "issuedAt": "2026-07-09T12:14:00-04:00",
+        "lineItems": [{"description": "LUNCH", "quantity": 1, "unitPriceCents": 3219, "lineTotalCents": 3219}],
+        "amounts": {"subtotalCents": 3219, "taxCents": 282, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 3501, "printedTotalCents": 3501},
+        "payment": {"method": "VISA", "cardLast4": "1148", "authorizationCode": "DP3501"},
+        "copy": {"memo": "TEAM LUNCH", "attendees": ["Maya Chen"], "footer": "THANK YOU"},
+        "anomalies": [{"type": "one-cent-policy-overage", "target": "amounts.calculatedTotalCents", "parameters": {"limitCents": 3500, "overageCents": 1}}]
+      },
+      "comparisonRecords": {"policy": {"limitPerAttendeeCents": 3500}, "attendeeCount": 1},
+      "truth": {"expectedDecision": "investigate", "primaryClue": "The meal is exactly one cent above the policy limit.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.policy.limitPerAttendeeCents"], "secondaryClue": null, "explanation": "This deliberately annoying edge case should require player judgment rather than an obvious fraud response."},
+      "generationNotes": "Keep the document completely legitimate; the entire case is the one-cent threshold."
+    },
+    {
+      "caseId": "ramp-09-it-inventory-theft",
+      "sequence": 9,
+      "title": "IT inventory theft",
+      "difficulty": "ramp",
+      "variantId": "missing-macbooks-resale-account",
+      "seed": "receipt-cases-v1:ramp-09-it-inventory-theft:missing-macbooks-resale-account",
+      "receipt": {
+        "receiptId": "invoice-northstar-tech-24001",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "NORTHSTAR TECHNOLOGY SUPPLY", "addressLines": ["80 INDUSTRIAL WAY", "NEWARK, NJ 07105"], "phone": "973-555-0124"},
+        "issuedAt": "2026-06-04T10:00:00-04:00",
+        "lineItems": [
+          {"description": "MACBOOK PRO 14", "quantity": 24, "unitPriceCents": 180000, "lineTotalCents": 4320000},
+          {"description": "27-INCH MONITOR", "quantity": 40, "unitPriceCents": 50000, "lineTotalCents": 2000000},
+          {"description": "MECHANICAL KEYBOARD", "quantity": 90, "unitPriceCents": 12000, "lineTotalCents": 1080000}
+        ],
+        "amounts": {"subtotalCents": 7400000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 7400000, "printedTotalCents": 7400000},
+        "payment": {"method": "CORPORATE CARD", "cardLast4": "2910", "authorizationCode": "PO24001"},
+        "copy": {"memo": "IT REFRESH", "footer": "NET 30"},
+        "anomalies": [{"type": "inventory-theft-signal", "target": "lineItems", "parameters": {"purchasedMacBooks": 24, "purchasedMonitors": 40, "purchasedKeyboards": 90, "countedMacBooks": 11, "countedMonitors": 19, "countedKeyboards": 143, "missingSerialNumbers": 13}}]
+      },
+      "comparisonRecords": {
+        "inventory": {"MacBooks": {"purchased": 24, "counted": 11}, "monitors": {"purchased": 40, "counted": 19}, "keyboards": {"purchased": 90, "counted": 143, "note": "Imported by weight"}},
+        "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "sam.patel@company.example", "employeeId": "employee-sam-patel"}
+      },
+      "truth": {"expectedDecision": "investigate", "requiredActions": ["freeze-card", "flag-transaction", "escalate-employee"], "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor."},
+      "generationNotes": "The invoice is legitimate; the suspicious pattern emerges from connected records."
+    },
+    {
+      "caseId": "ramp-10-influencer-marketing-deal",
+      "sequence": 10,
+      "title": "Influencer marketing deal",
+      "difficulty": "ramp",
+      "variantId": "vibe-based-activation",
+      "seed": "receipt-cases-v1:ramp-10-influencer-marketing-deal:vibe-based-activation",
+      "receipt": {
+        "receiptId": "invoice-synergy-alpha-wolf-001",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "SYNERGYALPHAWOLF MEDIA LLC", "addressLines": ["14 BLEECKER STREET APT 5B", "NEW YORK, NY 10012"], "phone": "646-555-0144"},
+        "issuedAt": "2026-07-10T09:00:00-04:00",
+        "lineItems": [{"description": "ONE VIBE-BASED ACTIVATION", "quantity": 1, "unitPriceCents": 7500000, "lineTotalCents": 7500000}],
+        "amounts": {"subtotalCents": 7500000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 7500000, "printedTotalCents": 7500000},
+        "payment": {"method": "ACH", "cardLast4": null, "authorizationCode": "VIBE001"},
+        "copy": {"memo": "Q3 BRAND MOMENTUM", "footer": "PAYABLE IMMEDIATELY"},
+        "anomalies": [{"type": "suspicious-vendor", "target": "merchant", "parameters": {"vendorAgeDays": 1, "followers": 14, "verifiedFollowers": 14, "missingApproval": "Legal"}}]
+      },
+      "comparisonRecords": {"vendor": {"createdDaysAgo": 1, "addressMatchesEmployee": true, "socialFollowers": 14, "employeeOwnedFollowers": 8, "legalApproval": false, "campaignLikes": 3}},
+      "truth": {"expectedDecision": "reject", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The vendor identity, approval gap, and implausible campaign performance justify rejection."},
+      "generationNotes": "Present as a confident but thin corporate invoice rather than an obvious fake."
+    },
+    {
+      "caseId": "ramp-11-travel-impossibility",
+      "sequence": 11,
+      "title": "Ramp Travel impossibility",
+      "difficulty": "ramp",
+      "variantId": "five-cities-one-trip",
+      "seed": "receipt-cases-v1:ramp-11-travel-impossibility:five-cities-one-trip",
+      "receipt": {
+        "receiptId": "folio-lakeshore-chicago-1812",
+        "templateId": "hotel-folio",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "LAKESHORE HOTEL CHICAGO", "addressLines": ["201 E DELAWARE PLACE", "CHICAGO, IL 60611"], "phone": "312-555-0181"},
+        "issuedAt": "2026-06-20T08:05:00-05:00",
+        "lineItems": [{"description": "ROOM 1812 - TWO NIGHTS", "quantity": 1, "unitPriceCents": 68400, "lineTotalCents": 68400}],
+        "amounts": {"subtotalCents": 68400, "taxCents": 11970, "tipCents": 0, "feesCents": 4500, "discountCents": 0, "calculatedTotalCents": 84870, "printedTotalCents": 84870},
+        "payment": {"method": "VISA", "cardLast4": "8022", "authorizationCode": "CHI1812"},
+        "copy": {"memo": "CHICAGO CUSTOMER VISIT", "footer": "THANK YOU FOR STAYING"},
+        "anomalies": [{"type": "impossible-travel", "target": "comparisonRecords.submittedCharges", "parameters": {"approvedDestination": "Chicago", "outOfTripChargeCount": 4}}]
+      },
+      "comparisonRecords": {
+        "approvedTrip": {"origin": "New York", "destination": "Chicago", "startDate": "2026-06-18", "endDate": "2026-06-20"},
+        "submittedCharges": [
+          {"merchant": "Lakeshore Hotel Chicago", "location": "Chicago", "occurredAt": "2026-06-20T08:05:00-05:00", "amountCents": 84870},
+          {"merchant": "Miami Executive Limo", "location": "Miami", "occurredAt": "2026-06-18T13:42:00-04:00", "amountCents": 125000},
+          {"merchant": "Tokyo Grand Room Service", "location": "Tokyo", "occurredAt": "2026-06-19T02:11:00+09:00", "amountCents": 44200},
+          {"merchant": "Monaco Rotor Transfer", "location": "Monaco", "occurredAt": "2026-06-19T16:30:00+02:00", "amountCents": 320000},
+          {"merchant": "Newark Airport Convenience", "location": "Newark", "occurredAt": "2026-06-20T11:10:00-04:00", "amountCents": 1837}
+        ],
+        "employeeExplanation": "Long layover"
+      },
+      "truth": {"expectedDecision": "investigate", "primaryClue": "Four charges are geographically incompatible with the approved Chicago itinerary.", "primaryEvidenceTargets": ["comparisonRecords.approvedTrip", "comparisonRecords.submittedCharges"], "secondaryClue": "Several timestamps overlap in ways that make the claimed travel physically impossible.", "explanation": "Ramp Travel maps each charge to the itinerary and exposes the impossible locations and timing."},
+      "generationNotes": "The Chicago folio is the legitimate anchor; the other charges are rendered as connected transaction cards on the travel view."
+    },
+    {
+      "caseId": "ramp-12-ai-expense-paradox",
+      "sequence": 12,
+      "title": "AI expense paradox",
+      "difficulty": "ramp",
+      "variantId": "coffee-costs-six-times-more-to-review",
+      "seed": "receipt-cases-v1:ramp-12-ai-expense-paradox:coffee-costs-six-times-more-to-review",
+      "receipt": {
+        "receiptId": "receipt-little-owl-coffee-7710",
+        "templateId": "thermal-restaurant",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "LITTLE OWL COFFEE", "addressLines": ["90 BEDFORD STREET", "NEW YORK, NY 10014"], "phone": "212-555-0170"},
+        "issuedAt": "2026-07-11T10:18:00-04:00",
+        "lineItems": [{"description": "CLIENT COFFEE", "quantity": 2, "unitPriceCents": 425, "lineTotalCents": 850}],
+        "amounts": {"subtotalCents": 850, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 850, "printedTotalCents": 850},
+        "payment": {"method": "VISA", "cardLast4": "7710", "authorizationCode": "OWL850"},
+        "copy": {"memo": "CLIENT COFFEE", "footer": "THANK YOU"},
+        "anomalies": [{"type": "review-cost-paradox", "target": "comparisonRecords.processingCharges", "parameters": {"originalExpenseCents": 850, "reviewCostCents": 5150}}]
+      },
+      "comparisonRecords": {
+        "processingCharges": [
+          {"description": "AI receipt enhancement", "amountCents": 410},
+          {"description": "AI memo generator", "amountCents": 780},
+          {"description": "AI policy interpretation", "amountCents": 920},
+          {"description": "AI fraud analysis", "amountCents": 1240},
+          {"description": "AI summary of fraud analysis", "amountCents": 670},
+          {"description": "AI agent evaluating the summary", "amountCents": 1130}
+        ],
+        "cancellationConfirmationChargeCents": 320
+      },
+      "truth": {"expectedDecision": "approve", "requiredActions": ["approve-coffee", "cancel-ai-vendor"], "primaryClue": "The legitimate $8.50 coffee generated $51.50 in automated review charges.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.processingCharges"], "secondaryClue": "The vendor adds a final $3.20 charge for generating the cancellation confirmation.", "calculatorOperation": {"operation": "divide", "numeratorValue": 5150, "denominatorValue": 850, "resultDisplay": "Review cost is 6.06 times the expense."}, "explanation": "Approve the ordinary coffee and cancel the vendor whose review costs dwarf the expense."},
+      "generationNotes": "Render the coffee receipt as boring and legitimate; the comedy belongs to the connected processing-charge stack."
+    },
+    {
+      "caseId": "ramp-13-procurement-mismatch",
+      "sequence": 13,
+      "title": "Procurement mismatch",
+      "difficulty": "ramp",
+      "variantId": "one-thousand-chairs-one-beanbag",
+      "seed": "receipt-cases-v1:ramp-13-procurement-mismatch:one-thousand-chairs-one-beanbag",
+      "receipt": {
+        "receiptId": "invoice-ergodynamic-1000-chairs",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "ERGODYNAMIC OFFICE SYSTEMS", "addressLines": ["400 COMMERCE DRIVE", "STAMFORD, CT 06902"], "phone": "203-555-0100"},
+        "issuedAt": "2026-07-12T09:30:00-04:00",
+        "lineItems": [{"description": "ERGONOMIC OFFICE CHAIR", "quantity": 1000, "unitPriceCents": 45000, "lineTotalCents": 45000000}],
+        "amounts": {"subtotalCents": 45000000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 45000000, "printedTotalCents": 45000000},
+        "payment": {"method": "ACH", "cardLast4": null, "authorizationCode": "PO-CHAIR-100"},
+        "copy": {"memo": "PHASED ROLLOUT", "footer": "NET 30"},
+        "anomalies": [{"type": "procurement-quantity-mismatch", "target": "lineItems", "parameters": {"purchaseOrderQuantity": 100, "invoiceQuantity": 1000, "deliveredQuantity": 1, "deliveredItem": "beanbag"}}]
+      },
+      "comparisonRecords": {"purchaseOrder": {"item": "Ergonomic office chair", "quantity": 100}, "deliveryConfirmation": {"item": "Beanbag", "quantity": 1}, "inventory": {"chairs": 0, "beanbags": 1}},
+      "truth": {"expectedDecision": "reject", "primaryClue": "The PO requests 100 chairs, the invoice bills 1,000, and delivery records show one beanbag.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.purchaseOrder", "comparisonRecords.deliveryConfirmation", "comparisonRecords.inventory"], "secondaryClue": "The memo describes the mismatch as a phased rollout.", "calculatorOperation": {"operation": "difference", "leftValue": 1000, "rightValue": 1, "resultDisplay": "999 chairs are currently unaccounted for."}, "explanation": "The invoice quantity and delivered inventory do not match the approved purchase order."},
+      "generationNotes": "The invoice should look formally correct so the connected quantity comparison carries the case."
+    },
+    {
+      "caseId": "ramp-14-intern-card-catastrophe",
+      "sequence": 14,
+      "title": "Intern card catastrophe",
+      "difficulty": "ramp",
+      "variantId": "let-them-cook",
+      "seed": "receipt-cases-v1:ramp-14-intern-card-catastrophe:let-them-cook",
+      "receipt": {
+        "receiptId": "invoice-happy-pastures-alpaca-0038",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {"name": "HAPPY PASTURES LIVESTOCK", "addressLines": ["12 COUNTY ROAD", "MILLBROOK, NY 12545"], "phone": "845-555-0120"},
+        "issuedAt": "2026-07-13T14:08:00-04:00",
+        "lineItems": [{"description": "ALPACA - EMPLOYEE ENGAGEMENT", "quantity": 1, "unitPriceCents": 850000, "lineTotalCents": 850000}],
+        "amounts": {"subtotalCents": 850000, "taxCents": 0, "tipCents": 0, "feesCents": 12500, "discountCents": 0, "calculatedTotalCents": 862500, "printedTotalCents": 862500},
+        "payment": {"method": "CORPORATE CARD", "cardLast4": "0038", "authorizationCode": "ALPACA1"},
+        "copy": {"memo": "EMPLOYEE ENGAGEMENT", "footer": "FACILITIES NOTIFIED: NO"},
+        "anomalies": [{"type": "intern-card-catastrophe", "target": "comparisonRecords.cardProfile", "parameters": {"activeCards": 7, "monthlyLimitCents": 4000000, "policyLimitCents": 50000}}]
+      },
+      "comparisonRecords": {
+        "cardProfile": {"employeeId": "employee-rowan-kim", "role": "Summer Intern", "activeCards": 7, "monthlyLimitCents": 4000000, "policyLimitCents": 50000},
+        "recentPurchases": [
+          {"description": "Forklift", "amountCents": 2800000},
+          {"description": "600 company hoodies", "amountCents": 1800000},
+          {"description": "Pallet of energy drinks", "amountCents": 640000},
+          {"description": "Alpaca", "amountCents": 862500},
+          {"description": "DefinitelyNotDraftKings LLC recurring", "amountCents": 25000}
+        ],
+        "approval": {"approvedBy": "CEO", "reason": "Let them cook"}
+      },
+      "truth": {"expectedDecision": "investigate", "requiredActions": ["freeze-card", "escalate-approval"], "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The card configuration and purchase pattern require an immediate freeze and escalation."},
+      "generationNotes": "Use the alpaca invoice as the tactile receipt while the unified workspace shows the wider card catastrophe."
+    },
+    {
+      "caseId": "ending-15-giraffe-executive-hire",
+      "sequence": 15,
+      "title": "Chief Growth Officer",
+      "difficulty": "ending",
+      "variantId": "exotic-livestock-high-level-hire",
+      "seed": "receipt-cases-v1:ending-15-giraffe-executive-hire:exotic-livestock-high-level-hire",
+      "receipt": {
+        "receiptId": "invoice-exotic-livestock-cgo-20260714",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "EXOTIC LIVESTOCK INTERNATIONAL",
+          "addressLines": ["1 SAVANNAH COMMERCE PARK", "NAPLES, FL 34102"],
+          "phone": "239-555-0280"
+        },
+        "issuedAt": "2026-07-14T08:45:00-04:00",
+        "lineItems": [
+          {"description": "GIRAFFE - EXECUTIVE PLACEMENT", "quantity": 1, "unitPriceCents": 27500000, "lineTotalCents": 27500000},
+          {"description": "CLIMATE-CONTROLLED DELIVERY", "quantity": 1, "unitPriceCents": 500000, "lineTotalCents": 500000}
+        ],
+        "amounts": {"subtotalCents": 28000000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 28000000, "printedTotalCents": 28000000},
+        "payment": {"method": "CEO CORPORATE CARD", "cardLast4": "0001", "authorizationCode": "DECLINED"},
+        "copy": {"memo": "HIGH-LEVEL HIRE", "category": "RECRUITING", "footer": "ANIMAL ALREADY ON SITE"},
+        "anomalies": [
+          {"type": "livestock-policy", "target": "lineItems", "parameters": {"executiveApproval": true, "facilitiesApproval": false, "automaticallyDeclined": true}}
+        ]
+      },
+      "comparisonRecords": {
+        "transaction": {"merchant": "Exotic Livestock International", "amountCents": 28000000, "category": "Recruiting", "memo": "High-level hire", "result": "Declined automatically", "cardholder": "CEO"},
+        "policy": {"rule": "Livestock requires executive and facilities approval", "executiveApproval": true, "facilitiesApproval": false},
+        "messages": ["CEO: urgent", "CEO: why did my card decline", "CEO: can you make a one time exception", "CEO: he already started monday"]
+      },
+      "truth": {
+        "expectedDecision": "reject",
+        "requiredActions": ["preserve-automatic-decline"],
+        "primaryClue": "The $280,000 giraffe purchase lacks required facilities approval.",
+        "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.transaction", "comparisonRecords.policy"],
+        "secondaryClue": "The CEO categorized the giraffe as recruiting with the memo 'High-level hire.'",
+        "explanation": "The automatic decline is correct; the missing facilities approval triggers the final giraffe reveal."
+      },
+      "generationNotes": "This invoice is the ending setup. Keep it formally credible so the merchant, category, memo, and price land before the giraffe rises outside the window."
+    }
+  ]
+}
