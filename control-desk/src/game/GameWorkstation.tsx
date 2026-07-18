@@ -38,6 +38,7 @@ export function GameWorkstation() {
   const performAction = useGameStore((state) => state.performAction)
   const phase = useGameStore((state) => state.phase)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
+  const startGame = useGameStore((state) => state.startGame)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const togglePause = useGameStore((state) => state.togglePause)
   const toggleSound = useGameStore((state) => state.toggleSound)
@@ -196,6 +197,16 @@ export function GameWorkstation() {
           <dl><div><dt>Expenses checked</dt><dd>47</dd></div><div><dt>Need attention</dt><dd>6</dd></div></dl>
           <button onClick={handleTryRamp} type="button">Try Ramp</button>
           <small>This is the only way forward.</small>
+        </section>
+      )}
+
+      {phase === 'briefing' && (
+        <section aria-labelledby="game-cold-open-title" className="game-cold-open">
+          <span>FINANCE OPS · 11:54 AM</span>
+          <h2 id="game-cold-open-title">Need these cleared before lunch.</h2>
+          <p>The first receipt and transaction are already open. Compare the evidence, then send the case to Approve, Reject, or Investigate.</p>
+          <button onClick={startGame} type="button">Grab first receipt</button>
+          <small>Mouse only · five-minute target</small>
         </section>
       )}
 

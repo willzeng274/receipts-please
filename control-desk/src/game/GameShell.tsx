@@ -22,7 +22,6 @@ export function GameShell() {
   const phase = useGameStore((state) => state.phase)
   const resetGame = useGameStore((state) => state.resetGame)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
-  const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
   const resetExperience = useLabStore((state) => state.resetExperience)
@@ -95,7 +94,8 @@ export function GameShell() {
     setGridVisible(false)
     setPerformanceVisible(false)
     setRenderQuality('low')
-  }, [resetExperience, resetGame, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality])
+    setWorkstationFocused(true)
+  }, [resetExperience, resetGame, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
 
   useEffect(() => {
     const timer = window.setInterval(tick, 1000)
@@ -152,13 +152,6 @@ export function GameShell() {
     }
   }, [completeGame, endingStep, phase, playCue])
 
-  const handleStart = () => {
-    startGame()
-    setWorkstationFocused(true)
-    switchAmbience('manual-adaptive-music-loop')
-    playCue('paper-pickup', 0.52)
-  }
-
   const handleReveal = () => {
     setEndingStep(1)
     playCue('slack-ping', 0.6)
@@ -182,16 +175,6 @@ export function GameShell() {
   return (
     <main className="game-shell">
       <LabViewport />
-
-      {phase === 'briefing' && (
-        <section className="game-start-screen">
-          <span>Finance Operations · 11:54 AM</span>
-          <h1>Receipts,<br />Please</h1>
-          <p>Clear the expense inbox. Compare each receipt with the available records, use the connected tools, and make the call before lunch.</p>
-          <button onClick={handleStart} type="button">Start reviewing</button>
-          <small>Mouse only · approve, reject, or investigate · five-minute target</small>
-        </section>
-      )}
 
       {phase === 'ending' && endingStep === 0 && (
         <section className="game-ending-panel">
