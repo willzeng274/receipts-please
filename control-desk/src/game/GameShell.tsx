@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LabViewport } from '../components/lab/LabViewport'
-import { useLabStore } from '../store/useLabStore'
-import { ENDING_CASE, GAME_CASES } from './gameData'
+import { WORKSTATION_CASES_BY_ID, WORKSTATION_CASE_IDS_BY_PHASE } from '../components/workstation/caseFixtures'
+import { useWorkstationStore } from '../components/workstation/useWorkstationStore'
+import { RAMP_MIGRATION_STEPS, useLabStore } from '../store/useLabStore'
+import { ENDING_CASE } from './gameData'
 import { GameDeskHud } from './GameDeskHud'
 import { GiraffeEndingStage } from './GiraffeEndingStage'
 import { GAME_AUDIO_EVENT, type GameAudioRequest } from './gameAudio'
 import { useGameStore } from './useGameStore'
+
+import './game.css'
 
 type AudioCue = { id: string; loop: boolean; path: string }
 type AudioCatalog = { assets: AudioCue[] }
@@ -15,29 +19,45 @@ function formatElapsed(seconds: number) {
 }
 
 export function GameShell() {
-  const caseIndex = useGameStore((state) => state.caseIndex)
+  const automationActive = useGameStore((state) => state.automationActive)
+  const completeAutomatedQueue = useGameStore((state) => state.completeAutomatedQueue)
   const completeGame = useGameStore((state) => state.completeGame)
-  const decisions = useGameStore((state) => state.decisions)
   const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
   const feedback = useGameStore((state) => state.feedback)
   const finishMigration = useGameStore((state) => state.finishMigration)
+  const installRamp = useGameStore((state) => state.installRamp)
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
   const resetGame = useGameStore((state) => state.resetGame)
-  const score = useGameStore((state) => state.score)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
   const timedOut = useGameStore((state) => state.timedOut)
+  const workstationActiveCaseId = useWorkstationStore((state) => state.activeCaseId)
+  const workstationClosedCaseIds = useWorkstationStore((state) => state.closedCaseIds)
+  const workstationCompletedActions = useWorkstationStore((state) => state.completedActionsByCase)
+  const workstationPinnedEvidence = useWorkstationStore((state) => state.pinnedEvidenceIds)
+  const workstationSession = useWorkstationStore((state) => state.session)
+  const advanceWorkstationCase = useWorkstationStore((state) => state.advanceToNextCase)
+  const completeWorkstationAction = useWorkstationStore((state) => state.completeCaseAction)
+  const markRampUnlocked = useWorkstationStore((state) => state.markRampUnlocked)
+  const recordWorkstationDecision = useWorkstationStore((state) => state.recordDecision)
+  const resetWorkstation = useWorkstationStore((state) => state.resetWorkstation)
+  const setWorkstationCardFrozen = useWorkstationStore((state) => state.setCardFrozen)
+  const toggleWorkstationEvidence = useWorkstationStore((state) => state.togglePinnedEvidence)
+  const advanceRampMigration = useLabStore((state) => state.advanceRampMigration)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
+  const beginRampTransition = useLabStore((state) => state.beginRampTransition)
   const resetExperience = useLabStore((state) => state.resetExperience)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
+  const rampMigrationLocked = useLabStore((state) => state.rampMigrationLocked)
   const setCameraPreset = useLabStore((state) => state.setCameraPreset)
   const setGridVisible = useLabStore((state) => state.setGridVisible)
   const setMode = useLabStore((state) => state.setMode)
   const setPerformanceVisible = useLabStore((state) => state.setPerformanceVisible)
   const setRenderQuality = useLabStore((state) => state.setRenderQuality)
   const setWorkstationFocused = useLabStore((state) => state.setWorkstationFocused)
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
   const [audioReady, setAudioReady] = useState(false)
   const [calmBeat, setCalmBeat] = useState(false)
   const [endingStep, setEndingStep] = useState(0)
@@ -130,13 +150,14 @@ export function GameShell() {
   useEffect(() => {
     resetGame()
     resetExperience()
+    resetWorkstation()
     setMode('scene')
     setCameraPreset('player')
     setGridVisible(false)
     setPerformanceVisible(false)
-    setRenderQuality('low')
+    setRenderQuality('capture')
     setWorkstationFocused(false)
-  }, [resetExperience, resetGame, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
+  }, [resetExperience, resetGame, resetWorkstation, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
 
   useEffect(() => {
     const timer = window.setInterval(tick, 1000)
@@ -145,6 +166,8 @@ export function GameShell() {
 
   useEffect(() => {
     if (phase === 'migrating' && experiencePhase === 'ramp') {
+      markRampUnlocked()
+      advanceWorkstationCase('ramp')
       finishMigration()
       setWorkstationFocused(true)
       playCue('monitor-power-on', 0.58)
@@ -152,7 +175,7 @@ export function GameShell() {
       setCalmBeat(true)
       switchAmbience('low-cortisol-music-loop')
     }
-  }, [experiencePhase, finishMigration, phase, playCue, setWorkstationFocused, switchAmbience])
+  }, [advanceWorkstationCase, experiencePhase, finishMigration, markRampUnlocked, phase, playCue, setWorkstationFocused, switchAmbience])
 
   useEffect(() => {
     if (!feedback || feedback === previousFeedback.current) return
@@ -173,10 +196,68 @@ export function GameShell() {
   }, [feedback, playCue])
 
   useEffect(() => {
-    if (!['manual', 'ramp'].includes(phase) || previousCase.current === caseIndex) return
-    previousCase.current = caseIndex
+    if (!automationActive || phase !== 'migrating' || experiencePhase !== 'migrating' || rampMigrationLocked) return
+    const migrationTimer = window.setTimeout(advanceRampMigration, rampMigrationStep === 0 ? 900 : 700)
+    return () => window.clearTimeout(migrationTimer)
+  }, [advanceRampMigration, automationActive, experiencePhase, phase, rampMigrationLocked, rampMigrationStep])
+
+  useEffect(() => {
+    if (!automationActive || phase !== 'ramp') return
+    const rampCaseIds = WORKSTATION_CASE_IDS_BY_PHASE.ramp
+    const rampComplete = rampCaseIds.every((caseId) => workstationClosedCaseIds.includes(caseId))
+    if (rampComplete) {
+      const endingTimer = window.setTimeout(completeAutomatedQueue, 1050)
+      return () => window.clearTimeout(endingTimer)
+    }
+
+    const currentCase = WORKSTATION_CASES_BY_ID[workstationActiveCaseId]
+    if (currentCase.phase !== 'ramp') {
+      const selectTimer = window.setTimeout(() => advanceWorkstationCase('ramp'), 400)
+      return () => window.clearTimeout(selectTimer)
+    }
+
+    const pinnedEvidence = workstationPinnedEvidence[currentCase.id] ?? []
+    const nextEvidence = currentCase.validation.requiredEvidenceIds.find((evidenceId) => !pinnedEvidence.includes(evidenceId))
+    if (nextEvidence) {
+      const evidenceTimer = window.setTimeout(() => {
+        toggleWorkstationEvidence(nextEvidence)
+        playCue('evidence-link', 0.38)
+        triggerEffect('paper-drop')
+      }, 520)
+      return () => window.clearTimeout(evidenceTimer)
+    }
+
+    const completedActions = workstationCompletedActions[currentCase.id] ?? []
+    const nextAction = (currentCase.validation.requiredActions ?? []).find((action) => !completedActions.includes(action))
+    if (nextAction) {
+      const actionTimer = window.setTimeout(() => {
+        if (nextAction === 'freeze-card') {
+          setWorkstationCardFrozen(true, currentCase.id)
+          completeWorkstationAction('freeze-card', true, currentCase.id)
+          playCue('freeze-cover', 0.5)
+          playCue('freeze-button', 0.64)
+          triggerEffect('fraud')
+          return
+        }
+        completeWorkstationAction(nextAction, true, currentCase.id)
+        playCue('evidence-link', 0.38)
+        triggerEffect('paper-drop')
+      }, 620)
+      return () => window.clearTimeout(actionTimer)
+    }
+
+    const decisionTimer = window.setTimeout(() => {
+      recordWorkstationDecision(currentCase.validation.expectedDecision)
+    }, 760)
+    return () => window.clearTimeout(decisionTimer)
+  }, [advanceWorkstationCase, automationActive, completeAutomatedQueue, completeWorkstationAction, phase, playCue, recordWorkstationDecision, setWorkstationCardFrozen, toggleWorkstationEvidence, triggerEffect, workstationActiveCaseId, workstationClosedCaseIds, workstationCompletedActions, workstationPinnedEvidence])
+
+  useEffect(() => {
+    const currentIndex = WORKSTATION_CASE_IDS_BY_PHASE.ramp.indexOf(workstationActiveCaseId)
+    if (!['manual', 'ramp'].includes(phase) || previousCase.current === currentIndex) return
+    previousCase.current = currentIndex
     playCue('paper-pickup', 0.5)
-  }, [caseIndex, phase, playCue])
+  }, [phase, playCue, workstationActiveCaseId])
 
   useEffect(() => {
     if (soundEnabled && !paused) {
@@ -230,6 +311,16 @@ export function GameShell() {
   }, [phase, setWorkstationFocused, stopAllAudio])
 
   useEffect(() => {
+    if (!automationActive || phase !== 'ending' || endingStep !== 0) return
+    const revealTimer = window.setTimeout(() => {
+      setEndingStep(1)
+      playCue('slack-ping', 0.6)
+      playCue('card-decline', 0.62)
+    }, 1100)
+    return () => window.clearTimeout(revealTimer)
+  }, [automationActive, endingStep, phase, playCue])
+
+  useEffect(() => {
     if (phase !== 'ending' || endingStep !== 1) return
     const chewTimer = window.setTimeout(() => playCue('giraffe-chew', 0.54), 2500)
     const badgeTimer = window.setTimeout(() => playCue('badge-jingle', 0.62), 3200)
@@ -242,10 +333,17 @@ export function GameShell() {
   }, [completeGame, endingStep, phase, playCue])
 
   const handleStart = () => {
+    setRenderQuality('default')
     startGame()
-    setWorkstationFocused(false)
+    setWorkstationFocused(true)
     switchAmbience('manual-adaptive-music-loop')
     playCue('paper-pickup', 0.52)
+  }
+
+  const handleInstallRamp = () => {
+    setRenderQuality('default')
+    installRamp()
+    beginRampTransition()
   }
 
   const handleReveal = () => {
@@ -262,18 +360,110 @@ export function GameShell() {
     previousFeedback.current = null
     resetGame()
     resetExperience()
+    resetWorkstation()
     setMode('scene')
     setCameraPreset('player')
+    setRenderQuality('capture')
   }
 
-  const correct = decisions.filter((decision) => decision.correct).length
-  const rating = score >= 1400 ? 'Audit legend' : score >= 1100 ? 'Controller material' : score >= 700 ? 'Still employed' : 'Please see HR'
+  const postRampEnabled = experiencePhase !== 'manual'
+    || ['migrating', 'ramp', 'ending', 'complete'].includes(phase)
+
+  const handlePostRampToggle = (enabled: boolean) => {
+    stopAllAudio()
+    setCalmBeat(false)
+    setEndingStep(0)
+    previousCase.current = -1
+    previousFeedback.current = null
+    resetGame()
+    resetExperience()
+    resetWorkstation()
+    setMode('scene')
+    setCameraPreset('player')
+    setGridVisible(false)
+    setPerformanceVisible(false)
+
+    if (enabled) {
+      setRenderQuality('default')
+      installRamp()
+      beginRampTransition()
+      return
+    }
+
+    setRenderQuality('capture')
+    setWorkstationFocused(false)
+  }
+
+  const correct = workstationSession.correctCount
+  const score = workstationSession.score
+  const rating = score >= 1800 ? 'Audit legend' : score >= 1300 ? 'Controller material' : score >= 800 ? 'Still employed' : 'Please see HR'
   const endingTransaction = ENDING_CASE.comparisonRecords.transaction as { amountCents: number; category: string; memo: string; merchant: string; result: string }
+  const rampCaseCount = WORKSTATION_CASE_IDS_BY_PHASE.ramp.length
+  const automatedCasesComplete = WORKSTATION_CASE_IDS_BY_PHASE.ramp
+    .filter((caseId) => workstationClosedCaseIds.includes(caseId)).length
+  const automatedCase = WORKSTATION_CASES_BY_ID[workstationActiveCaseId]
+  const automatedCaseDetail = `Reviewing ${automatedCase.title}`
+  const automationStatus = phase === 'migrating'
+    ? {
+        current: Math.min(rampMigrationStep, RAMP_MIGRATION_STEPS.length),
+        detail: rampMigrationStep < RAMP_MIGRATION_STEPS.length
+          ? RAMP_MIGRATION_STEPS[rampMigrationStep]
+          : 'Starting exception queue',
+        label: 'Installing Ramp',
+        max: RAMP_MIGRATION_STEPS.length,
+      }
+    : phase === 'ramp'
+      ? {
+          current: automatedCasesComplete,
+          detail: automatedCaseDetail,
+          label: 'Handling exceptions',
+          max: rampCaseCount,
+        }
+      : {
+          current: Number(endingStep > 0),
+          detail: endingStep > 0 ? 'Automatic decline preserved' : 'Preparing the final automatic decline',
+          label: 'Queue complete',
+          max: 1,
+        }
 
   return (
     <main className="game-shell">
       <LabViewport />
-      <GameDeskHud />
+      <label className="game-post-ramp-toggle">
+        <span>Manual</span>
+        <input
+          aria-label="Toggle Post-Ramp mode"
+          checked={postRampEnabled}
+          onChange={(event) => handlePostRampToggle(event.target.checked)}
+          type="checkbox"
+        />
+        <i aria-hidden="true"><b /></i>
+        <strong>Post-Ramp</strong>
+      </label>
+      {phase === 'overload' && <GameDeskHud />}
+
+      {phase === 'migration-prompt' && (
+        <button className="game-install-ramp" onClick={handleInstallRamp} type="button">
+          <img alt="Ramp" src="/brand/ramp-lockup-white.svg" />
+          <span>READY TO CONNECT</span>
+          <strong>Install Ramp</strong>
+          <small>47 expenses ready · {rampCaseCount} exceptions</small>
+          <b>Install and run</b>
+        </button>
+      )}
+
+      {automationActive && ['migrating', 'ramp', 'ending'].includes(phase) && (
+        <section aria-live="polite" className="game-ramp-run-status">
+          <header>
+            <img alt="Ramp" src="/brand/ramp-lockup-white.svg" />
+            <span><i aria-hidden="true" /> RUNNING</span>
+          </header>
+          <strong>{automationStatus.label}</strong>
+          <p>{automationStatus.detail}</p>
+          <progress max={automationStatus.max} value={automationStatus.current} />
+          <small>{automationStatus.current} / {automationStatus.max}</small>
+        </section>
+      )}
 
       {phase === 'briefing' && (
         <section className="game-cold-open">
@@ -301,7 +491,7 @@ export function GameShell() {
         <section className="game-title-card">
           <span>{timedOut ? 'SHIFT CLOSED · FIVE-MINUTE LIMIT REACHED' : 'THE NEW CHIEF GROWTH OFFICER HAS ARRIVED'}</span>
           <h1>{timedOut ? <>Time's<br />Up</> : <>Receipts,<br />Please</>}</h1>
-          <dl><div><dt>Cases reviewed</dt><dd>{decisions.length}/{GAME_CASES.length}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Score</dt><dd>{score}</dd></div><div><dt>Rating</dt><dd>{rating}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
+          <dl><div><dt>Cases reviewed</dt><dd>{workstationClosedCaseIds.length}/{WORKSTATION_CASE_IDS_BY_PHASE.manual.length + rampCaseCount}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Score</dt><dd>{score}</dd></div><div><dt>Rating</dt><dd>{rating}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
           <button onClick={handleRestart} type="button">Review another shift</button>
         </section>
       )}

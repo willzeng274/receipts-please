@@ -153,9 +153,13 @@ export function LabViewport() {
           <span>{gameActive ? '2:10–2:35 · ' : ''}Expense OS migration · step {rampMigrationStep + 1} of {RAMP_MIGRATION_STEPS.length}</span>
           <strong>{RAMP_MIGRATION_STEPS[rampMigrationStep]}</strong>
           <small>The workstation and this controller share the same real progress state.</small>
-          <button disabled={rampMigrationLocked} onClick={advanceRampMigration} type="button">
-            {rampMigrationLocked ? 'Connecting…' : rampMigrationStep === RAMP_MIGRATION_STEPS.length - 1 ? 'Finish migration' : 'Connect next system'}
-          </button>
+          {gameActive ? (
+            <button disabled type="button">{rampMigrationLocked ? 'Connecting automatically…' : 'Preparing next system…'}</button>
+          ) : (
+            <button disabled={rampMigrationLocked} onClick={advanceRampMigration} type="button">
+              {rampMigrationLocked ? 'Connecting…' : rampMigrationStep === RAMP_MIGRATION_STEPS.length - 1 ? 'Finish migration' : 'Connect next system'}
+            </button>
+          )}
         </section>
       )}
       {rampTransitionRun > 0 && experiencePhase === 'ramp' && (

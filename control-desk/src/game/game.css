@@ -3,6 +3,39 @@
 .game-shell .viewport-meta, .game-shell .viewport-corners, .game-shell .player-pov-hint { display: none; }
 .game-shell .giraffe-focus-exit { z-index: 70; }
 
+.game-post-ramp-toggle { position: absolute; z-index: 100; top: 22px; right: 22px; min-height: 42px; padding: 0 12px; display: flex; align-items: center; gap: 8px; color: #94a49c; border: 1px solid #53655d; border-radius: 8px; background: rgba(10, 20, 16, .94); box-shadow: 0 12px 38px rgba(0,0,0,.42); cursor: pointer; font: 700 8px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; text-transform: uppercase; }
+.game-post-ramp-toggle input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.game-post-ramp-toggle i { position: relative; width: 34px; height: 18px; flex: 0 0 auto; border: 1px solid #56675f; border-radius: 9px; background: #28352f; transition: background .18s ease, border-color .18s ease; }
+.game-post-ramp-toggle i b { position: absolute; top: 3px; left: 3px; width: 10px; height: 10px; border-radius: 50%; background: #aab5af; transition: transform .18s ease, background .18s ease; }
+.game-post-ramp-toggle strong { color: #aebbb4; font: inherit; }
+.game-post-ramp-toggle:has(input:checked) { color: #dcebe4; border-color: #79d5ae; }
+.game-post-ramp-toggle input:checked + i { border-color: #79d5ae; background: #285d47; }
+.game-post-ramp-toggle input:checked + i b { background: #9ce9c5; transform: translateX(16px); }
+.game-post-ramp-toggle:focus-within { outline: 3px solid #79d5ae; outline-offset: 3px; }
+
+.game-install-ramp, .game-ramp-run-status { position: absolute; z-index: 78; top: 22px; left: 22px; width: min(380px, calc(100vw - 44px)); color: #edf4ef; border: 1px solid #648574; border-radius: 8px; background: #10231d; box-shadow: 0 22px 68px rgba(0,0,0,.52); font-family: 'Archivo Variable', Arial, sans-serif; }
+.game-install-ramp { min-height: 260px; padding: 24px; display: flex; flex-direction: column; align-items: flex-start; cursor: pointer; text-align: left; }
+.game-install-ramp:hover { border-color: #8ee4ba; background: #153127; }
+.game-install-ramp:focus-visible { outline: 3px solid #8ee4ba; outline-offset: 3px; }
+.game-install-ramp img { width: 112px; height: auto; margin-bottom: auto; }
+.game-install-ramp > span { margin-top: 28px; color: #8ee4ba; font: 750 8px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
+.game-install-ramp > strong { display: block; margin: 8px 0; color: #fff; font-size: 34px; line-height: 1; }
+.game-install-ramp > small { max-width: 300px; color: #a8bbb1; font-size: 11px; line-height: 1.45; }
+.game-install-ramp > b { width: 100%; min-height: 46px; margin-top: 20px; display: grid; place-items: center; color: #0d2118; border: 1px solid #baf2d6; border-radius: 5px; background: #79d5ae; font-size: 12px; text-align: center; text-transform: uppercase; }
+
+.game-ramp-run-status { padding: 18px 20px; }
+.game-ramp-run-status header { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+.game-ramp-run-status header img { width: 88px; height: auto; }
+.game-ramp-run-status header span { color: #8ee4ba; font: 750 8px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
+.game-ramp-run-status header i { width: 7px; height: 7px; display: inline-block; margin-right: 5px; border-radius: 50%; background: #79d5ae; box-shadow: 0 0 10px rgba(121,213,174,.75); }
+.game-ramp-run-status > strong { display: block; color: #f5faf7; font-size: 21px; }
+.game-ramp-run-status p { min-height: 16px; margin: 6px 0 14px; color: #a8bbb1; font-size: 11px; line-height: 1.4; }
+.game-ramp-run-status progress { width: calc(100% - 54px); height: 7px; overflow: hidden; border: 0; border-radius: 4px; background: #2a4036; }
+.game-ramp-run-status progress::-webkit-progress-bar { border-radius: 4px; background: #2a4036; }
+.game-ramp-run-status progress::-webkit-progress-value { border-radius: 4px; background: #79d5ae; }
+.game-ramp-run-status progress::-moz-progress-bar { border-radius: 4px; background: #79d5ae; }
+.game-ramp-run-status > small { float: right; margin-top: 3px; color: #7e968a; font: 650 8px/1 'IBM Plex Mono', monospace; }
+
 .game-workstation { --game-accent: #eebd55; --game-danger: #c64f43; --game-green: #52b887; position: relative; isolation: isolate; width: min(1040px, calc(100vw - 24px)); height: min(650px, calc(100vh - 24px)); min-width: 760px; min-height: 500px; overflow: hidden; color: #202725; border: 1px solid #79847f; border-radius: 12px; background: #d8d4c3; box-shadow: 0 38px 120px rgba(0,0,0,.62), inset 0 0 0 1px rgba(255,255,255,.16); font-family: 'Archivo Variable', Arial, sans-serif; user-select: none; }
 .game-workstation.is-preview { cursor: zoom-in; }
 .game-workstation--ramp { --game-accent: #79d5ae; color: #e8eee9; border-color: #456a5c; background: #10231e; }
@@ -246,6 +279,9 @@
 .game-connected-evidence > footer { padding: 9px 11px; display: flex; gap: 11px; border-top: 1px solid #365148; }
 .game-connected-evidence > footer span { color: #70877d; font: 650 7px/1 'IBM Plex Mono', monospace; }
 .game-connected-evidence > footer strong { color: #c6d7cf; font-size: 9px; }
+.game-case-actions button:disabled.is-desk-only { color: #e4bb68; border-style: dashed; opacity: 1; background: #302d20; cursor: default; }
+.game-case-actions button:disabled.is-desk-only.is-complete { color: #0d2119; border-color: var(--game-accent); border-style: solid; background: var(--game-accent); }
+.game-os-bar button:disabled, .game-workstation-footer button:disabled { opacity: .56; cursor: default; }
 
 .game-decision-label { position: relative; min-width: 112px; padding: 8px 11px 7px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: #edf3ef; border: 2px solid #929d97; border-radius: 5px; background: rgba(13,22,18,.94); box-shadow: 0 8px 28px rgba(0,0,0,.48); cursor: pointer; text-align: center; transform: translateY(-4px); transition: transform .12s ease, filter .12s ease; }
 .game-decision-label::after { content: ''; position: absolute; top: 100%; left: 50%; width: 2px; height: 18px; background: currentColor; opacity: .65; transform: translateX(-50%); }
@@ -256,6 +292,16 @@
 .game-decision-label.is-reject { color: #ffba66; border-color: #ffba66; }
 .game-decision-label.is-fire { color: #ff6650; border-color: #ff6650; background: repeating-linear-gradient(-45deg, rgba(255,102,80,.12) 0 8px, transparent 8px 16px), rgba(30,13,10,.96); }
 .game-decision-label.is-fire small { color: #ffad9f; }
+
+.game-world-hotspot { min-width: max-content; padding: 7px 9px; color: #e8eee9; border: 1px solid #8a958f; border-radius: 4px; background: rgba(17,27,23,.92); box-shadow: 0 6px 22px rgba(0,0,0,.42); cursor: pointer; font: 800 7px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; text-transform: uppercase; transform: translateZ(0); animation: game-hotspot-pulse 1.2s ease-in-out infinite alternate; }
+.game-world-hotspot:hover, .game-world-hotspot:focus-visible { color: #102018; outline: 0; transform: scale(1.08); }
+.game-world-hotspot.is-danger { border-color: #e17661; }
+.game-world-hotspot.is-danger:hover, .game-world-hotspot.is-danger:focus-visible { background: #e17661; }
+
+@keyframes game-hotspot-pulse {
+  from { box-shadow: 0 6px 18px rgba(0,0,0,.38), 0 0 0 rgba(232,187,98,0); }
+  to { box-shadow: 0 6px 22px rgba(0,0,0,.48), 0 0 18px rgba(232,187,98,.22); }
+}
 
 .game-desk-feedback, .game-overload-panel { position: absolute; z-index: 55; width: min(360px, calc(100vw - 36px)); padding: 20px; color: #e8eeea; border: 1px solid #56645e; background: linear-gradient(145deg, rgba(11,20,17,.95), rgba(20,32,27,.93)); box-shadow: 0 22px 68px rgba(0,0,0,.5); }
 .game-feedback-card > span, .game-overload-panel > span { color: #e8bb62; font: 750 8px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; }
@@ -373,6 +419,10 @@
 }
 
 @media (max-width: 900px), (max-height: 620px) {
+  .game-install-ramp { min-height: 220px; padding: 19px; }
+  .game-install-ramp > span { margin-top: 20px; }
+  .game-install-ramp > strong { font-size: 29px; }
+  .game-install-ramp > b { min-height: 40px; margin-top: 14px; }
   .game-workstation {
     width: min(1040px, calc(100vw - 12px));
     height: min(650px, calc(100svh - 12px));
@@ -394,6 +444,10 @@
 }
 
 @media (max-width: 620px) {
+  .game-post-ramp-toggle { top: 12px; right: 12px; }
+  .game-post-ramp-toggle > span { display: none; }
+  .game-install-ramp, .game-ramp-run-status { top: 12px; left: 12px; width: calc(100vw - 24px); }
+  .game-install-ramp { min-height: 210px; }
   .game-os-bar { align-content: center; flex-wrap: wrap; padding: 5px 7px; }
   .game-os-bar > div { flex-wrap: wrap; }
   .game-os-bar > div:first-child > span, .game-os-bar label > span { display: none; }
@@ -418,4 +472,5 @@
   .game-giraffe-stage { animation: none; }
   .game-desk-feedback.is-fired, .game-fire-gag > span, .game-fire-ticker span, .game-fire-rain i, .game-fire-mega-stamp, .game-fire-popups article, .game-fire-payroll > i b, .game-fire-payroll > strong { animation: none; }
   .game-decision-label { transition: none; }
+  .game-world-hotspot { animation: none; }
 }

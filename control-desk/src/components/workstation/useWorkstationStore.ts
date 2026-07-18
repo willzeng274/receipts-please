@@ -25,7 +25,7 @@ import type {
 import type { AppId } from './workstationData'
 
 const SESSION_DURATION_MS = 5 * 60 * 1_000
-const STORAGE_VERSION = 6
+const STORAGE_VERSION = 7
 
 const APP_IDS: readonly AppId[] = [
   'expenses',
@@ -53,6 +53,7 @@ const REQUIRED_ACTIONS: readonly WorkstationRequiredAction[] = [
   'escalate-employee',
   'approve-coffee',
   'cancel-ai-vendor',
+  'escalate-approval',
 ]
 
 const decisionLabels: Record<WorkstationDecision, string> = {

@@ -47,6 +47,7 @@ export type WorkstationOSProps = {
   phase?: ExperiencePhase
   migrationStep?: number
   rampPromptVisible?: boolean
+  readOnly?: boolean
 }
 
 const EMPTY_EVIDENCE_IDS: readonly string[] = []
@@ -147,6 +148,7 @@ export function WorkstationOS({
   onTryRamp,
   phase = 'manual',
   rampPromptVisible = false,
+  readOnly = false,
 }: WorkstationOSProps) {
   const settledPhase = phase === 'ramp' ? 'ramp' : 'manual'
   const apps = settledPhase === 'ramp' ? RAMP_APPS : MANUAL_APPS
@@ -189,6 +191,7 @@ export function WorkstationOS({
   const [pinnedCalculatorTapes, setPinnedCalculatorTapes] = useState<Partial<Record<keyof typeof WORKSTATION_CASES_BY_ID, CalculatorTape>>>({})
   const [dismissedNotices, setDismissedNotices] = useState<string[]>([])
   const [evidenceRailOpen, setEvidenceRailOpen] = useState(true)
+  const [manualCortisol, setManualCortisol] = useState(28)
   const [noticeRailOpen, setNoticeRailOpen] = useState(false)
   const [receiptAlert, setReceiptAlert] = useState<WorkstationReceiptNotification | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -218,6 +221,11 @@ export function WorkstationOS({
   const gameCompletionAvailable = rampQueueComplete && Boolean(onGameComplete)
   const completedActions = completedActionsByCase[activeCaseId] ?? EMPTY_REQUIRED_ACTIONS
 
+  const raiseCortisol = useCallback((amount = 2) => {
+    if (phase !== 'manual') return
+    setManualCortisol((current) => Math.min(99, current + amount))
+  }, [phase])
+
   const notices = useMemo(
     () => getCaseNotices(activeCase, settledPhase).filter((notice) => !dismissedNotices.includes(notice.id)),
     [activeCase, dismissedNotices, settledPhase],
@@ -226,9 +234,10 @@ export function WorkstationOS({
   const handleReceiptSubmission = useCallback(() => {
     const notification = submitNextManualReceipt(Date.now())
     if (!notification) return
+    raiseCortisol(8)
     setReceiptAlert(notification)
     playSound('notification')
-  }, [playSound, submitNextManualReceipt])
+  }, [playSound, raiseCortisol, submitNextManualReceipt])
 
   useManualReceiptNotifications({
     enabled: focused
@@ -307,6 +316,7 @@ export function WorkstationOS({
 
   useEffect(() => {
     if (!effect || effectRun < 1) return
+    raiseCortisol(effect === 'printer-jam' ? 10 : effect === 'fraud' ? 7 : 4)
     const copy = effect === 'paper-drop'
       ? `Receipt received - inbox ${phaseInboxCount}`
       : effect === 'approve'
@@ -321,7 +331,7 @@ export function WorkstationOS({
     setToast(copy)
     const timeout = window.setTimeout(() => setToast(null), effect === 'migration' ? 2100 : 1500)
     return () => window.clearTimeout(timeout)
-  }, [activeCase.caseNumber, effect, effectRun, phaseInboxCount])
+  }, [activeCase.caseNumber, effect, effectRun, phaseInboxCount, raiseCortisol])
 
   const openApp = useCallback((app: AppId) => {
     playSound('navigate')
@@ -450,6 +460,7 @@ export function WorkstationOS({
     setPinnedCalculatorTapes({})
     setDismissedNotices([])
     setEvidenceRailOpen(true)
+    setManualCortisol(28)
     setNoticeRailOpen(false)
     setReceiptAlert(null)
     setToast('New five-minute session ready')
@@ -505,9 +516,15 @@ export function WorkstationOS({
     event.stopPropagation()
   }, [])
 
+  const handleRootClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+    raiseCortisol(2)
+  }, [raiseCortisol])
+
   const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     if (!focused) return
     event.stopPropagation()
+    raiseCortisol(1)
 
     if (rampPromptActive) {
       if (event.key === 'Escape' || event.key === 'Tab') event.preventDefault()
@@ -559,7 +576,7 @@ export function WorkstationOS({
       event.preventDefault()
       sendCalculatorInput(input)
     }
-  }, [activeApp, apps, focused, onExit, openApp, rampPromptActive, sendCalculatorInput, session.status])
+  }, [activeApp, apps, focused, onExit, openApp, raiseCortisol, rampPromptActive, sendCalculatorInput, session.status])
 
   const activeDefinition = apps.find((app) => app.id === activeApp) ?? apps[0]
 
@@ -568,7 +585,7 @@ export function WorkstationOS({
       aria-label="Expense OS finance workstation"
       className={`wsos-root wsos-root--${settledPhase}${focused ? ' is-focused' : ''}`}
       data-phase={phase}
-      onClick={containInput}
+      onClick={handleRootClick}
       onContextMenu={containInput}
       onDoubleClick={containInput}
       onKeyDown={handleKeyDown}
@@ -579,12 +596,12 @@ export function WorkstationOS({
       onWheel={containInput}
       ref={root}
       role="application"
-      tabIndex={focused && !rampPromptActive ? 0 : -1}
+      tabIndex={focused && !rampPromptActive && !readOnly ? 0 : -1}
     >
       <div
         aria-hidden={rampPromptActive || session.status === 'paused' ? true : undefined}
         className="wsos-interactive-surface"
-        inert={rampPromptActive || !focused || session.status === 'paused' ? true : undefined}
+        inert={rampPromptActive || !focused || readOnly || session.status === 'paused' ? true : undefined}
       >
         <header className="wsos-menu-bar">
           <div className="wsos-menu-left">
@@ -594,7 +611,7 @@ export function WorkstationOS({
           </div>
           <div className="wsos-menu-right">
             <span className="wsos-case-number">CASE {phaseCaseNumber} / {phaseCounts.total} · INBOX {phaseInboxCount}</span>
-            <label className="wsos-cortisol"><span>Cortisol</span><i><b /></i><em>{settledPhase === 'ramp' ? '22%' : '88%'}</em></label>
+            <label className="wsos-cortisol"><span>Cortisol</span><i><b style={{ width: `${settledPhase === 'ramp' ? 22 : manualCortisol}%` }} /></i><em>{settledPhase === 'ramp' ? '22%' : `${manualCortisol}%`}</em></label>
             <button aria-label={soundEnabled ? 'Mute workstation sounds' : 'Enable workstation sounds'} onClick={() => setSoundEnabled((value) => !value)} type="button">{soundEnabled ? 'VOL' : 'MUTE'}</button>
             <button
               aria-label={session.status === 'complete' ? 'Start a new session' : session.status === 'paused' ? 'Resume session timer' : session.status === 'expired' ? 'Session timer expired' : 'Pause session timer'}
@@ -768,7 +785,7 @@ export function WorkstationOS({
 
       {toast && <div aria-live="polite" className="wsos-toast">{toast}</div>}
 
-      {!focused && phase !== 'migrating' && !rampPromptActive && (
+      {!focused && !readOnly && phase !== 'migrating' && !rampPromptActive && (
         <button className="wsos-focus-gate" onClick={onFocus} type="button">
           <span>{phase === 'ramp' ? 'Ramp workspace ready' : 'Interactive workstation'}</span>
           <strong>Click to focus screen</strong>

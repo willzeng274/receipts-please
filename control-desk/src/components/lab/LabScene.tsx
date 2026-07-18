@@ -18,10 +18,9 @@ import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../.
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
 import { WorkstationOS } from '../workstation/WorkstationOS'
-import { type GameDecision } from '../../game/gameData'
 import { requestGameAudioCue } from '../../game/gameAudio'
-import { GameWorkstation } from '../../game/GameWorkstation'
 import { useGameStore } from '../../game/useGameStore'
+import { WORKSTATION_CASES_BY_ID } from '../workstation/caseFixtures'
 import type { WorkstationFinalDecision, WorkstationSceneEventId } from '../workstation/types'
 import { useWorkstationStore } from '../workstation/useWorkstationStore'
 
@@ -681,6 +680,9 @@ function WorkstationScreen() {
   const runGiraffeReveal = useLabStore((state) => state.runGiraffeReveal)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const gameActive = window.location.pathname === '/game'
+  const completeGameManualQueue = useGameStore((state) => state.completeManualQueue)
+  const gameAutomationActive = useGameStore((state) => state.automationActive)
+  const gamePhase = useGameStore((state) => state.phase)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const sceneEvent = useWorkstationStore((state) => state.sceneEvent)
   const markRampUnlocked = useWorkstationStore((state) => state.markRampUnlocked)
@@ -688,10 +690,10 @@ function WorkstationScreen() {
   const handledSceneEventRun = useRef(sceneEvent?.run ?? 0)
 
   useEffect(() => {
-    if (gameActive || !sceneEvent || sceneEvent.run <= handledSceneEventRun.current) return
+    if (!sceneEvent || sceneEvent.run <= handledSceneEventRun.current) return
     handledSceneEventRun.current = sceneEvent.run
     triggerEffect(WORKSTATION_EFFECTS[sceneEvent.id])
-  }, [gameActive, sceneEvent, triggerEffect])
+  }, [sceneEvent, triggerEffect])
 
   useEffect(() => {
     if (gameActive) return
@@ -710,24 +712,25 @@ function WorkstationScreen() {
       transform
       zIndexRange={[30, 0]}
     >
-      {gameActive ? <GameWorkstation /> : (
-        <WorkstationOS
-          effect={effectPreset}
-          effectRun={effectRun}
-          focused={focused}
-          migrationLocked={migrationLocked}
-          migrationStep={migrationStep}
-          onAdvanceMigration={advanceRampMigration}
-          onExit={() => setFocused(false)}
-          onFocus={() => setFocused(true)}
-          onGameComplete={runGiraffeReveal}
-          onManualQueueComplete={queueRampIntroduction}
-          onRestart={resetExpenseExperience}
-          onTryRamp={beginRampTransition}
-          phase={phase}
-          rampPromptVisible={rampPromptVisible}
-        />
-      )}
+      <WorkstationOS
+        effect={effectPreset}
+        effectRun={effectRun}
+        focused={focused}
+        migrationLocked={migrationLocked}
+        migrationStep={migrationStep}
+        onAdvanceMigration={advanceRampMigration}
+        onExit={() => setFocused(false)}
+        onFocus={() => setFocused(true)}
+        onGameComplete={gameActive ? undefined : runGiraffeReveal}
+        onManualQueueComplete={gameActive ? completeGameManualQueue : queueRampIntroduction}
+        onRestart={resetExpenseExperience}
+        onTryRamp={beginRampTransition}
+        phase={gameActive
+          ? gamePhase === 'migrating' ? 'migrating' : gamePhase === 'ramp' ? 'ramp' : 'manual'
+          : phase}
+        rampPromptVisible={gameActive ? false : rampPromptVisible}
+        readOnly={gameActive && (gameAutomationActive || !['manual', 'ramp'].includes(gamePhase))}
+      />
     </Html>
   )
 }
@@ -737,6 +740,7 @@ const DESK_DECISION_POSITIONS = Object.fromEntries(
     .filter((placement) => ['approval-stamp', 'fraud-stamp', 'reject-stamp'].includes(placement.id) && placement.position)
     .map((placement) => [placement.id, placement.position]),
 ) as Record<string, [number, number, number]>
+const DESK_FREEZE_POSITION = DESK_ASSET_PLACEMENTS.find((placement) => placement.id === 'freeze-card-button')?.position
 
 function DeskDecisionLabel({ hint, id, label, onActivate, tone }: {
   hint: string
@@ -766,28 +770,47 @@ function DeskDecisionLabel({ hint, id, label, onActivate, tone }: {
 }
 
 function DeskGameControls() {
-  const feedback = useGameStore((state) => state.feedback)
-  const paused = useGameStore((state) => state.paused)
+  const automationActive = useGameStore((state) => state.automationActive)
   const phase = useGameStore((state) => state.phase)
-  const submitDecision = useGameStore((state) => state.submitDecision)
   const focused = useLabStore((state) => state.workstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const activeCaseId = useWorkstationStore((state) => state.activeCaseId)
+  const closedCaseIds = useWorkstationStore((state) => state.closedCaseIds)
+  const completeCaseAction = useWorkstationStore((state) => state.completeCaseAction)
+  const requestStampedDecision = useWorkstationStore((state) => state.requestStampedDecision)
+  const sessionStatus = useWorkstationStore((state) => state.session.status)
+  const setCardFrozen = useWorkstationStore((state) => state.setCardFrozen)
   const gameActive = window.location.pathname === '/game'
-  const active = gameActive && !focused && !paused && !feedback && ['manual', 'ramp'].includes(phase)
+  const currentCase = WORKSTATION_CASES_BY_ID[activeCaseId]
+  const requiredActions = currentCase.validation.requiredActions ?? []
+  const active = gameActive && !automationActive && !focused && sessionStatus !== 'paused' && !closedCaseIds.includes(activeCaseId) && ['manual', 'ramp'].includes(phase)
 
   if (!active) return null
 
-  const decide = (decision: GameDecision) => {
+  const decide = (decision: WorkstationFinalDecision) => {
     requestGameAudioCue('stamp-pickup', 0.46)
-    submitDecision(decision)
-    triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
+    requestStampedDecision(decision)
+    triggerEffect(decision === 'approve' ? 'approve' : decision === 'investigate' ? 'fraud' : 'reject')
+  }
+
+  const freezeCard = () => {
+    setCardFrozen(true, activeCaseId)
+    completeCaseAction('freeze-card', true, activeCaseId)
+    requestGameAudioCue('freeze-cover', 0.5)
+    requestGameAudioCue('freeze-button', 0.64)
+    triggerEffect('fraud')
   }
 
   return (
     <>
       <DeskDecisionLabel hint="Pay this expense" id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
       <DeskDecisionLabel hint="Send it back" id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="reject" />
-      <DeskDecisionLabel hint="Terminate employee" id="fraud-stamp" label="FIRE" onActivate={() => decide('fire')} tone="fire" />
+      {requiredActions.includes('freeze-card') && DESK_FREEZE_POSITION && (
+        <Html center position={[DESK_FREEZE_POSITION[0], DESK_FREEZE_POSITION[1] + 0.2, DESK_FREEZE_POSITION[2]]} zIndexRange={[24, 1]}>
+          <button className="game-world-hotspot is-danger" onClick={(event) => { event.stopPropagation(); freezeCard() }} type="button">FREEZE CARD</button>
+        </Html>
+      )}
+      <DeskDecisionLabel hint="Escalate for review" id="fraud-stamp" label="INVESTIGATE" onActivate={() => decide('investigate')} tone="fire" />
     </>
   )
 }
@@ -862,35 +885,58 @@ function AnimationFloor() {
 }
 
 function DeskEnvironment() {
-  const feedback = useGameStore((state) => state.feedback)
+  const automationActive = useGameStore((state) => state.automationActive)
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
   const focused = useLabStore((state) => state.workstationFocused)
-  const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
-  const submitDecision = useGameStore((state) => state.submitDecision)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const activeCaseId = useWorkstationStore((state) => state.activeCaseId)
+  const closedCaseIds = useWorkstationStore((state) => state.closedCaseIds)
+  const completeCaseAction = useWorkstationStore((state) => state.completeCaseAction)
+  const requestStampedDecision = useWorkstationStore((state) => state.requestStampedDecision)
+  const sessionStatus = useWorkstationStore((state) => state.session.status)
+  const setCardFrozen = useWorkstationStore((state) => state.setCardFrozen)
   const gameActive = window.location.pathname === '/game'
+  const currentCase = WORKSTATION_CASES_BY_ID[activeCaseId]
+  const requiredActions = currentCase.validation.requiredActions ?? []
 
   const activateAsset = (id: string) => {
-    if (!gameActive || focused || paused || feedback || !['manual', 'ramp'].includes(phase)) return
+    if (!gameActive || automationActive || focused || sessionStatus === 'paused' || closedCaseIds.includes(activeCaseId) || !['manual', 'ramp'].includes(phase)) return
     if (id === 'desk-computer') {
       setFocused(true)
       requestGameAudioCue('paper-slide', 0.32)
       return
     }
-    const decisions: Partial<Record<string, GameDecision>> = {
+    if (id === 'freeze-card-button') {
+      if (!requiredActions.includes('freeze-card')) return
+      setCardFrozen(true, activeCaseId)
+      completeCaseAction('freeze-card', true, activeCaseId)
+      requestGameAudioCue('freeze-button', 0.64)
+      triggerEffect('fraud')
+      return
+    }
+    const decisions: Partial<Record<string, WorkstationFinalDecision>> = {
       'approval-stamp': 'approve',
-      'fraud-stamp': 'fire',
+      'fraud-stamp': 'investigate',
       'reject-stamp': 'reject',
     }
     const decision = decisions[id]
     if (!decision) return
     requestGameAudioCue('stamp-pickup', 0.46)
-    submitDecision(decision)
-    triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
+    requestStampedDecision(decision)
+    triggerEffect(decision === 'approve' ? 'approve' : decision === 'investigate' ? 'fraud' : 'reject')
   }
 
+  const handleModelGameAction = (action: 'calculator-complete' | 'freeze-card') => {
+    if (!gameActive || automationActive || focused || sessionStatus === 'paused' || closedCaseIds.includes(activeCaseId) || !['manual', 'ramp'].includes(phase)) return
+    if (action === 'calculator-complete') return
+    if (!requiredActions.includes('freeze-card')) return
+    setCardFrozen(true, activeCaseId)
+    completeCaseAction('freeze-card', true, activeCaseId)
+    requestGameAudioCue('freeze-button', 0.64)
+    triggerEffect('fraud')
+  }
   return (
     <group>
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
@@ -903,10 +949,11 @@ function DeskEnvironment() {
           <RegisteredAsset
             key={key}
             {...placement}
-            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
+            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'freeze-card-button', 'reject-stamp'].includes(placement.id)
               ? () => activateAsset(placement.id)
               : undefined}
-            visible={placement.id === 'giraffe-reveal' ? giraffeFocused : placement.id !== 'freeze-card-button' || !gameActive}
+            onGameAction={gameActive && placement.id === 'freeze-card-button' ? handleModelGameAction : undefined}
+            visible={placement.id === 'giraffe-reveal' ? giraffeFocused : true}
           >
             {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
           </RegisteredAsset>

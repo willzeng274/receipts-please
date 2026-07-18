@@ -14,6 +14,7 @@ export type WorkstationCaseId =
   | 'ramp-11-travel-impossibility'
   | 'ramp-12-ai-expense-paradox'
   | 'ramp-13-procurement-mismatch'
+  | 'ramp-14-intern-card-catastrophe'
 
 export type WorkstationDecision =
   | 'review'
@@ -30,6 +31,7 @@ export type WorkstationRequiredAction =
   | 'escalate-employee'
   | 'approve-coffee'
   | 'cancel-ai-vendor'
+  | 'escalate-approval'
 
 export type WorkstationSceneEventId =
   | 'decision.approve'

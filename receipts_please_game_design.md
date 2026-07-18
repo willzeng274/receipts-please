@@ -65,11 +65,11 @@ The opening is intentionally hard because information is fragmented across multi
 
 The printer begins ejecting receipts too quickly. Slack messages stack up. The desk starts shaking. The inbox count jumps from around 20 to 47.
 
-The finance manager sends a Ramp migration-ready notification inside the existing workstation. The notification explains that the manual workspace can now be unified and presents exactly one action: **Try Ramp**. It has no dismiss or secondary action.
+The finance manager sends a Ramp migration-ready notification after the manual queue. The game presents exactly one prominent top-left action: **Install Ramp**. It has no dismiss or secondary action.
 
-The player clicks Try Ramp. Workstation focus exits, the camera and desk shake, and the migration controller takes over the same office.
+The player clicks Install Ramp. Workstation focus exits, the camera and desk shake, and the migration controller takes over the same office.
 
-The monitors go black. The lights flicker. A short migration sequence appears. Progress is not an instant timer: the player explicitly advances each connection step, so every bar and status change is driven by interaction:
+The monitors go black. The lights flicker. A short migration sequence appears. In `/game`, its bars and status changes advance at a readable automatic cadence after the install click; in `/scene-lab`, each connection remains explicitly player-driven for review:
 
 - Importing cards
 - Matching receipts
@@ -80,19 +80,19 @@ The monitors go black. The lights flicker. A short migration sequence appears. P
 - 47 expenses checked
 - 6 need attention
 
-After the final player-driven step, the office changes from its dark, stressful manual state to clean bright practical lighting and powers back on with the Ramp workflow. The supplied `public/brand/low-cortisol.jpeg` image briefly fades in and out; it is a relief beat, not a separate ad or title screen.
+In `/game`, all six stages advance automatically after that single click. After the final stage, the office changes from its dark, stressful manual state to clean bright practical lighting and powers back on with the Ramp workflow. The supplied `public/brand/low-cortisol.jpeg` image briefly fades in and out; it is a relief beat, not a separate ad or title screen. `/scene-lab` retains player-driven stage advancement for production review.
 
 ### 2:35 to 4:40, Ramp investigation
 
-The player receives five or six richer cases. Ramp removes repetitive matching and surfaces the relevant evidence, but the player still decides what to do.
+Ramp automatically handles the six richer cases in the Builders Cup demo, visibly completing surfaced control actions and correct judgments while advancing the exception queue. This automated run follows the single Install Ramp click and keeps the connected evidence visible as it works.
 
-The game becomes calmer and more powerful rather than easier in a boring way.
+The game becomes calmer and more powerful, showing the contrast through completed work rather than asking for another interaction loop.
 
 ### 4:40 to 5:00, ending
 
 The inbox reaches zero. The office becomes quiet. The player leans back. The Low Cortisol meter reaches 100 percent.
 
-A Slack message appears:
+A Slack message appears automatically after the Ramp queue completes:
 
 CEO: urgent
 
@@ -433,7 +433,7 @@ Calculator feedback should be funny but concise:
 
 Use React Three Fiber for the 3D world and Drei Html for all readable interfaces. The user-facing workstation is named **Expense OS**. The monitors remain 3D objects, but the screen content is rendered as normal HTML mounted through the monitor's authored screen anchor so it inherits the bezel, focus animation, and parent transforms without a duplicate background screen.
 
-The player should feel like they are using a small finance operating system rather than switching to a separate web application.
+The player should feel like they are using a small finance operating system rather than switching to a separate web application. `/game` and `/scene-lab` mount the same full Expense OS component and case store; the game must not substitute a visually similar second implementation.
 
 ### Main desktop shell
 
@@ -1203,7 +1203,7 @@ The game should preload all critical assets before starting. A five minute demo 
 - Slack
 - Travel timeline
 - Vendor and inventory views
-- Cortisol meter
+- Cortisol meter. Before Ramp it starts at 28 percent, increases on every workstation click or key event, and receives larger spikes from incoming receipts and system effects. After migration it drops to 22 percent.
 
 ### Audio owner
 

@@ -31,6 +31,7 @@ const WORKSTATION_RECEIPT_CASE_IDS = [
   'ramp-11-travel-impossibility',
   'ramp-12-ai-expense-paradox',
   'ramp-13-procurement-mismatch',
+  'ramp-14-intern-card-catastrophe',
 ] as const satisfies readonly WorkstationCaseId[]
 
 function workstationVisualTreatment(value: string): ReceiptProjection['visualTreatment'] {
@@ -469,6 +470,33 @@ const PROCUREMENT_MISMATCH = defineCase({
   validation: { acceptedDecisions: ['reject', 'investigate'], expectedDecision: 'reject', explanation: 'The invoice cannot be approved against the PO and delivery record.', points: 250, requiredEvidenceIds: ['procurement:po', 'procurement:invoice', 'procurement:delivery'] },
 })
 
+const INTERN_CARD_CATASTROPHE = defineCase({
+  amount: '$68,442.19',
+  card: { activeCardCount: 7, id: 'card-intern-7007', last4: '7007', monthlyLimit: '$40,000' },
+  caseNumber: '14',
+  employee: { department: 'Operations', employmentStatus: 'Summer intern', initials: 'RK', location: 'New York', monthlySpend: '$68,442', name: 'Rowan Kim', role: 'Summer intern', startDate: 'Jun 16, 2026' },
+  evidence: [
+    evidence('intern:cards', 'Card profile', '7 active / $40k limit', 'The intern program permits one card with a $500 monthly limit.', 'cards', 'risk'),
+    evidence('intern:purchases', 'Purchase pattern', 'Forklift / alpaca / 600 hoodies', 'The charges do not match the internship program.', 'transactions', 'risk'),
+    evidence('intern:approval', 'Approval record', 'CEO - Let them cook', 'The approval bypassed the configured intern spend policy.', 'people', 'risk'),
+    evidence('intern:policy', 'Intern card policy', '$500 monthly maximum', 'Intern card limits may not exceed $500 per month.', 'policy', 'risk'),
+  ],
+  id: 'ramp-14-intern-card-catastrophe',
+  merchant: 'Intern Spend Program',
+  notices: [{ app: 'cards', detail: 'Seven active cards exceed the intern program limit by $39,500.', id: 'intern-card-alert', title: 'Card program failure', urgent: true }],
+  phase: 'ramp',
+  policy: { evidenceId: 'intern:policy', rule: 'Intern card limits may not exceed $500 per month' },
+  primaryApps: ['cards', 'transactions', 'people', 'policy'],
+  ramp: { explanation: 'Ramp connected seven cards, an extreme limit, prohibited purchases, and the bypass approval.', recommendation: 'Freeze all cards and escalate the CEO approval.', summary: 'One intern has seven cards, a $40,000 limit, and an alpaca.', title: 'Intern card catastrophe' },
+  receipt: { cardLast4: '7007', evidenceId: 'intern:purchases', issuedAt: 'Jul 14 - 4:18 PM', lineItem: 'Intern program purchases', printedTotal: '$68,442.19', subtotal: '$68,442.19', tax: '$0.00' },
+  sequence: 14,
+  source: { catalogCaseId: 'ramp-14-intern-card-catastrophe', catalogId: CATALOG_ID },
+  suggestedDecision: 'investigate',
+  title: 'Intern card catastrophe',
+  transaction: { amount: '$68,442.19', category: 'Employee engagement', evidenceId: 'intern:purchases', memo: 'Let them cook', occurredAt: 'Jul 1-14' },
+  validation: { acceptedDecisions: ['investigate'], expectedDecision: 'investigate', explanation: 'The card program and approval bypass require immediate escalation.', points: 300, requiredActions: ['freeze-card', 'escalate-approval'], requiredEvidenceIds: ['intern:cards', 'intern:purchases', 'intern:approval'] },
+})
+
 export const MANUAL_WORKSTATION_CASES = [
   AMOUNT_MISMATCH,
   IMPOSSIBLE_DATE,
@@ -484,6 +512,7 @@ export const RAMP_WORKSTATION_CASES = [
   TRAVEL_IMPOSSIBILITY,
   AI_EXPENSE_PARADOX,
   PROCUREMENT_MISMATCH,
+  INTERN_CARD_CATASTROPHE,
 ] as const
 
 export const WORKSTATION_CASES = [...MANUAL_WORKSTATION_CASES, ...RAMP_WORKSTATION_CASES] as const

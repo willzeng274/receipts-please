@@ -19,6 +19,7 @@ type DecisionRecord = DecisionResult & {
 }
 
 type GameState = {
+  automationActive: boolean
   caseIndex: number
   decisions: DecisionRecord[]
   elapsedSeconds: number
@@ -32,9 +33,12 @@ type GameState = {
   acknowledgeOverload: () => void
   advanceCase: () => void
   beginMigration: () => void
+  completeAutomatedQueue: () => void
   completeGame: () => void
+  completeManualQueue: () => void
   finishMigration: () => void
   inspectEvidence: (index: number) => void
+  installRamp: () => void
   resetGame: () => void
   startGame: () => void
   submitDecision: (decision: GameDecision) => void
@@ -44,6 +48,7 @@ type GameState = {
 }
 
 const initialState = {
+  automationActive: false,
   caseIndex: 0,
   decisions: [] as DecisionRecord[],
   elapsedSeconds: 0,
@@ -75,7 +80,14 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { caseIndex: nextIndex, feedback: null, reviewedEvidence: [] }
   }),
   beginMigration: () => set({ phase: 'migrating' }),
-  completeGame: () => set({ phase: 'complete', timedOut: false }),
+  completeAutomatedQueue: () => set({ phase: 'ending' }),
+  completeGame: () => set({ automationActive: false, phase: 'complete', timedOut: false }),
+  completeManualQueue: () => set({
+    caseIndex: MANUAL_CASE_COUNT - 1,
+    feedback: null,
+    phase: 'overload',
+    reviewedEvidence: [],
+  }),
   finishMigration: () => set({
     caseIndex: MANUAL_CASE_COUNT,
     feedback: null,
@@ -85,6 +97,13 @@ export const useGameStore = create<GameState>((set, get) => ({
   inspectEvidence: (index) => set((state) => state.reviewedEvidence.includes(index)
     ? state
     : { reviewedEvidence: [...state.reviewedEvidence, index] }),
+  installRamp: () => set({
+    automationActive: true,
+    feedback: null,
+    paused: false,
+    phase: 'migrating',
+    reviewedEvidence: [],
+  }),
   resetGame: () => set(initialState),
   startGame: () => set({ ...initialState, phase: 'manual' }),
   submitDecision: (decision) => {
@@ -120,6 +139,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     const elapsedSeconds = Math.min(GAME_DURATION_SECONDS, state.elapsedSeconds + 1)
     if (elapsedSeconds === GAME_DURATION_SECONDS) {
       return {
+        automationActive: false,
         elapsedSeconds,
         feedback: null,
         paused: false,

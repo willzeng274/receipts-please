@@ -129,7 +129,7 @@
   border-radius: 5px;
 }
 
-.wsos-cortisol b { display: block; width: 88%; height: 100%; background: linear-gradient(90deg, #e2bd52, #df5d48); }
+.wsos-cortisol b { display: block; width: 28%; height: 100%; background: linear-gradient(90deg, #e2bd52, #df5d48); transition: width .22s ease-out; }
 .wsos-root--ramp .wsos-cortisol b { width: 22%; background: var(--wsos-green); }
 .wsos-cortisol em { color: #eef1e8; font-style: normal; }
 

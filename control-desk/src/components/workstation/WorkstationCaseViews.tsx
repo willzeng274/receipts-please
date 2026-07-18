@@ -23,6 +23,7 @@ const ACTION_LABELS: Record<WorkstationRequiredAction, string> = {
   'approve-coffee': 'Approve coffee',
   'cancel-ai-vendor': 'Cancel AI vendor',
   'escalate-employee': 'Escalate employee',
+  'escalate-approval': 'Escalate CEO approval',
   'flag-transaction': 'Flag transaction',
   'freeze-card': 'Freeze card',
 }
