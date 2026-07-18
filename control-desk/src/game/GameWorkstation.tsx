@@ -1,45 +1,10 @@
-import { useEffect, useMemo, useState, type DragEvent } from 'react'
-import { useLabStore, type EffectPreset } from '../store/useLabStore'
-import { GAME_CASES, MANUAL_CASE_COUNT, formatMoney, formatReceiptDate, type GameDecision } from './gameData'
+import { useEffect, useMemo, useState } from 'react'
+import { useLabStore } from '../store/useLabStore'
+import { GAME_CASES, MANUAL_CASE_COUNT, formatMoney, formatReceiptDate, type GameCase } from './gameData'
 import { requestGameAudioCue } from './gameAudio'
 import { useGameStore } from './useGameStore'
 
 import './game.css'
-
-const DECISIONS: Array<{ decision: GameDecision; label: string }> = [
-  { decision: 'approve', label: 'Approve' },
-  { decision: 'reject', label: 'Reject' },
-  { decision: 'investigate', label: 'Investigate' },
-]
-
-const EFFECT_FOR_DECISION: Record<GameDecision, EffectPreset> = {
-  approve: 'approve',
-  investigate: 'fraud',
-  reject: 'reject',
-}
-
-const MANUAL_SLACK_MESSAGES = [
-  ['Finance Manager', 'Need these cleared before lunch. Inbox: 12 and developing ambitions.'],
-  ['People Ops', 'Rowan starts Friday. Why is there already a receipt?'],
-  ['Rowan', 'The dinner was executive in spirit.'],
-  ['Finance Ops', 'A 4,495% tip has entered the chat.'],
-  ['Alex', 'The fonts looked consistent on my phone.'],
-  ['IT Inventory', 'We cannot locate the laptops or, currently, Sam.'],
-] as const
-
-const MANUAL_POLICY_RULES = [
-  '$35 per meal attendee',
-  'Tips above 25% require review',
-  'Receipt amount and date must match',
-  'Technology requires inventory records',
-]
-
-const RAMP_POLICY_RULES = [
-  'Policy automatically checked',
-  'Vendor and approval history connected',
-  'Travel and inventory linked',
-  'Judgment still required',
-]
 
 function formatTime(seconds: number) {
   const remaining = Math.max(0, 300 - seconds)
@@ -50,120 +15,219 @@ function titleCase(value: string) {
   return value.replaceAll('-', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase())
 }
 
-export function GameWorkstation() {
-  const activeActions = useGameStore((state) => state.activeActions)
-  const advanceCase = useGameStore((state) => state.advanceCase)
-  const beginMigration = useGameStore((state) => state.beginMigration)
-  const caseIndex = useGameStore((state) => state.caseIndex)
-  const decisions = useGameStore((state) => state.decisions)
-  const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
-  const feedback = useGameStore((state) => state.feedback)
-  const paused = useGameStore((state) => state.paused)
-  const performAction = useGameStore((state) => state.performAction)
-  const phase = useGameStore((state) => state.phase)
-  const soundEnabled = useGameStore((state) => state.soundEnabled)
-  const submitDecision = useGameStore((state) => state.submitDecision)
-  const togglePause = useGameStore((state) => state.togglePause)
-  const toggleSound = useGameStore((state) => state.toggleSound)
-  const beginRampTransition = useLabStore((state) => state.beginRampTransition)
-  const triggerEffect = useLabStore((state) => state.triggerEffect)
-  const [selectedEvidence, setSelectedEvidence] = useState(0)
-  const [calculatorVisible, setCalculatorVisible] = useState(false)
-  const [receiptDragging, setReceiptDragging] = useState(false)
-  const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
+function ReceiptDocument({ gameCase }: { gameCase: GameCase }) {
+  const frankenstein = gameCase.caseId === 'manual-05-frankenstein-receipt'
+  return (
+    <article className={`game-receipt game-receipt--${gameCase.receipt.visualTreatmentId}${frankenstein ? ' game-receipt--frankenstein' : ''}`}>
+      <span className={frankenstein ? 'is-merchant-font' : ''}>{gameCase.receipt.merchant.name}</span>
+      <small>{gameCase.receipt.merchant.addressLines[0]}</small>
+      <small>{formatReceiptDate(gameCase.receipt.issuedAt)}</small>
+      <hr />
+      {gameCase.receipt.lineItems.map((line) => (
+        <div key={`${line.description}-${line.quantity}`}><b>{line.quantity}× {line.description}</b><strong>{formatMoney(line.lineTotalCents)}</strong></div>
+      ))}
+      <hr />
+      <div><b>SUBTOTAL</b><strong>{formatMoney(gameCase.receipt.amounts.subtotalCents)}</strong></div>
+      {gameCase.receipt.amounts.taxCents > 0 && (
+        <div className={frankenstein ? 'is-rotated-tax' : ''}><b>TAX</b><strong>{formatMoney(gameCase.receipt.amounts.taxCents)}</strong></div>
+      )}
+      {gameCase.receipt.amounts.tipCents > 0 && <div><b>TIP</b><strong>{formatMoney(gameCase.receipt.amounts.tipCents)}</strong></div>}
+      <div className={`${gameCase.receipt.amounts.printedTotalCents !== gameCase.receipt.amounts.calculatedTotalCents ? 'is-altered' : ''}${frankenstein ? ' is-comic-total' : ''}`}><b>TOTAL</b><strong>{formatMoney(gameCase.receipt.amounts.printedTotalCents)}</strong></div>
+      <hr />
+      <small className={frankenstein ? 'is-card-font' : ''}>{gameCase.receipt.payment.method} •••• {gameCase.receipt.payment.cardLast4}</small>
+      {typeof gameCase.receipt.copy.memo === 'string' && <p>{gameCase.receipt.copy.memo}</p>}
+    </article>
+  )
+}
+
+function CaseQueue({ currentCase, caseIndex, decisions }: {
+  currentCase: GameCase
+  caseIndex: number
+  decisions: ReturnType<typeof useGameStore.getState>['decisions']
+}) {
+  const queueCases = useMemo(() => GAME_CASES.filter((entry) => entry.era === currentCase.era), [currentCase.era])
   const correctCount = decisions.filter((decision) => decision.correct).length
-  const phaseCaseNumber = currentCase.era === 'manual' ? caseIndex + 1 : caseIndex - MANUAL_CASE_COUNT + 1
-  const phaseCaseTotal = currentCase.era === 'manual' ? MANUAL_CASE_COUNT : GAME_CASES.length - MANUAL_CASE_COUNT
-  const inboxCount = phase === 'migration-prompt'
-    ? 47
-    : currentCase.era === 'manual'
-      ? Math.max(12, 12 + Math.floor(elapsedSeconds / 18) - Math.floor(decisions.length / 2))
-      : Math.max(0, GAME_CASES.length - caseIndex)
-  const cortisol = phase === 'migration-prompt'
-    ? 97
-    : currentCase.era === 'manual'
-      ? Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
-      : Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6)
+  return (
+    <aside className="game-queue">
+      <header><span>{currentCase.era === 'manual' ? 'Expense inbox' : 'Exceptions only'}</span><b>{currentCase.era === 'manual' ? '12 → 47' : '6 need judgment'}</b></header>
+      {queueCases.map((entry) => {
+        const absoluteIndex = GAME_CASES.indexOf(entry)
+        return (
+          <div className={`${absoluteIndex === caseIndex ? 'is-current' : ''}${absoluteIndex < caseIndex ? ' is-done' : ''}`} key={entry.caseId}>
+            <span>{String(entry.sequence).padStart(2, '0')}</span>
+            <strong>{entry.queueLabel}</strong>
+            <small>{absoluteIndex < caseIndex ? 'reviewed' : absoluteIndex === caseIndex ? entry.receipt.merchant.name : 'waiting'}</small>
+          </div>
+        )
+      })}
+      <footer><span>Judgment accuracy</span><strong>{decisions.length ? Math.round(correctCount / decisions.length * 100) : 100}%</strong></footer>
+    </aside>
+  )
+}
+
+function ManualWorkspace({ currentCase }: { currentCase: GameCase }) {
+  const inspectEvidence = useGameStore((state) => state.inspectEvidence)
+  const reviewedEvidence = useGameStore((state) => state.reviewedEvidence)
+  const [selectedEvidence, setSelectedEvidence] = useState(0)
   const selected = currentCase.evidence[selectedEvidence] ?? currentCase.evidence[0]
-  const requiredActions = currentCase.truth.requiredActions ?? []
-  const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
-    ? 'Face the printer backlog'
-    : caseIndex === GAME_CASES.length - 1
-      ? 'Clear the inbox'
-      : 'Next case'
-  const slackMessage = MANUAL_SLACK_MESSAGES[Math.min(caseIndex, MANUAL_SLACK_MESSAGES.length - 1)]
 
   useEffect(() => {
     setSelectedEvidence(0)
-    setCalculatorVisible(false)
-    setReceiptDragging(false)
-  }, [currentCase.caseId])
+    inspectEvidence(0)
+  }, [currentCase.caseId, inspectEvidence])
 
-  const queueCases = useMemo(() => GAME_CASES.filter((entry) => entry.era === currentCase.era), [currentCase.era])
-
-  const handleDecision = (decision: GameDecision) => {
-    requestGameAudioCue('stamp-pickup', 0.46)
-    submitDecision(decision)
-    triggerEffect(EFFECT_FOR_DECISION[decision])
+  const openRecord = (index: number) => {
+    setSelectedEvidence(index)
+    inspectEvidence(index)
+    requestGameAudioCue('evidence-link', 0.3)
   }
 
-  const handleReceiptDragStart = (event: DragEvent<HTMLElement>) => {
-    if (feedback || paused || !['manual', 'ramp'].includes(phase)) {
-      event.preventDefault()
-      return
-    }
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('application/x-receipts-please-case', currentCase.caseId)
-    setReceiptDragging(true)
-    requestGameAudioCue('paper-pickup', 0.4)
-  }
+  return (
+    <main className="game-case-view game-manual-workspace">
+      <header>
+        <div><span>CASE {String(currentCase.sequence).padStart(2, '0')} · {currentCase.employee}</span><h1>{currentCase.title}</h1></div>
+        <em>MANUAL RECONCILIATION</em>
+      </header>
 
-  const handleReceiptDrop = (event: DragEvent<HTMLButtonElement>, decision: GameDecision) => {
-    event.preventDefault()
-    if (event.dataTransfer.getData('application/x-receipts-please-case') !== currentCase.caseId) return
-    setReceiptDragging(false)
-    requestGameAudioCue('receipt-drop', 0.42)
-    handleDecision(decision)
-  }
+      <div className="game-fragmented-layout">
+        <nav aria-label="Fragmented finance applications" className="game-app-dock">
+          <span>OPEN APPS</span>
+          {currentCase.evidence.map((evidence, index) => (
+            <button className={selectedEvidence === index ? 'is-active' : ''} key={`${evidence.source}-${index}`} onClick={() => openRecord(index)} type="button">
+              <b>{evidence.source?.slice(0, 2).toUpperCase()}</b>
+              <span>{evidence.source}</span>
+              {reviewedEvidence.includes(index) && <i>VIEWED</i>}
+            </button>
+          ))}
+          <div className="game-slack-notice"><b>FINANCE MANAGER</b><p>Need these cleared before lunch.</p><small>11:54 AM · unread</small></div>
+        </nav>
+
+        <section className="game-manual-document"><ReceiptDocument gameCase={currentCase} /></section>
+
+        <section className="game-record-window">
+          <header><span>{selected.source}</span><small>WINDOW {selectedEvidence + 1} OF {currentCase.evidence.length}</small></header>
+          <div>
+            <span>{selected.label}</span>
+            <strong>{selected.value}</strong>
+            <p>{selected.detail}</p>
+          </div>
+          <footer>
+            <span>{reviewedEvidence.length}/{currentCase.evidence.length} records checked</span>
+            <small>Compare the raw records yourself. Expense OS does not connect them.</small>
+          </footer>
+        </section>
+      </div>
+    </main>
+  )
+}
+
+function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
+  const activeActions = useGameStore((state) => state.activeActions)
+  const performAction = useGameStore((state) => state.performAction)
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const requiredActions = currentCase.truth.requiredActions ?? []
 
   const handleAction = (action: string) => {
     performAction(action)
     if (action === 'freeze-card') {
-      requestGameAudioCue('freeze-cover', 0.5)
-      requestGameAudioCue('freeze-button', 0.64)
+      requestGameAudioCue('freeze-cover', 0.45)
+      requestGameAudioCue('freeze-button', 0.6)
       triggerEffect('fraud')
       return
     }
-    requestGameAudioCue('evidence-link', 0.38)
+    requestGameAudioCue('evidence-link', 0.35)
+    triggerEffect('paper-drop')
   }
 
-  const handleEvidence = (index: number) => {
-    setSelectedEvidence(index)
-    setCalculatorVisible(false)
-    requestGameAudioCue('evidence-link', 0.34)
-  }
+  return (
+    <main className="game-case-view game-ramp-workspace">
+      <section className="game-ramp-automation">
+        <div><span>EXPENSES CHECKED</span><strong>47</strong></div>
+        <div><span>AUTO-CLEARED</span><strong>38</strong></div>
+        <div><span>RETURNED FOR INFO</span><strong>3</strong></div>
+        <div className="is-live"><span>NEED JUDGMENT</span><strong>6</strong></div>
+      </section>
 
-  const handleCalculator = () => {
-    const opening = !calculatorVisible
-    setCalculatorVisible(opening)
-    requestGameAudioCue('calculator-key', 0.36)
-    if (opening) requestGameAudioCue('calculator-print', 0.44)
-  }
+      <header>
+        <div><span>EXCEPTION {String(currentCase.sequence - MANUAL_CASE_COUNT).padStart(2, '0')} · {currentCase.employee}</span><h1>{currentCase.title}</h1></div>
+        <em>RAMP SURFACED</em>
+      </header>
+
+      <div className="game-ramp-layout">
+        <section className="game-ramp-case-summary">
+          <span>RECOMMENDATION</span>
+          <strong>{titleCase(currentCase.truth.expectedDecision)}</strong>
+          <p>{currentCase.workflow.exceptionReason}</p>
+          <small>{currentCase.workflow.automation} · reviewer retains final authority</small>
+        </section>
+
+        <section className="game-connected-evidence">
+          <header><span>CONNECTED EVIDENCE</span><b>{currentCase.workflow.connectedSystems.length} systems joined</b></header>
+          <div>
+            {currentCase.evidence.map((evidence) => (
+              <article className={`is-${evidence.tone ?? 'neutral'}`} key={evidence.label}>
+                <span>{evidence.label}</span><strong>{evidence.value}</strong><p>{evidence.detail}</p>
+              </article>
+            ))}
+          </div>
+          <footer><span>POLICY CITATION</span><strong>{currentCase.workflow.policyCitation}</strong></footer>
+        </section>
+      </div>
+
+      {requiredActions.length > 0 && (
+        <section className="game-case-actions">
+          <span>CONTROL ACTIONS · COMPLETE BEFORE YOUR FINAL JUDGMENT</span>
+          <div>{requiredActions.map((action) => (
+            <button
+              className={`${activeActions.includes(action) ? 'is-complete' : ''}${action === 'freeze-card' ? ' is-desk-only' : ''}`}
+              disabled={action === 'freeze-card'}
+              key={action}
+              onClick={() => handleAction(action)}
+              type="button"
+            >
+              {activeActions.includes(action) ? '✓ ' : ''}{currentCase.actionLabels[action] ?? titleCase(action)}
+              {action === 'freeze-card' && !activeActions.includes(action) ? ' · use physical control' : ''}
+            </button>
+          ))}</div>
+        </section>
+      )}
+    </main>
+  )
+}
+
+export function GameWorkstation() {
+  const caseIndex = useGameStore((state) => state.caseIndex)
+  const decisions = useGameStore((state) => state.decisions)
+  const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
+  const paused = useGameStore((state) => state.paused)
+  const phase = useGameStore((state) => state.phase)
+  const reviewedEvidence = useGameStore((state) => state.reviewedEvidence)
+  const soundEnabled = useGameStore((state) => state.soundEnabled)
+  const togglePause = useGameStore((state) => state.togglePause)
+  const toggleSound = useGameStore((state) => state.toggleSound)
+  const beginMigration = useGameStore((state) => state.beginMigration)
+  const beginRampTransition = useLabStore((state) => state.beginRampTransition)
+  const setWorkstationFocused = useLabStore((state) => state.setWorkstationFocused)
+  const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
+  const rampActive = phase === 'ramp'
+  const inboxCount = rampActive ? Math.max(0, GAME_CASES.length - caseIndex) : Math.max(12, 12 + Math.floor(elapsedSeconds / 18) - Math.floor(decisions.length / 2))
+  const cortisol = rampActive ? Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6) : Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
+  const recordsComplete = reviewedEvidence.length >= currentCase.evidence.length
 
   const handleTryRamp = () => {
     beginMigration()
     beginRampTransition()
   }
 
-  const handleAdvanceCase = () => {
-    if (caseIndex === MANUAL_CASE_COUNT - 1) triggerEffect('printer-jam')
-    advanceCase()
+  const returnToDesk = () => {
+    requestGameAudioCue('paper-slide', 0.32)
+    setWorkstationFocused(false)
   }
 
   return (
     <div
       aria-label="Receipts, Please game workstation"
-      className={`game-workstation game-workstation--${currentCase.era}`}
+      className={`game-workstation game-workstation--${rampActive ? 'ramp' : 'manual'}`}
       onClick={(event) => event.stopPropagation()}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerUp={(event) => event.stopPropagation()}
@@ -171,7 +235,7 @@ export function GameWorkstation() {
       role="application"
     >
       <header className="game-os-bar">
-        <div><b>R/P</b><strong>{currentCase.era === 'manual' ? 'Expense OS' : 'Ramp · Expenses'}</strong><span>{currentCase.era === 'manual' ? '0:20–2:10 · LOCAL WORKSPACE' : '2:35–4:40 · CONNECTED WORKSPACE'}</span></div>
+        <div><b>{rampActive ? 'R' : 'R/P'}</b><strong>{rampActive ? 'Ramp · Expenses' : 'Expense OS'}</strong><span>{rampActive ? 'CONNECTED EXCEPTION WORKSPACE' : 'LOCAL FILES · MANUAL MATCHING'}</span></div>
         <div>
           <span>INBOX <strong>{inboxCount}</strong></span>
           <label><span>LOW CORTISOL</span><i><b style={{ width: `${100 - cortisol}%` }} /></i><em>{100 - cortisol}%</em></label>
@@ -182,145 +246,27 @@ export function GameWorkstation() {
       </header>
 
       <div className="game-os-body">
-        <aside className="game-queue">
-          <header><span>{currentCase.era === 'manual' ? 'Expense inbox' : 'Needs judgment'}</span><b>{phaseCaseNumber}/{phaseCaseTotal}</b></header>
-          {queueCases.map((entry) => {
-            const absoluteIndex = GAME_CASES.indexOf(entry)
-            return (
-              <div className={`${absoluteIndex === caseIndex ? 'is-current' : ''}${absoluteIndex < caseIndex ? ' is-done' : ''}`} key={entry.caseId}>
-                <span>{String(entry.sequence).padStart(2, '0')}</span>
-                <strong>{entry.queueLabel}</strong>
-                <small>{absoluteIndex < caseIndex ? 'reviewed' : absoluteIndex === caseIndex ? entry.receipt.merchant.name : 'waiting'}</small>
-              </div>
-            )
-          })}
-          <footer><span>Accuracy</span><strong>{decisions.length ? Math.round(correctCount / decisions.length * 100) : 100}%</strong></footer>
-        </aside>
-
-        <main className="game-case-view">
-          <header>
-            <div><span>CASE {String(currentCase.sequence).padStart(2, '0')} · {currentCase.employee}</span><h1>{currentCase.title}</h1></div>
-            <em>{currentCase.era === 'manual' ? 'MANUAL MATCHING' : 'RAMP SURFACED'}</em>
-          </header>
-
-          <div className="game-document-stage">
-            <article
-              className={`game-receipt game-receipt--${currentCase.receipt.visualTreatmentId}${receiptDragging ? ' is-dragging' : ''}`}
-              draggable={!feedback && !paused && ['manual', 'ramp'].includes(phase)}
-              onDragEnd={() => setReceiptDragging(false)}
-              onDragStart={handleReceiptDragStart}
-            >
-              <span>{currentCase.receipt.merchant.name}</span>
-              <small>{currentCase.receipt.merchant.addressLines[0]}</small>
-              <small>{formatReceiptDate(currentCase.receipt.issuedAt)}</small>
-              <hr />
-              {currentCase.receipt.lineItems.map((line) => (
-                <div key={`${line.description}-${line.quantity}`}><b>{line.quantity}× {line.description}</b><strong>{formatMoney(line.lineTotalCents)}</strong></div>
-              ))}
-              <hr />
-              <div><b>SUBTOTAL</b><strong>{formatMoney(currentCase.receipt.amounts.subtotalCents)}</strong></div>
-              {currentCase.receipt.amounts.taxCents > 0 && <div><b>TAX</b><strong>{formatMoney(currentCase.receipt.amounts.taxCents)}</strong></div>}
-              {currentCase.receipt.amounts.tipCents > 0 && <div className="is-risk"><b>TIP</b><strong>{formatMoney(currentCase.receipt.amounts.tipCents)}</strong></div>}
-              <div className={currentCase.receipt.amounts.printedTotalCents !== currentCase.receipt.amounts.calculatedTotalCents ? 'is-altered' : ''}><b>TOTAL</b><strong>{formatMoney(currentCase.receipt.amounts.printedTotalCents)}</strong></div>
-              <hr />
-              <small>{currentCase.receipt.payment.method} •••• {currentCase.receipt.payment.cardLast4}</small>
-              {typeof currentCase.receipt.copy.memo === 'string' && <p>{currentCase.receipt.copy.memo}</p>}
-              {caseIndex === 0 && !feedback && <em className="game-drag-hint">Drag this receipt to a decision tray</em>}
-            </article>
-
-            <section className="game-evidence-inspector">
-              <nav aria-label="Case evidence">
-                {currentCase.evidence.map((evidence, index) => (
-                  <button className={!calculatorVisible && selectedEvidence === index ? 'is-active' : ''} key={evidence.label} onClick={() => handleEvidence(index)} type="button">{evidence.label}</button>
-                ))}
-                {currentCase.truth.calculatorOperation && <button className={calculatorVisible ? 'is-active' : ''} onClick={handleCalculator} type="button">Calculator</button>}
-              </nav>
-
-              {calculatorVisible && currentCase.truth.calculatorOperation ? (
-                <div className="game-calculator-tape">
-                  <span>CALCULATOR TAPE</span><strong>{currentCase.truth.calculatorOperation.resultDisplay}</strong><small>Attached as evidence</small>
-                </div>
-              ) : (
-                <div className={`game-evidence-card game-evidence-card--${selected.tone ?? 'neutral'}`}>
-                  <span>{selected.label}</span><strong>{selected.value}</strong><p>{selected.detail}</p>
-                </div>
-              )}
-
-              {currentCase.era === 'manual' ? (
-                <p className="game-workflow-note">Information is split across records. Inspect the receipt, compare the open evidence, then make the call.</p>
-              ) : (
-                <div className="game-ramp-summary"><span>Connected evidence</span><strong>{currentCase.evidence.filter((item) => item.tone === 'risk').length} risk signals surfaced</strong><p>Only this case still needs your judgment.</p></div>
-              )}
-            </section>
-          </div>
-
-          <section className={`game-policy-context game-policy-context--${currentCase.era}`}>
-            <span>{currentCase.era === 'manual' ? 'POLICY SHEET · PAPER COPY' : 'RAMP · STRUCTURED POLICY'}</span>
-            <div>{(currentCase.era === 'manual' ? MANUAL_POLICY_RULES : RAMP_POLICY_RULES).map((rule) => <i key={rule}>{rule}</i>)}</div>
-          </section>
-
-          {requiredActions.length > 0 && (
-            <section className="game-case-actions">
-              <span>Required case actions</span>
-              <div>{requiredActions.map((action) => <button className={activeActions.includes(action) ? 'is-complete' : ''} key={action} onClick={() => handleAction(action)} type="button">{activeActions.includes(action) ? '✓ ' : ''}{currentCase.actionLabels[action] ?? titleCase(action)}</button>)}</div>
-            </section>
-          )}
-        </main>
+        <CaseQueue caseIndex={caseIndex} currentCase={currentCase} decisions={decisions} />
+        {rampActive ? <RampWorkspace currentCase={currentCase} /> : <ManualWorkspace currentCase={currentCase} />}
       </div>
 
-      {currentCase.era === 'manual' && phase === 'manual' && !feedback && (
-        <aside className="game-slack-toast" aria-live="polite">
-          <span>SLACK · NEW MESSAGE</span>
-          <strong>{slackMessage[0]}</strong>
-          <p>{slackMessage[1]}</p>
-        </aside>
-      )}
-
-      <footer className="game-decision-bar">
-        <div><span>Decision trays</span><small>One main clue · judgment stays with you</small></div>
-        {DECISIONS.map(({ decision, label }) => (
-          <button
-            className={`is-${decision}${receiptDragging ? ' is-drop-ready' : ''}`}
-            disabled={Boolean(feedback) || paused}
-            key={decision}
-            onClick={() => handleDecision(decision)}
-            onDragOver={(event) => {
-              if (!receiptDragging) return
-              event.preventDefault()
-              event.dataTransfer.dropEffect = 'move'
-            }}
-            onDrop={(event) => handleReceiptDrop(event, decision)}
-            type="button"
-          >
-            <span>{label}</span><small>{decision === 'investigate' ? 'Hold + escalate' : `Stamp ${label.toLowerCase()}`}</small>
-          </button>
-        ))}
+      <footer className="game-workstation-footer">
+        <div>
+          <span>{rampActive ? 'RAMP DID THE MATCHING' : `${reviewedEvidence.length}/${currentCase.evidence.length} RECORDS OPENED`}</span>
+          <small>{rampActive ? 'Review the connected exception, take any control actions, then make the judgment at your desk.' : recordsComplete ? 'Records checked. Return to the physical desk to calculate or stamp.' : 'Open every relevant application before leaving the monitor.'}</small>
+        </div>
+        <button onClick={returnToDesk} type="button">Return to desk</button>
       </footer>
 
       {phase === 'migration-prompt' && (
         <section aria-labelledby="game-ramp-title" aria-modal="true" className="game-migration-prompt" role="dialog">
           <img alt="Ramp" src="/brand/ramp-lockup-white.svg" />
           <span>Finance Ops · migration ready</span>
-          <h2 id="game-ramp-title">Your Ramp workspace is ready.</h2>
-          <p>Receipts, policy, travel, vendors, inventory, and card controls can now meet in one place. Your judgment stays in the loop.</p>
-          <dl><div><dt>Expenses checked</dt><dd>47</dd></div><div><dt>Need attention</dt><dd>6</dd></div></dl>
-          <div className="game-pressure-stack" aria-label="Finance Ops messages">
-            <span><b>Finance Ops</b> Inbox is moving in the wrong direction.</span>
-            <span><b>Finance Manager</b> Printer is doing something medically concerning.</span>
-            <span><b>Finance Ops</b> Migration is ready. Please click the only button.</span>
-          </div>
+          <h2 id="game-ramp-title">Stop reconciling this by hand.</h2>
+          <p>Ramp can match receipts, apply policy, connect trips and vendors, and return only the exceptions that still need your judgment.</p>
+          <dl><div><dt>Inbox now</dt><dd>47</dd></div><div><dt>Expected exceptions</dt><dd>6</dd></div></dl>
           <button onClick={handleTryRamp} type="button">Try Ramp</button>
-          <small>This is the only way forward.</small>
-        </section>
-      )}
-
-      {feedback && (
-        <section aria-live="polite" className={`game-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'}`}>
-          <span>{feedback.correct ? 'CORRECT JUDGMENT' : 'AUDIT NOTE'}</span>
-          <h2>{feedback.correct ? currentCase.truth.primaryClue : `Expected: ${titleCase(feedback.expectedDecision)}`}</h2>
-          <p>{feedback.explanation}</p>
-          {feedback.missingActions.length > 0 && <small>Missing actions: {feedback.missingActions.map((action) => currentCase.actionLabels[action] ?? titleCase(action)).join(', ')}</small>}
-          <button onClick={handleAdvanceCase} type="button">{nextLabel}</button>
+          <small>One workspace. The same human judgment. Much less scavenger hunting.</small>
         </section>
       )}
 

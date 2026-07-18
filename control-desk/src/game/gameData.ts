@@ -49,8 +49,17 @@ type CatalogCase = {
 export type GameEvidence = {
   detail: string
   label: string
+  source?: string
   tone?: 'good' | 'neutral' | 'risk'
   value: string
+}
+
+export type GameWorkflow = {
+  automation: string
+  connectedSystems: string[]
+  exceptionReason: string
+  policyCitation?: string
+  requiredDeskTool?: 'calculator'
 }
 
 export type GameCase = CatalogCase & {
@@ -59,6 +68,7 @@ export type GameCase = CatalogCase & {
   era: GameEra
   evidence: GameEvidence[]
   queueLabel: string
+  workflow: GameWorkflow
 }
 
 const catalogCases = receiptCatalog.cases as CatalogCase[]
@@ -83,63 +93,107 @@ const CASE_PRESENTATION: Record<string, {
   employee: string
   evidence: GameEvidence[]
   queueLabel: string
+  workflow: GameWorkflow
 }> = {
   'manual-01-amount-mismatch': {
     employee: 'Maya Chen · Product Design',
     queueLabel: 'Amount mismatch',
+    workflow: {
+      automation: 'Receipt matching',
+      connectedSystems: ['Transactions', 'Receipt viewer', 'Calculator'],
+      exceptionReason: 'Receipt total and card transaction do not agree.',
+      policyCitation: 'Receipts must match transaction amount, merchant, and date.',
+    },
     evidence: [
-      { label: 'Transaction', value: '$18.40', detail: 'Chopped · Visa •••• 4812', tone: 'neutral' },
-      { label: 'Receipt', value: '$81.40', detail: 'Leading digit has different ink density.', tone: 'risk' },
-      { label: 'Arithmetic', value: '$18.40', detail: 'Subtotal plus tax without the overwritten digit.', tone: 'good' },
+      { source: 'Transactions', label: 'Card transaction', value: '$18.40', detail: 'Chopped · Jun 18 · Visa •••• 4812', tone: 'neutral' },
+      { source: 'Receipt viewer', label: 'Submitted receipt', value: '$81.40', detail: 'Chopped · Jun 18 · photographed paper receipt', tone: 'neutral' },
+      { source: 'Calculator', label: 'Receipt arithmetic', value: '$16.40 + $2.00', detail: 'Subtotal plus tax shown on the document.', tone: 'neutral' },
     ],
   },
   'manual-02-impossible-date': {
     employee: 'Rowan Kim · Summer Intern',
     queueLabel: 'Impossible date',
+    workflow: {
+      automation: 'Employee context',
+      connectedSystems: ['Receipt viewer', 'People directory'],
+      exceptionReason: 'The transaction predates the cardholder’s employment.',
+      policyCitation: 'Card transactions must belong to an active employee.',
+    },
     evidence: [
-      { label: 'Receipt date', value: 'Jun 18', detail: 'Metro Cafe · transaction matches.', tone: 'neutral' },
-      { label: 'Start date', value: 'Jun 21', detail: 'Employee joined three days after the purchase.', tone: 'risk' },
+      { source: 'Receipt viewer', label: 'Receipt date', value: 'Jun 18', detail: 'Metro Cafe · card and receipt amounts agree.', tone: 'neutral' },
+      { source: 'People directory', label: 'Employee profile', value: 'Started Jun 21', detail: 'Rowan Kim · Summer Intern · Active', tone: 'neutral' },
     ],
   },
   'manual-03-omakase-intern': {
     employee: 'Rowan Kim · Summer Intern',
     queueLabel: 'Omakase intern',
+    workflow: {
+      automation: 'Policy review',
+      connectedSystems: ['Receipt viewer', 'Policy PDF', 'People directory'],
+      exceptionReason: 'A one-person meal exceeds the company limit by $649.',
+      policyCitation: 'Meals are limited to $35 per attendee.',
+    },
     evidence: [
-      { label: 'Meal', value: '$684.00', detail: 'One attendee: “Me”.', tone: 'risk' },
-      { label: 'Policy PDF', value: '$35 / person', detail: 'Meals are limited per attendee.', tone: 'risk' },
-      { label: 'Memo', value: 'Executive dinner', detail: 'Submitted by a summer intern dining alone.', tone: 'neutral' },
+      { source: 'Receipt viewer', label: 'Meal receipt', value: '$684.00', detail: 'Omakase tasting menu · attendee: “Me”.', tone: 'neutral' },
+      { source: 'Policy PDF', label: 'Meal policy', value: '$35 / attendee', detail: 'Section 4.2 · Business meals', tone: 'neutral' },
+      { source: 'People directory', label: 'Employee profile', value: 'Summer Intern', detail: 'Rowan Kim · no direct reports · started Jun 21', tone: 'neutral' },
     ],
   },
   'manual-04-infinite-tip': {
     employee: 'Devon Lee · Partnerships',
     queueLabel: 'Infinite tip',
+    workflow: {
+      automation: 'Policy calculation',
+      connectedSystems: ['Receipt viewer', 'Policy PDF', 'Calculator'],
+      exceptionReason: 'The tip exceeds the configured review threshold.',
+      policyCitation: 'Tips above 25% require review.',
+      requiredDeskTool: 'calculator',
+    },
     evidence: [
-      { label: 'Food', value: '$21.80', detail: 'Corner Diner lunch special.', tone: 'neutral' },
-      { label: 'Tip', value: '$980.00', detail: 'Memo: Investing in the relationship.', tone: 'risk' },
-      { label: 'Policy', value: '25%', detail: 'Tips above this threshold require review.', tone: 'risk' },
+      { source: 'Receipt viewer', label: 'Meal subtotal', value: '$21.80', detail: 'Corner Diner · lunch special.', tone: 'neutral' },
+      { source: 'Receipt viewer', label: 'Written tip', value: '$980.00', detail: 'Memo: “Investing in the relationship.”', tone: 'neutral' },
+      { source: 'Policy PDF', label: 'Tip policy', value: 'Review above 25%', detail: 'Section 4.3 · Gratuity', tone: 'neutral' },
     ],
   },
   'manual-05-frankenstein-receipt': {
     employee: 'Alex Morgan · Sales',
     queueLabel: 'Frankenstein receipt',
+    workflow: {
+      automation: 'Document analysis',
+      connectedSystems: ['Receipt viewer', 'Transactions', 'Card details'],
+      exceptionReason: 'The submitted document contains inconsistent typography and layout.',
+      policyCitation: 'Receipts must be authentic and match the card transaction.',
+    },
     evidence: [
-      { label: 'Merchant type', value: 'Helvetica', detail: 'Merchant uses a different source typeface.', tone: 'risk' },
-      { label: 'Total type', value: 'Comic Sans', detail: 'Total and subtotal do not share typography.', tone: 'risk' },
-      { label: 'Tax line', value: 'Rotated', detail: 'Baseline and card weight are inconsistent.', tone: 'risk' },
+      { source: 'Receipt viewer', label: 'Document image', value: 'Zoom 175%', detail: 'Inspect merchant, tax, total, and card digits.', tone: 'neutral' },
+      { source: 'Transactions', label: 'Card transaction', value: '$412.88', detail: 'Northstar Bistro · Visa •••• 1044', tone: 'neutral' },
+      { source: 'Card details', label: 'Card on file', value: '•••• 1044', detail: 'Alex Morgan · Sales', tone: 'neutral' },
     ],
   },
   'manual-06-garbage-receipt': {
     employee: 'Sam Patel · IT Director',
     queueLabel: 'Garbage receipt',
+    workflow: {
+      automation: 'Submission requirements',
+      connectedSystems: ['Receipt viewer', 'Transactions', 'Policy PDF'],
+      exceptionReason: 'The document cannot establish a merchant, payment, or inventory trail.',
+      policyCitation: 'Technology purchases require receipts and inventory records.',
+    },
     evidence: [
-      { label: 'Document', value: 'Napkin photo', detail: '“7 laptop / $14,000 / paid / trust me”.', tone: 'risk' },
-      { label: 'Policy', value: 'Inventory required', detail: 'Technology purchases need asset records.', tone: 'risk' },
-      { label: 'Payment', value: 'Missing', detail: 'No card or authorization details on document.', tone: 'risk' },
+      { source: 'Receipt viewer', label: 'Submitted document', value: 'Napkin photo', detail: '“7 laptop / $14,000 / paid / trust me”.', tone: 'neutral' },
+      { source: 'Policy PDF', label: 'Technology policy', value: 'Inventory required', detail: 'Section 7.1 · Equipment purchases', tone: 'neutral' },
+      { source: 'Transactions', label: 'Payment record', value: 'No match found', detail: 'Search: Dave · $14,000 · last 30 days', tone: 'neutral' },
     ],
   },
   'ramp-09-it-inventory-theft': {
     employee: 'Sam Patel · IT Director',
     queueLabel: 'Inventory theft',
+    workflow: {
+      automation: 'Connected exception review',
+      connectedSystems: ['Cards', 'Purchase order', 'Inventory integration', 'Vendor records'],
+      exceptionReason: 'Ramp connected the purchase trail to missing inventory and a related resale account.',
+      policyCitation: 'Technology purchases require inventory records.',
+    },
     actionLabels: {
       'freeze-card': 'Freeze card',
       'flag-transaction': 'Flag transaction',
@@ -154,6 +208,12 @@ const CASE_PRESENTATION: Record<string, {
   'ramp-10-influencer-marketing-deal': {
     employee: 'Nora Vale · Marketing',
     queueLabel: 'Influencer deal',
+    workflow: {
+      automation: 'Vendor approval review',
+      connectedSystems: ['Vendor management', 'Approvals', 'Card transaction', 'Campaign record'],
+      exceptionReason: 'The vendor is new, lacks legal approval, and shares an employee address.',
+      policyCitation: 'New vendors above $10,000 require legal and finance approval.',
+    },
     evidence: [
       { label: 'Payment', value: '$75,000', detail: 'One vibe-based activation.', tone: 'risk' },
       { label: 'Vendor', value: 'Created yesterday', detail: 'Address matches the director’s apartment.', tone: 'risk' },
@@ -163,6 +223,12 @@ const CASE_PRESENTATION: Record<string, {
   'ramp-11-travel-impossibility': {
     employee: 'Devon Lee · Partnerships',
     queueLabel: 'Travel impossibility',
+    workflow: {
+      automation: 'Trip matching',
+      connectedSystems: ['Ramp Travel', 'Itinerary', 'Card transactions'],
+      exceptionReason: 'Four charges conflict with the approved Chicago itinerary.',
+      policyCitation: 'Travel expenses must match an approved trip.',
+    },
     evidence: [
       { label: 'Approved trip', value: 'New York → Chicago', detail: 'June 18–20.', tone: 'good' },
       { label: 'Out of trip', value: 'Miami · Tokyo · Monaco', detail: 'Locations and times overlap impossibly.', tone: 'risk' },
@@ -172,6 +238,12 @@ const CASE_PRESENTATION: Record<string, {
   'ramp-12-ai-expense-paradox': {
     employee: 'Alex Morgan · Sales',
     queueLabel: 'AI expense paradox',
+    workflow: {
+      automation: 'Spend analysis',
+      connectedSystems: ['Card transaction', 'Vendor charges', 'Subscription controls'],
+      exceptionReason: 'Automated review fees cost more than six times the underlying expense.',
+      policyCitation: 'Recurring software spend requires a business owner and reviewable value.',
+    },
     actionLabels: {
       'approve-coffee': 'Approve coffee',
       'cancel-ai-vendor': 'Cancel AI vendor',
@@ -185,6 +257,12 @@ const CASE_PRESENTATION: Record<string, {
   'ramp-13-procurement-mismatch': {
     employee: 'Priya Shah · Operations',
     queueLabel: 'Procurement mismatch',
+    workflow: {
+      automation: 'Three-way match',
+      connectedSystems: ['Purchase order', 'Invoice', 'Receiving record', 'Inventory'],
+      exceptionReason: 'PO, invoice, and delivery quantities do not match.',
+      policyCitation: 'Invoices must match approved purchase orders and received goods.',
+    },
     evidence: [
       { label: 'Purchase order', value: '100 chairs', detail: 'Approved ergonomic seating request.', tone: 'good' },
       { label: 'Invoice', value: '1,000 chairs', detail: 'Ten times the approved quantity.', tone: 'risk' },
@@ -194,6 +272,12 @@ const CASE_PRESENTATION: Record<string, {
   'ramp-14-intern-card-catastrophe': {
     employee: 'Rowan Kim · Summer Intern',
     queueLabel: 'Intern card catastrophe',
+    workflow: {
+      automation: 'Card control exception',
+      connectedSystems: ['Cards', 'Spend programs', 'Approval history', 'Transactions'],
+      exceptionReason: 'Seven cards and a $40,000 limit conflict with the intern spend program.',
+      policyCitation: 'Intern card limits may not exceed $500 per month.',
+    },
     actionLabels: {
       'freeze-card': 'Freeze all seven cards',
       'escalate-approval': 'Escalate CEO approval',
@@ -215,6 +299,7 @@ export const GAME_CASES: readonly GameCase[] = PLAYABLE_CASE_IDS.map((caseId) =>
     ...presentation,
     actionLabels: presentation.actionLabels ?? {},
     era: caseId.startsWith('manual-') ? 'manual' : 'ramp',
+    workflow: presentation.workflow,
   }
 })
 

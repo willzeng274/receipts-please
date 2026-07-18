@@ -431,6 +431,7 @@ function setKeyTransforms(
 export function DeskCalculator({
   effectPreset,
   effectRun,
+  onGameAction,
   selected = false,
   ...groupProps
 }: ProceduralAssetProps) {
@@ -598,8 +599,9 @@ export function DeskCalculator({
     if (key.id === 'total') {
       tapeConfirmationTimeRef.current = 0
       setTapeOutput('PRINTED RESULT\n4,495.00 %\nCONCERNING.')
+      onGameAction?.('calculator-complete')
     }
-  }, [])
+  }, [onGameAction])
 
   const releaseKey = useCallback((id: string, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()

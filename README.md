@@ -2,7 +2,7 @@
 
 An internal production lab for **Receipts, Please**, a Ramp Builders Cup browser-game prototype about surviving a chaotic finance desk before the workflow transforms.
 
-The current milestone is the desk environment, procedural 3D asset library, animation/effects sandbox, and interactive Expense OS. The complete five-minute game loop is intentionally deferred.
+The current milestone includes the desk environment, procedural 3D asset library, animation/effects sandbox, interactive Expense OS, and a playable five-minute `/game` vertical slice.
 
 ## Repository layout
 

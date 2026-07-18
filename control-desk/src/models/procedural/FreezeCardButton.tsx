@@ -237,6 +237,7 @@ const effectDuration = (preset: ProceduralAssetProps['effectPreset']) => {
 export function FreezeCardButton({
   effectPreset,
   effectRun = 0,
+  onGameAction,
   selected = false,
   ...groupProps
 }: ProceduralAssetProps) {
@@ -366,7 +367,8 @@ export function FreezeCardButton({
     frozenRef.current = true
     setFrozen(true)
     manualPressRef.current = 0
-  }, [])
+    onGameAction?.('freeze-card')
+  }, [onGameAction])
 
   useFrame((_state, delta) => {
     const preset = presetRef.current

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LabViewport } from '../components/lab/LabViewport'
 import { useLabStore } from '../store/useLabStore'
 import { ENDING_CASE, GAME_CASES } from './gameData'
+import { GameDeskHud } from './GameDeskHud'
 import { GiraffeEndingStage } from './GiraffeEndingStage'
 import { GAME_AUDIO_EVENT, type GameAudioRequest } from './gameAudio'
 import { useGameStore } from './useGameStore'
@@ -182,7 +183,7 @@ export function GameShell() {
   }, [calmBeat])
 
   useEffect(() => {
-    if (phase === 'migration-prompt') {
+    if (phase === 'overload') {
       playCue('printer-jam', 0.68)
       playCue('slack-ping', 0.55)
       const phoneTimer = window.setTimeout(() => playCue('phone-ring', 0.5), 520)
@@ -225,7 +226,7 @@ export function GameShell() {
 
   const handleStart = () => {
     startGame()
-    setWorkstationFocused(true)
+    setWorkstationFocused(false)
     switchAmbience('manual-adaptive-music-loop')
     playCue('paper-pickup', 0.52)
   }
@@ -254,6 +255,7 @@ export function GameShell() {
   return (
     <main className="game-shell">
       <LabViewport />
+      <GameDeskHud />
 
       {phase === 'briefing' && (
         <section className="game-cold-open">

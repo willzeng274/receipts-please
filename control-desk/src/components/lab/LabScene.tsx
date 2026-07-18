@@ -12,7 +12,10 @@ import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../.
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
 import { WorkstationOS } from '../workstation/WorkstationOS'
+import { GAME_CASES, type GameDecision } from '../../game/gameData'
+import { requestGameAudioCue } from '../../game/gameAudio'
 import { GameWorkstation } from '../../game/GameWorkstation'
+import { useGameStore } from '../../game/useGameStore'
 
 const DESK_COMPUTER_POSITION = SCENE_LAYOUT_MANIFEST.desk.computerPosition
 const WORKSTATION_SCREEN_WORLD = [
@@ -452,6 +455,8 @@ function AssetFloor() {
 type RegisteredAssetProps = {
   children?: ReactNode
   id: string
+  onActivate?: () => void
+  onGameAction?: (action: 'calculator-complete' | 'freeze-card') => void
   position?: [number, number, number]
   rotation?: [number, number, number]
   scale?: number
@@ -461,16 +466,32 @@ type RegisteredAssetProps = {
 
 const DESK_ASSET_PLACEMENTS: SceneAssetPlacement[] = [...SCENE_LAYOUT_MANIFEST.assets]
 
-function RegisteredAsset({ children, id, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, selected = false, visible = true }: RegisteredAssetProps) {
+function RegisteredAsset({ children, id, onActivate, onGameAction, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, selected = false, visible = true }: RegisteredAssetProps) {
   const definition = findAssetDefinition(id)
   const effectPreset = useLabStore((state) => state.effectPreset)
   const effectRun = useLabStore((state) => state.effectRun)
   if (!definition) return null
   const Asset = definition.component
-  return (
-    <Asset effectPreset={effectPreset} effectRun={effectRun} position={position} rotation={rotation} scale={scale} selected={selected} visible={visible}>
+  const asset = (
+    <Asset {...(onGameAction ? { onGameAction } : {})} effectPreset={effectPreset} effectRun={effectRun} position={position} rotation={rotation} scale={scale} selected={selected} visible={visible}>
       {children}
     </Asset>
+  )
+  if (!onActivate) return asset
+  return (
+    <group
+      onClick={(event) => {
+        event.stopPropagation()
+        onActivate()
+      }}
+      onPointerOver={(event) => {
+        event.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => { document.body.style.cursor = '' }}
+    >
+      {asset}
+    </group>
   )
 }
 
@@ -526,6 +547,83 @@ function WorkstationScreen() {
         />
       )}
     </Html>
+  )
+}
+
+const DESK_HOTSPOT_POSITIONS = Object.fromEntries(
+  DESK_ASSET_PLACEMENTS
+    .filter((placement) => placement.position)
+    .map((placement) => [placement.id, placement.position]),
+) as Record<string, [number, number, number]>
+
+function DeskGameHotspot({ id, label, onActivate, tone = 'neutral' }: {
+  id: string
+  label: string
+  onActivate: () => void
+  tone?: 'approve' | 'danger' | 'neutral' | 'warn'
+}) {
+  const position = DESK_HOTSPOT_POSITIONS[id]
+  if (!position) return null
+  return (
+    <Html center position={[position[0], position[1] + (id === 'desk-computer' ? 0.48 : 0.2), position[2]]} zIndexRange={[24, 1]}>
+      <button className={`game-world-hotspot is-${tone}`} onClick={(event) => { event.stopPropagation(); onActivate() }} type="button">{label}</button>
+    </Html>
+  )
+}
+
+function DeskGameControls() {
+  const activeActions = useGameStore((state) => state.activeActions)
+  const calculatorComplete = useGameStore((state) => state.calculatorComplete)
+  const caseIndex = useGameStore((state) => state.caseIndex)
+  const completeCalculator = useGameStore((state) => state.completeCalculator)
+  const feedback = useGameStore((state) => state.feedback)
+  const paused = useGameStore((state) => state.paused)
+  const performAction = useGameStore((state) => state.performAction)
+  const phase = useGameStore((state) => state.phase)
+  const submitDecision = useGameStore((state) => state.submitDecision)
+  const focused = useLabStore((state) => state.workstationFocused)
+  const setFocused = useLabStore((state) => state.setWorkstationFocused)
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const gameActive = window.location.pathname === '/game'
+  const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
+  const requiredActions = currentCase.truth.requiredActions ?? []
+  const active = gameActive && !focused && !paused && !feedback && ['manual', 'ramp'].includes(phase)
+
+  if (!active) return null
+
+  const decide = (decision: GameDecision) => {
+    requestGameAudioCue('stamp-pickup', 0.46)
+    submitDecision(decision)
+    triggerEffect(decision === 'approve' ? 'approve' : decision === 'reject' ? 'reject' : 'fraud')
+  }
+
+  const useCalculator = () => {
+    completeCalculator()
+    requestGameAudioCue('calculator-key', 0.42)
+    requestGameAudioCue('calculator-print', 0.52)
+    triggerEffect('paper-drop')
+  }
+
+  const freezeCard = () => {
+    performAction('freeze-card')
+    requestGameAudioCue('freeze-cover', 0.5)
+    requestGameAudioCue('freeze-button', 0.64)
+    triggerEffect('fraud')
+  }
+
+  return (
+    <>
+      <DeskGameHotspot id="desk-computer" label="OPEN EXPENSE OS" onActivate={() => setFocused(true)} />
+      {currentCase.workflow.requiredDeskTool === 'calculator' && !calculatorComplete && (
+        <DeskGameHotspot id="desk-calculator" label="CALCULATE TIP %" onActivate={useCalculator} tone="warn" />
+      )}
+      {requiredActions.includes('freeze-card') && !activeActions.includes('freeze-card') && (
+        <DeskGameHotspot id="freeze-card-button" label="FREEZE CARD" onActivate={freezeCard} tone="danger" />
+      )}
+      <DeskGameHotspot id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
+      <DeskGameHotspot id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="danger" />
+      <DeskGameHotspot id="fraud-stamp" label="INVESTIGATE" onActivate={() => decide('investigate')} tone="warn" />
+    </>
   )
 }
 
@@ -600,6 +698,55 @@ function AnimationFloor() {
 
 function DeskEnvironment() {
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
+  const focused = useLabStore((state) => state.workstationFocused)
+  const phase = useGameStore((state) => state.phase)
+  const submitDecision = useGameStore((state) => state.submitDecision)
+  const completeCalculator = useGameStore((state) => state.completeCalculator)
+  const performAction = useGameStore((state) => state.performAction)
+  const setFocused = useLabStore((state) => state.setWorkstationFocused)
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const gameActive = window.location.pathname === '/game'
+
+  const activateAsset = (id: string) => {
+    if (!gameActive || focused || !['manual', 'ramp'].includes(phase)) return
+    if (id === 'desk-computer') {
+      setFocused(true)
+      return
+    }
+    if (id === 'desk-calculator') {
+      completeCalculator()
+      requestGameAudioCue('calculator-print', 0.52)
+      triggerEffect('paper-drop')
+      return
+    }
+    if (id === 'freeze-card-button') {
+      performAction('freeze-card')
+      requestGameAudioCue('freeze-button', 0.64)
+      triggerEffect('fraud')
+      return
+    }
+    const decisions: Partial<Record<string, GameDecision>> = {
+      'approval-stamp': 'approve',
+      'fraud-stamp': 'investigate',
+      'reject-stamp': 'reject',
+    }
+    const decision = decisions[id]
+    if (!decision) return
+    submitDecision(decision)
+    triggerEffect(decision === 'approve' ? 'approve' : decision === 'reject' ? 'reject' : 'fraud')
+  }
+
+  const handleModelGameAction = (action: 'calculator-complete' | 'freeze-card') => {
+    if (!gameActive || focused || !['manual', 'ramp'].includes(phase)) return
+    if (action === 'calculator-complete') {
+      completeCalculator()
+      requestGameAudioCue('calculator-print', 0.52)
+      return
+    }
+    performAction('freeze-card')
+    requestGameAudioCue('freeze-button', 0.64)
+    triggerEffect('fraud')
+  }
 
   return (
     <group>
@@ -608,11 +755,16 @@ function DeskEnvironment() {
         <RegisteredAsset
           key={`${placement.id}-${index}`}
           {...placement}
+          onActivate={['approval-stamp', 'desk-calculator', 'desk-computer', 'fraud-stamp', 'freeze-card-button', 'reject-stamp'].includes(placement.id)
+            ? () => activateAsset(placement.id)
+            : undefined}
+          onGameAction={['desk-calculator', 'freeze-card-button'].includes(placement.id) ? handleModelGameAction : undefined}
           visible={placement.id === 'giraffe-reveal' ? giraffeFocused : true}
         >
           {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
         </RegisteredAsset>
       ))}
+      <DeskGameControls />
     </group>
   )
 }

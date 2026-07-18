@@ -5,6 +5,7 @@ import type { EffectPreset } from '../store/useLabStore'
 export type ProceduralAssetProps = ThreeElements['group'] & {
   effectPreset?: EffectPreset
   effectRun?: number
+  onGameAction?: (action: 'calculator-complete' | 'freeze-card') => void
   selected?: boolean
 }
 
