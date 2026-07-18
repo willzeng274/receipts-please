@@ -460,9 +460,6 @@ type RegisteredAssetProps = {
 }
 
 const DESK_ASSET_PLACEMENTS: SceneAssetPlacement[] = [...SCENE_LAYOUT_MANIFEST.assets]
-const LOW_SCENE_ASSETS = new Set([
-  'desk-computer',
-])
 
 function RegisteredAsset({ children, id, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, selected = false, visible = true }: RegisteredAssetProps) {
   const definition = findAssetDefinition(id)
@@ -601,42 +598,13 @@ function AnimationFloor() {
   )
 }
 
-function LowSceneEnvironment() {
-  const [deskX, deskY, deskZ] = SCENE_LAYOUT_MANIFEST.desk.origin
-  const deskSurfaceY = SCENE_LAYOUT_MANIFEST.desk.surfaceY
-
-  return (
-    <group>
-      <mesh position={[0, 0.01, -1.5]} receiveShadow>
-        <boxGeometry args={[9, 0.02, 8]} />
-        <meshStandardMaterial color="#202925" metalness={0.02} roughness={0.94} />
-      </mesh>
-      <mesh position={[deskX, deskSurfaceY - 0.045, deskZ]} receiveShadow>
-        <boxGeometry args={[3.05, 0.09, 1.38]} />
-        <meshStandardMaterial color="#4b5149" metalness={0.08} roughness={0.78} />
-      </mesh>
-      {[-1.28, 1.28].map((x) => (
-        <mesh key={x} position={[deskX + x, deskY + 0.38, deskZ]} receiveShadow>
-          <boxGeometry args={[0.09, 0.76, 1.06]} />
-          <meshStandardMaterial color="#313a35" metalness={0.18} roughness={0.72} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
 function DeskEnvironment() {
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
-  const renderQuality = useLabStore((state) => state.renderQuality)
-  const placements = renderQuality === 'low'
-    ? DESK_ASSET_PLACEMENTS.filter((placement) => LOW_SCENE_ASSETS.has(placement.id))
-    : DESK_ASSET_PLACEMENTS
 
   return (
     <group>
-      {renderQuality === 'low' && <LowSceneEnvironment />}
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
-      {placements.map((placement, index) => (
+      {DESK_ASSET_PLACEMENTS.map((placement, index) => (
         <RegisteredAsset
           key={`${placement.id}-${index}`}
           {...placement}
