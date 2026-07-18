@@ -61,9 +61,14 @@ export function GameDeskHud() {
       : 'Load next receipt'
   const fired = feedback.decision === 'fire'
   const firedName = currentCase.employee.split(' · ')[0]
+  const chosenLabel = titleCase(feedback.decision)
+  const expectedLabel = titleCase(feedback.expectedDecision)
   const feedbackTitle = feedback.correct
-    ? currentCase.truth.primaryClue
-    : `Expected: ${titleCase(feedback.expectedDecision)}`
+    ? `Correct — ${expectedLabel} was the right call.`
+    : `Wrong — ${expectedLabel} was the right call.`
+  const firedTitle = feedback.correct
+    ? `Correct — ${firedName} got ratioed by payroll.`
+    : `Wrong person — the correct call was ${expectedLabel}.`
 
   return (
     <section aria-live="polite" className={`game-desk-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'} ${fired ? 'is-fired' : ''}`}>
@@ -96,10 +101,25 @@ export function GameDeskHud() {
         </>
       )}
       <div className="game-feedback-card">
-        <span>{fired ? 'CHAT WITNESSED A TERMINATION 💀' : feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
-        <h2>{fired ? `${firedName} got ratioed by payroll.` : feedbackTitle}</h2>
+        <span>{feedback.correct ? 'CORRECT DECISION' : 'WRONG DECISION'}{fired ? ' · CHAT WITNESSED IT 💀' : ''} · SCORE {score}</span>
+        <h2>{fired ? firedTitle : feedbackTitle}</h2>
+        <div
+          aria-label={`You chose ${chosenLabel}. Correct answer: ${expectedLabel}. ${feedback.correct ? 'Correct.' : 'Wrong.'}`}
+          className="game-decision-verdict"
+          role="group"
+        >
+          <div>
+            <span>You chose</span>
+            <strong className={`is-${feedback.decision}`}>{chosenLabel}</strong>
+          </div>
+          <b className={feedback.correct ? 'is-correct' : 'is-wrong'}>{feedback.correct ? '✓ MATCH' : '≠'}</b>
+          <div>
+            <span>Correct answer</span>
+            <strong className={`is-${feedback.expectedDecision}`}>{expectedLabel}</strong>
+          </div>
+        </div>
         <output className={feedback.points >= 0 ? 'is-positive' : 'is-negative'}>{feedback.points >= 0 ? '+' : ''}{feedback.points} points</output>
-        <p>{feedback.explanation}</p>
+        <p className="game-feedback-explanation"><b>Why:</b> {feedback.explanation}</p>
         {fired && (
           <div className="game-fire-gag">
             <span aria-hidden="true">💀</span>
