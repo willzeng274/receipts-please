@@ -8,7 +8,7 @@ import { Color, Vector3 } from 'three'
 import { BlendFunction } from 'postprocessing'
 import { Perf } from 'r3f-perf'
 import { SCENE_LAYOUT_MANIFEST, type SceneAssetPlacement } from '../../config/sceneManifest'
-import { ASSET_DEFINITIONS } from '../../models/registry'
+import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../../models/registry'
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
 import { WorkstationOS } from '../workstation/WorkstationOS'
@@ -459,7 +459,7 @@ type RegisteredAssetProps = {
 const DESK_ASSET_PLACEMENTS: SceneAssetPlacement[] = [...SCENE_LAYOUT_MANIFEST.assets]
 
 function RegisteredAsset({ children, id, position = [0, 0, 0], rotation = [0, 0, 0], scale = 1, selected = false, visible = true }: RegisteredAssetProps) {
-  const definition = ASSET_DEFINITIONS.find((asset) => asset.id === id)
+  const definition = findAssetDefinition(id)
   const effectPreset = useLabStore((state) => state.effectPreset)
   const effectRun = useLabStore((state) => state.effectRun)
   if (!definition) return null
@@ -530,7 +530,7 @@ function AnimationFloor() {
   const effectRun = useLabStore((state) => state.effectRun)
 
   if (compositionId.startsWith('solo:')) {
-    const definition = ASSET_DEFINITIONS.find((asset) => asset.id === assetId) ?? ASSET_DEFINITIONS[0]
+    const definition = getAssetDefinition(assetId)
     return (
       <group>
         <RegisteredAsset id={definition.id} position={[0, 0.02, 0]} scale={definition.scale} />
@@ -619,11 +619,17 @@ function ImpactRig({ children }: { children: React.ReactNode }) {
   const startTime = useRef(-1)
 
   useEffect(() => {
+    if (effectRun < 1) {
+      startTime.current = -1
+      group.current?.position.set(0, 0, 0)
+      if (group.current) group.current.rotation.z = 0
+      return
+    }
     startTime.current = performance.now() / 1000
   }, [effectRun])
 
   useFrame(() => {
-    if (!group.current) return
+    if (!group.current || startTime.current < 0) return
     const profile = EFFECT_PROFILE[effectPreset]
     const elapsed = performance.now() / 1000 - startTime.current
     const progress = Math.min(1, Math.max(0, elapsed / profile.duration))

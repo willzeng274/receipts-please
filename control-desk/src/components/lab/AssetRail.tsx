@@ -1,4 +1,4 @@
-import { ASSET_DEFINITIONS } from '../../models/registry'
+import { ASSET_DEFINITIONS, getAssetDefinition } from '../../models/registry'
 import { useLabStore } from '../../store/useLabStore'
 import { EFFECTS } from './effectOptions'
 
@@ -8,7 +8,7 @@ export function AssetRail() {
   const mode = useLabStore((state) => state.mode)
   const setAssetId = useLabStore((state) => state.setAssetId)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
-  const activeAsset = ASSET_DEFINITIONS.find((asset) => asset.id === assetId) ?? ASSET_DEFINITIONS[0]
+  const activeAsset = getAssetDefinition(assetId)
 
   return (
     <aside className="asset-rail" aria-label="Asset registry">

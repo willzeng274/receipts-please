@@ -1,7 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { useEffect } from 'react'
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three'
-import { ASSET_DEFINITIONS } from '../../models/registry'
+import { getAssetDefinition } from '../../models/registry'
 import { RAMP_MIGRATION_STEPS, useLabStore } from '../../store/useLabStore'
 import { LabScene } from './LabScene'
 import { ScreenEffectPreview } from './ScreenEffectPreview'
@@ -18,7 +18,7 @@ export function LabViewport() {
   const mode = useLabStore((state) => state.mode)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
   const rampTransitionRun = useLabStore((state) => state.rampTransitionRun)
-  const activeAsset = ASSET_DEFINITIONS.find((asset) => asset.id === assetId) ?? ASSET_DEFINITIONS[0]
+  const activeAsset = getAssetDefinition(assetId)
   const combinedLabels: Record<string, string> = {
     'stamp-paper': 'Stamp + paper',
     'receipt-routing': 'Receipt routing',

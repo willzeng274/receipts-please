@@ -173,3 +173,15 @@ export const ASSET_DEFINITIONS = [
     component: GiraffeReveal,
   },
 ] satisfies AssetDefinition[]
+
+const ASSET_DEFINITIONS_BY_ID = new Map(
+  ASSET_DEFINITIONS.map((definition) => [definition.id, definition]),
+)
+
+export function findAssetDefinition(id: string) {
+  return ASSET_DEFINITIONS_BY_ID.get(id)
+}
+
+export function getAssetDefinition(id: string) {
+  return findAssetDefinition(id) ?? ASSET_DEFINITIONS[0]
+}
