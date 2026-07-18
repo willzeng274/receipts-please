@@ -100,6 +100,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .webgl-fallback strong { display: block; margin-bottom: 8px; color: var(--paper); font-size: 15px; text-transform: uppercase; }
 .webgl-fallback p { max-width: 620px; margin: 0 0 15px; overflow-wrap: anywhere; }
 .webgl-fallback button { min-height: 36px; padding: 0 14px; border: 1px solid currentColor; background: #251b18; color: var(--orange); cursor: pointer; text-transform: uppercase; font: inherit; }
+.webgl-recovery { position: absolute; z-index: 30; inset: 0; display: grid; place-content: center; justify-items: center; gap: 9px; padding: 30px; color: #c7d3cc; background: rgba(10, 16, 14, .94); text-align: center; font: 500 10px/1.5 'IBM Plex Mono', monospace; }
+.webgl-recovery strong { color: var(--paper); font-size: 15px; text-transform: uppercase; }
+.webgl-recovery span { max-width: 430px; color: #8fa097; }
+.webgl-recovery button { min-height: 36px; margin-top: 6px; padding: 0 14px; color: var(--amber); border: 1px solid currentColor; background: #202823; cursor: pointer; font: inherit; text-transform: uppercase; }
 .viewport-meta { position: absolute; z-index: 5; top: 18px; left: 20px; right: 20px; display: flex; justify-content: space-between; pointer-events: none; }
 .viewport-meta > div { display: flex; flex-direction: column; gap: 4px; }
 .viewport-meta span, .viewport-meta small { color: #b1bab2; font: 400 9px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }

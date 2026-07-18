@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber'
-import { useEffect } from 'react'
-import { ACESFilmicToneMapping, SRGBColorSpace } from 'three'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ACESFilmicToneMapping, SRGBColorSpace, type WebGLRenderer } from 'three'
 import { getAssetDefinition } from '../../models/registry'
 import { RAMP_MIGRATION_STEPS, useLabStore } from '../../store/useLabStore'
 import { LabScene } from './LabScene'
@@ -18,8 +18,17 @@ export function LabViewport() {
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
   const mode = useLabStore((state) => state.mode)
   const renderQuality = useLabStore((state) => state.renderQuality)
+  const rampMigrationLocked = useLabStore((state) => state.rampMigrationLocked)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
   const rampTransitionRun = useLabStore((state) => state.rampTransitionRun)
+  const setGridVisible = useLabStore((state) => state.setGridVisible)
+  const setPerformanceVisible = useLabStore((state) => state.setPerformanceVisible)
+  const setRenderQuality = useLabStore((state) => state.setRenderQuality)
+  const [webglState, setWebglState] = useState<'ready' | 'restoring' | 'failed'>('ready')
+  const [renderer, setRenderer] = useState<WebGLRenderer | null>(null)
+  const recoveryAttempts = useRef(0)
+  const recoveryTimer = useRef<number | null>(null)
+  const rendererStableTimer = useRef<number | null>(null)
   const activeAsset = getAssetDefinition(assetId)
   const combinedLabels: Record<string, string> = {
     'stamp-paper': 'Stamp + paper',
@@ -40,7 +49,7 @@ export function LabViewport() {
       : `${activeAsset.category} / procedural source`
   const dpr: [number, number] = renderQuality === 'capture'
     ? [1, 2]
-    : renderQuality === 'low'
+    : renderQuality === 'low' || mode === 'scene'
       ? [1, 1]
       : [1, 1.5]
   const realtimeShadows = renderQuality === 'capture'
@@ -56,6 +65,66 @@ export function LabViewport() {
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [exitGiraffeFocus, giraffeFocused])
+
+  const configureRenderer = useCallback(({ gl }: { gl: WebGLRenderer }) => {
+    gl.outputColorSpace = SRGBColorSpace
+    gl.toneMapping = ACESFilmicToneMapping
+    gl.toneMappingExposure = 1.16
+    recoveryAttempts.current = 0
+    setWebglState('ready')
+    setRenderer(gl)
+  }, [])
+
+  useEffect(() => {
+    if (!renderer) return
+
+    const clearRecoveryTimer = () => {
+      if (recoveryTimer.current === null) return
+      window.clearTimeout(recoveryTimer.current)
+      recoveryTimer.current = null
+    }
+    const clearStableTimer = () => {
+      if (rendererStableTimer.current === null) return
+      window.clearTimeout(rendererStableTimer.current)
+      rendererStableTimer.current = null
+    }
+    const onContextLost = (event: Event) => {
+      event.preventDefault()
+      clearRecoveryTimer()
+      clearStableTimer()
+      setRenderQuality('low')
+      setGridVisible(false)
+      setPerformanceVisible(false)
+      recoveryAttempts.current += 1
+      if (recoveryAttempts.current > 2) {
+        setWebglState('failed')
+        return
+      }
+      setWebglState('restoring')
+      recoveryTimer.current = window.setTimeout(() => {
+        recoveryTimer.current = null
+        setWebglState('failed')
+      }, 4_000)
+    }
+    const onContextRestored = () => {
+      clearRecoveryTimer()
+      setWebglState('ready')
+      rendererStableTimer.current = window.setTimeout(() => {
+        recoveryAttempts.current = 0
+        rendererStableTimer.current = null
+      }, 5_000)
+    }
+
+    const canvas = renderer.domElement
+    canvas.addEventListener('webglcontextlost', onContextLost)
+    canvas.addEventListener('webglcontextrestored', onContextRestored)
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onContextLost)
+      canvas.removeEventListener('webglcontextrestored', onContextRestored)
+      clearRecoveryTimer()
+      clearStableTimer()
+    }
+  }, [renderer, setGridVisible, setPerformanceVisible, setRenderQuality])
 
   return (
     <div className="lab-viewport">
@@ -84,8 +153,8 @@ export function LabViewport() {
           <span>{gameActive ? '2:10–2:35 · ' : ''}Expense OS migration · step {rampMigrationStep + 1} of {RAMP_MIGRATION_STEPS.length}</span>
           <strong>{RAMP_MIGRATION_STEPS[rampMigrationStep]}</strong>
           <small>The workstation and this controller share the same real progress state.</small>
-          <button onClick={advanceRampMigration} type="button">
-            {rampMigrationStep === RAMP_MIGRATION_STEPS.length - 1 ? 'Finish migration' : 'Connect next system'}
+          <button disabled={rampMigrationLocked} onClick={advanceRampMigration} type="button">
+            {rampMigrationLocked ? 'Connecting…' : rampMigrationStep === RAMP_MIGRATION_STEPS.length - 1 ? 'Finish migration' : 'Connect next system'}
           </button>
         </section>
       )}
@@ -98,17 +167,21 @@ export function LabViewport() {
         </div>
       )}
 
-      <CanvasErrorBoundary>
+      {webglState !== 'ready' && (
+        <div className="webgl-recovery" role="status">
+          <strong>{webglState === 'failed' ? '3D renderer unavailable' : 'Restoring 3D renderer'}</strong>
+          <span>{webglState === 'failed' ? 'Close other 3D tabs, then reload this page.' : 'Switching to the constrained-device render budget.'}</span>
+          {webglState === 'failed' && <button onClick={() => window.location.reload()} type="button">Reload</button>}
+        </div>
+      )}
+
+      <CanvasErrorBoundary resetKeys={[mode, renderQuality, webglState]}>
         <Canvas
           camera={{ fov: 34, near: 0.05, far: 120, position: [3.4, 2.35, 4.3] }}
           dpr={dpr}
           fallback={<div className="webgl-fallback">WebGL is unavailable. Use a current Chrome build with hardware acceleration.</div>}
-          gl={{ antialias: true, alpha: false, powerPreference: 'high-performance' }}
-          onCreated={({ gl }) => {
-            gl.outputColorSpace = SRGBColorSpace
-            gl.toneMapping = ACESFilmicToneMapping
-            gl.toneMappingExposure = 1.16
-          }}
+          gl={{ alpha: false, antialias: false, powerPreference: 'default' }}
+          onCreated={configureRenderer}
           shadows={realtimeShadows}
         >
           <LabScene />

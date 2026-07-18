@@ -21,6 +21,7 @@ import {
 } from 'three'
 import type { EffectPreset } from '../../store/useLabStore'
 import { useLabStore } from '../../store/useLabStore'
+import { INITIAL_CALCULATOR, updateCalculator } from '../../calculator'
 import type { ProceduralAssetProps } from '../types'
 
 const HALF_PI = Math.PI / 2
@@ -84,9 +85,8 @@ type CalculatorKey = {
   label: string
   family: KeyFamily
   fontSize: number
+  input: string
   labelColor: string
-  display: string
-  status: string
 }
 
 type ActiveKeyPress = {
@@ -96,26 +96,26 @@ type ActiveKeyPress = {
 }
 
 const KEYS = [
-  { id: 'memory-plus', column: 0, row: 0, label: 'M+', family: 'memory', fontSize: 0.0083, labelColor: '#f3eee0', display: 'M 4,495.00', status: 'ADDED TO MEMORY' },
-  { id: 'memory-minus', column: 1, row: 0, label: 'M−', family: 'memory', fontSize: 0.0083, labelColor: '#f3eee0', display: 'M −4,495.00', status: 'SUBTRACTED FROM MEMORY' },
-  { id: 'percent', column: 2, row: 0, label: '%', family: 'memory', fontSize: 0.0105, labelColor: '#f3eee0', display: '4,495.00 %', status: 'PERCENT MODE' },
-  { id: 'divide', column: 3, row: 0, label: '÷', family: 'operation', fontSize: 0.012, labelColor: '#29251c', display: '4,495.00 ÷', status: 'DIVIDE' },
-  { id: 'seven', column: 0, row: 1, label: '7', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '7', status: 'ENTRY 7' },
-  { id: 'eight', column: 1, row: 1, label: '8', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '8', status: 'ENTRY 8' },
-  { id: 'nine', column: 2, row: 1, label: '9', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '9', status: 'ENTRY 9' },
-  { id: 'multiply', column: 3, row: 1, label: '×', family: 'operation', fontSize: 0.012, labelColor: '#29251c', display: '4,495.00 ×', status: 'MULTIPLY' },
-  { id: 'four', column: 0, row: 2, label: '4', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '4', status: 'ENTRY 4' },
-  { id: 'five', column: 1, row: 2, label: '5', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '5', status: 'ENTRY 5' },
-  { id: 'six', column: 2, row: 2, label: '6', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '6', status: 'ENTRY 6' },
-  { id: 'subtract', column: 3, row: 2, label: '−', family: 'operation', fontSize: 0.012, labelColor: '#29251c', display: '4,495.00 −', status: 'DIFFERENCE' },
-  { id: 'one', column: 0, row: 3, label: '1', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '1', status: 'ENTRY 1' },
-  { id: 'two', column: 1, row: 3, label: '2', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '2', status: 'ENTRY 2' },
-  { id: 'three', column: 2, row: 3, label: '3', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '3', status: 'ENTRY 3' },
-  { id: 'add', column: 3, row: 3, label: '+', family: 'operation', fontSize: 0.012, labelColor: '#29251c', display: '4,495.00 +', status: 'SUM' },
-  { id: 'clear', column: 0, row: 4, label: 'C', family: 'clear', fontSize: 0.0105, labelColor: '#f3eee0', display: '0.00', status: 'CLEARED' },
-  { id: 'zero', column: 1, row: 4, label: '0', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '0', status: 'ENTRY 0' },
-  { id: 'decimal', column: 2, row: 4, label: '.', family: 'number', fontSize: 0.011, labelColor: '#222521', display: '0.', status: 'DECIMAL ENTRY' },
-  { id: 'total', column: 3, row: 4, label: '=', family: 'total', fontSize: 0.012, labelColor: '#f8eee5', display: '4,495.00 %', status: 'PRINTING RESULT' },
+  { id: 'memory-plus', column: 0, row: 0, label: 'M+', family: 'memory', fontSize: 0.0083, input: 'M+', labelColor: '#f3eee0' },
+  { id: 'memory-minus', column: 1, row: 0, label: 'M−', family: 'memory', fontSize: 0.0083, input: 'M−', labelColor: '#f3eee0' },
+  { id: 'percent', column: 2, row: 0, label: '%', family: 'memory', fontSize: 0.0105, input: '%', labelColor: '#f3eee0' },
+  { id: 'divide', column: 3, row: 0, label: '÷', family: 'operation', fontSize: 0.012, input: '÷', labelColor: '#29251c' },
+  { id: 'seven', column: 0, row: 1, label: '7', family: 'number', fontSize: 0.011, input: '7', labelColor: '#222521' },
+  { id: 'eight', column: 1, row: 1, label: '8', family: 'number', fontSize: 0.011, input: '8', labelColor: '#222521' },
+  { id: 'nine', column: 2, row: 1, label: '9', family: 'number', fontSize: 0.011, input: '9', labelColor: '#222521' },
+  { id: 'multiply', column: 3, row: 1, label: '×', family: 'operation', fontSize: 0.012, input: '×', labelColor: '#29251c' },
+  { id: 'four', column: 0, row: 2, label: '4', family: 'number', fontSize: 0.011, input: '4', labelColor: '#222521' },
+  { id: 'five', column: 1, row: 2, label: '5', family: 'number', fontSize: 0.011, input: '5', labelColor: '#222521' },
+  { id: 'six', column: 2, row: 2, label: '6', family: 'number', fontSize: 0.011, input: '6', labelColor: '#222521' },
+  { id: 'subtract', column: 3, row: 2, label: '−', family: 'operation', fontSize: 0.012, input: '−', labelColor: '#29251c' },
+  { id: 'one', column: 0, row: 3, label: '1', family: 'number', fontSize: 0.011, input: '1', labelColor: '#222521' },
+  { id: 'two', column: 1, row: 3, label: '2', family: 'number', fontSize: 0.011, input: '2', labelColor: '#222521' },
+  { id: 'three', column: 2, row: 3, label: '3', family: 'number', fontSize: 0.011, input: '3', labelColor: '#222521' },
+  { id: 'add', column: 3, row: 3, label: '+', family: 'operation', fontSize: 0.012, input: '+', labelColor: '#29251c' },
+  { id: 'clear', column: 0, row: 4, label: 'C', family: 'clear', fontSize: 0.0105, input: 'C', labelColor: '#f3eee0' },
+  { id: 'zero', column: 1, row: 4, label: '0', family: 'number', fontSize: 0.011, input: '0', labelColor: '#222521' },
+  { id: 'decimal', column: 2, row: 4, label: '.', family: 'number', fontSize: 0.011, input: '.', labelColor: '#222521' },
+  { id: 'total', column: 3, row: 4, label: '=', family: 'total', fontSize: 0.012, input: '=', labelColor: '#f8eee5' },
 ] as const satisfies ReadonlyArray<CalculatorKey>
 
 const KEY_MATERIALS = {
@@ -449,12 +449,18 @@ export function DeskCalculator({
   const animationTimeRef = useRef(-1)
   const activeKeyPressRef = useRef<ActiveKeyPress | null>(null)
   const tapeConfirmationTimeRef = useRef(-1)
+  const lastTapeIdRef = useRef(0)
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
-  const [displayValue, setDisplayValue] = useState(INITIAL_DISPLAY_VALUE)
-  const [displayStatus, setDisplayStatus] = useState(INITIAL_DISPLAY_STATUS)
-  const [tapeOutput, setTapeOutput] = useState(INITIAL_TAPE_OUTPUT)
+  const [calculator, setCalculator] = useState(() => ({ ...INITIAL_CALCULATOR }))
+  const displayValue = calculator.display
+  const displayStatus = calculator.status ?? calculator.history
+  const tapeOutput = calculator.tape
+    ? `${calculator.tape.expression}\n${calculator.tape.result}\n${calculator.tape.note}`
+    : calculator.status === 'CLEARED'
+      ? 'TAPE CLEARED\nREADY\nPRESS ='
+      : 'CALCULATION TAPE\nREADY\nPRESS ='
 
   const reducedMotion = useLabStore((state) => state.reducedMotion)
 
@@ -593,15 +599,15 @@ export function DeskCalculator({
   const beginKeyPress = useCallback((key: CalculatorKey, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()
     activeKeyPressRef.current = { id: key.id, elapsed: 0, releaseAt: null }
-    setDisplayValue(key.display)
-    setDisplayStatus(key.status)
-
-    if (key.id === 'total') {
-      tapeConfirmationTimeRef.current = 0
-      setTapeOutput('PRINTED RESULT\n4,495.00 %\nCONCERNING.')
-      onGameAction?.('calculator-complete')
-    }
+    setCalculator((state) => updateCalculator(state, key.input))
+    if (key.id === 'total') onGameAction?.('calculator-complete')
   }, [onGameAction])
+
+  useEffect(() => {
+    const tapeId = calculator.tape?.id ?? 0
+    if (tapeId > 0 && tapeId !== lastTapeIdRef.current) tapeConfirmationTimeRef.current = 0
+    lastTapeIdRef.current = tapeId
+  }, [calculator.tape])
 
   const releaseKey = useCallback((id: string, event: ThreeEvent<PointerEvent>) => {
     event.stopPropagation()

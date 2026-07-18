@@ -1,11 +1,18 @@
 import { ContactShadows, Grid, Html, OrbitControls } from '@react-three/drei'
-import { useFrame, useThree } from '@react-three/fiber'
-import { EffectComposer, Bloom, Noise, Vignette } from '@react-three/postprocessing'
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import gsap from 'gsap'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AmbientLight, DirectionalLight, Group, PerspectiveCamera, PointLight, SpotLight } from 'three'
 import { Color, Vector3 } from 'three'
-import { BlendFunction } from 'postprocessing'
+import {
+  BlendFunction,
+  BloomEffect,
+  EffectComposer as PostprocessingComposer,
+  EffectPass,
+  NoiseEffect,
+  RenderPass,
+  VignetteEffect,
+} from 'postprocessing'
 import { Perf } from 'r3f-perf'
 import { SCENE_LAYOUT_MANIFEST, type SceneAssetPlacement } from '../../config/sceneManifest'
 import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../../models/registry'
@@ -16,6 +23,8 @@ import { type GameDecision } from '../../game/gameData'
 import { requestGameAudioCue } from '../../game/gameAudio'
 import { GameWorkstation } from '../../game/GameWorkstation'
 import { useGameStore } from '../../game/useGameStore'
+import type { WorkstationFinalDecision, WorkstationSceneEventId } from '../workstation/types'
+import { useWorkstationStore } from '../workstation/useWorkstationStore'
 
 const DESK_COMPUTER_POSITION = SCENE_LAYOUT_MANIFEST.desk.computerPosition
 const WORKSTATION_SCREEN_WORLD = [
@@ -23,6 +32,93 @@ const WORKSTATION_SCREEN_WORLD = [
   DESK_COMPUTER_POSITION[1] + DESK_COMPUTER_SCREEN.position[1],
   DESK_COMPUTER_POSITION[2] + DESK_COMPUTER_SCREEN.position[2],
 ] as const
+
+const WORKSTATION_EFFECTS: Record<WorkstationSceneEventId, EffectPreset> = {
+  'card.freeze': 'fraud',
+  'decision.approve': 'approve',
+  'decision.fraud': 'fraud',
+  'decision.reject': 'reject',
+  'receipt.submitted': 'paper-drop',
+}
+
+function PostprocessingStack({ effectPreset, lightingPreset }: { effectPreset: EffectPreset; lightingPreset: LightingPreset }) {
+  const gl = useThree((state) => state.gl)
+  const scene = useThree((state) => state.scene)
+  const camera = useThree((state) => state.camera)
+  const size = useThree((state) => state.size)
+  const composerRef = useRef<PostprocessingComposer | null>(null)
+  const [contextGeneration, setContextGeneration] = useState(0)
+
+  useEffect(() => {
+    const canvas = gl.domElement
+    const onContextLost = (event: Event) => {
+      event.preventDefault()
+      composerRef.current = null
+    }
+    const onContextRestored = () => {
+      setContextGeneration((generation) => generation + 1)
+    }
+    canvas.addEventListener('webglcontextlost', onContextLost)
+    canvas.addEventListener('webglcontextrestored', onContextRestored)
+    return () => {
+      canvas.removeEventListener('webglcontextlost', onContextLost)
+      canvas.removeEventListener('webglcontextrestored', onContextRestored)
+    }
+  }, [gl])
+
+  useEffect(() => {
+    if (gl.getContext().getContextAttributes() === null) return
+
+    let composer: PostprocessingComposer | null = null
+    try {
+      composer = new PostprocessingComposer(gl, { multisampling: 0 })
+      const bloom = new BloomEffect({
+        intensity: effectPreset === 'migration' ? 0.35 : 0.16,
+        luminanceThreshold: 1.05,
+        mipmapBlur: true,
+      })
+      const noise = new NoiseEffect({ blendFunction: BlendFunction.SOFT_LIGHT })
+      noise.blendMode.opacity.value = lightingPreset === 'manual' ? 0.08 : 0.025
+      const vignette = new VignetteEffect({
+        darkness: lightingPreset === 'manual' ? 0.55 : 0.34,
+        eskil: false,
+        offset: 0.26,
+      })
+      composer.addPass(new RenderPass(scene, camera))
+      composer.addPass(new EffectPass(camera, bloom))
+      composer.addPass(new EffectPass(camera, noise, vignette))
+      composer.setSize(size.width, size.height)
+      composerRef.current = composer
+    } catch (error) {
+      composer?.dispose()
+      composerRef.current = null
+      console.warn('Postprocessing skipped because the WebGL context is unavailable.', error)
+    }
+
+    return () => {
+      if (composerRef.current === composer) composerRef.current = null
+      composer?.dispose()
+    }
+  }, [camera, contextGeneration, effectPreset, gl, lightingPreset, scene, size.height, size.width])
+
+  useFrame((_, delta) => {
+    const composer = composerRef.current
+    if (gl.getContext().getContextAttributes() === null) return
+    if (!composer) {
+      gl.render(scene, camera)
+      return
+    }
+    try {
+      composer.render(delta)
+    } catch (error) {
+      composerRef.current = null
+      console.warn('Postprocessing render stopped after WebGL context loss.', error)
+      if (gl.getContext().getContextAttributes() !== null) gl.render(scene, camera)
+    }
+  }, 1)
+
+  return null
+}
 
 const MODEL_CAMERA_VIEWS = {
   overview: { position: [0, 5.5, 8.2], target: [0, 0.16, 0] },
@@ -216,7 +312,11 @@ function CameraRig() {
             WORKSTATION_SCREEN_WORLD[1] + SCENE_LAYOUT_MANIFEST.camera.workstation.offset[1],
             WORKSTATION_SCREEN_WORLD[2] + SCENE_LAYOUT_MANIFEST.camera.workstation.offset[2],
           ] as [number, number, number],
-          target: [...WORKSTATION_SCREEN_WORLD] as [number, number, number],
+          target: [
+            WORKSTATION_SCREEN_WORLD[0] + SCENE_LAYOUT_MANIFEST.camera.workstation.targetOffset[0],
+            WORKSTATION_SCREEN_WORLD[1] + SCENE_LAYOUT_MANIFEST.camera.workstation.targetOffset[1],
+            WORKSTATION_SCREEN_WORLD[2] + SCENE_LAYOUT_MANIFEST.camera.workstation.targetOffset[2],
+          ] as [number, number, number],
         }
       : focusMode === 'giraffe'
         ? SCENE_LAYOUT_MANIFEST.camera.giraffe
@@ -495,6 +595,62 @@ function RegisteredAsset({ children, id, onActivate, onGameAction, position = [0
   )
 }
 
+const DESK_STAMP_DECISIONS = {
+  'approval-stamp': 'approve',
+  'fraud-stamp': 'investigate',
+  'reject-stamp': 'reject',
+} as const satisfies Partial<Record<string, WorkstationFinalDecision>>
+
+const DESK_STAMP_HIT_AREAS = {
+  'approval-stamp': { position: [0, 0.1, 0] as const, size: [0.17, 0.21, 0.17] as const },
+  'fraud-stamp': { position: [0, 0.11, 0] as const, size: [0.24, 0.23, 0.2] as const },
+  'reject-stamp': { position: [0, 0.1, 0] as const, size: [0.17, 0.21, 0.16] as const },
+} as const
+
+function DeskDecisionStamp({ placement }: { placement: SceneAssetPlacement & { id: keyof typeof DESK_STAMP_HIT_AREAS } }) {
+  const phase = useLabStore((state) => state.experiencePhase)
+  const rampPromptVisible = useLabStore((state) => state.rampPromptVisible)
+  const workstationFocused = useLabStore((state) => state.workstationFocused)
+  const requestStampedDecision = useWorkstationStore((state) => state.requestStampedDecision)
+  const enabled = workstationFocused && phase !== 'migrating' && !rampPromptVisible
+  const hitArea = DESK_STAMP_HIT_AREAS[placement.id]
+
+  useEffect(() => () => {
+    document.body.style.cursor = ''
+  }, [])
+
+  const stopPointer = (event: ThreeEvent<PointerEvent>) => {
+    if (enabled) event.stopPropagation()
+  }
+
+  return (
+    <group
+      onClick={(event) => {
+        if (!enabled) return
+        event.stopPropagation()
+        requestStampedDecision(DESK_STAMP_DECISIONS[placement.id])
+      }}
+      onPointerDown={stopPointer}
+      onPointerOut={() => { document.body.style.cursor = '' }}
+      onPointerOver={(event) => {
+        if (!enabled) return
+        event.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      }}
+      position={placement.position}
+      rotation={placement.rotation}
+      scale={placement.scale}
+      userData={{ decision: DESK_STAMP_DECISIONS[placement.id], role: 'expense-decision-stamp' }}
+    >
+      <RegisteredAsset id={placement.id} />
+      <mesh position={hitArea.position}>
+        <boxGeometry args={hitArea.size} />
+        <meshBasicMaterial colorWrite={false} depthWrite={false} opacity={0} transparent />
+      </mesh>
+    </group>
+  )
+}
+
 function ReceiptPaper({ position = [0, 0.005, 0], rotation = [0, 0, 0] }: Omit<RegisteredAssetProps, 'id' | 'scale'>) {
   return (
     <group position={position} rotation={rotation}>
@@ -519,17 +675,29 @@ function WorkstationScreen() {
   const effectRun = useLabStore((state) => state.effectRun)
   const phase = useLabStore((state) => state.experiencePhase)
   const focused = useLabStore((state) => state.workstationFocused)
+  const migrationLocked = useLabStore((state) => state.rampMigrationLocked)
   const migrationStep = useLabStore((state) => state.rampMigrationStep)
+  const queueRampIntroduction = useLabStore((state) => state.queueRampIntroduction)
   const rampPromptVisible = useLabStore((state) => state.rampPromptVisible)
+  const runGiraffeReveal = useLabStore((state) => state.runGiraffeReveal)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const gameActive = window.location.pathname === '/game'
+  const triggerEffect = useLabStore((state) => state.triggerEffect)
+  const sceneEvent = useWorkstationStore((state) => state.sceneEvent)
+  const handledSceneEventRun = useRef(sceneEvent?.run ?? 0)
+
+  useEffect(() => {
+    if (gameActive || !sceneEvent || sceneEvent.run <= handledSceneEventRun.current) return
+    handledSceneEventRun.current = sceneEvent.run
+    triggerEffect(WORKSTATION_EFFECTS[sceneEvent.id])
+  }, [gameActive, sceneEvent, triggerEffect])
 
   return (
     <Html
-      center={focused}
-      scale={focused ? 1 : 0.0208}
+      center={false}
+      scale={0.0208}
       style={{ height: 650, pointerEvents: 'auto', width: 1040 }}
-      transform={!focused}
+      transform
       zIndexRange={[30, 0]}
     >
       {gameActive ? <GameWorkstation /> : (
@@ -537,10 +705,13 @@ function WorkstationScreen() {
           effect={effectPreset}
           effectRun={effectRun}
           focused={focused}
+          migrationLocked={migrationLocked}
           migrationStep={migrationStep}
           onAdvanceMigration={advanceRampMigration}
           onExit={() => setFocused(false)}
           onFocus={() => setFocused(true)}
+          onGameComplete={runGiraffeReveal}
+          onManualQueueComplete={queueRampIntroduction}
           onTryRamp={beginRampTransition}
           phase={phase}
           rampPromptVisible={rampPromptVisible}
@@ -698,18 +869,24 @@ function DeskEnvironment() {
   return (
     <group>
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
-      {DESK_ASSET_PLACEMENTS.map((placement, index) => (
-        <RegisteredAsset
-          key={`${placement.id}-${index}`}
-          {...placement}
-          onActivate={['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
-            ? () => activateAsset(placement.id)
-            : undefined}
-          visible={placement.id === 'giraffe-reveal' ? giraffeFocused : placement.id !== 'freeze-card-button' || !gameActive}
-        >
-          {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
-        </RegisteredAsset>
-      ))}
+      {DESK_ASSET_PLACEMENTS.map((placement, index) => {
+        const key = `${placement.id}-${index}`
+        if (!gameActive && placement.id in DESK_STAMP_DECISIONS) {
+          return <DeskDecisionStamp key={key} placement={placement as SceneAssetPlacement & { id: keyof typeof DESK_STAMP_HIT_AREAS }} />
+        }
+        return (
+          <RegisteredAsset
+            key={key}
+            {...placement}
+            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
+              ? () => activateAsset(placement.id)
+              : undefined}
+            visible={placement.id === 'giraffe-reveal' ? giraffeFocused : placement.id !== 'freeze-card-button' || !gameActive}
+          >
+            {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
+          </RegisteredAsset>
+        )
+      })}
       <DeskGameControls />
     </group>
   )
@@ -830,11 +1007,7 @@ export function LabScene() {
       <SceneContactShadows />
 
       {postprocessingEnabled && (
-        <EffectComposer multisampling={0}>
-          <Bloom intensity={effectPreset === 'migration' ? 0.35 : 0.16} luminanceThreshold={1.05} mipmapBlur />
-          <Noise blendFunction={BlendFunction.SOFT_LIGHT} opacity={lightingPreset === 'manual' ? 0.08 : 0.025} />
-          <Vignette darkness={lightingPreset === 'manual' ? 0.55 : 0.34} eskil={false} offset={0.26} />
-        </EffectComposer>
+        <PostprocessingStack effectPreset={effectPreset} lightingPreset={lightingPreset} />
       )}
     </>
   )

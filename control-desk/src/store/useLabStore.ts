@@ -32,6 +32,7 @@ type LabState = {
   performanceVisible: boolean
   renderQuality: RenderQuality
   rampPromptVisible: boolean
+  rampMigrationLocked: boolean
   rampMigrationStep: number
   rampTransitionRun: number
   reducedMotion: boolean
@@ -77,6 +78,7 @@ export const useLabStore = create<LabState>((set) => ({
   performanceVisible: false,
   renderQuality: 'low',
   rampPromptVisible: false,
+  rampMigrationLocked: false,
   rampMigrationStep: 0,
   rampTransitionRun: 0,
   reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -88,26 +90,41 @@ export const useLabStore = create<LabState>((set) => ({
     experiencePhase: 'migrating',
     giraffeFocused: false,
     lightingPreset: 'night',
+    rampMigrationLocked: false,
     rampMigrationStep: 0,
     rampPromptVisible: false,
     rampTransitionRun: state.rampTransitionRun + 1,
     workstationFocused: false,
   })),
-  advanceRampMigration: () => set((state) => {
-    if (state.experiencePhase !== 'migrating') return state
-    const nextStep = state.rampMigrationStep + 1
-    if (nextStep >= RAMP_MIGRATION_STEPS.length) {
-      return {
-        experiencePhase: 'ramp',
-        lightingPreset: 'ramp',
-        rampMigrationStep: RAMP_MIGRATION_STEPS.length,
+  advanceRampMigration: () => {
+    let didAdvance = false
+    set((state) => {
+      if (state.experiencePhase !== 'migrating' || state.rampMigrationLocked) return state
+      didAdvance = true
+      const nextStep = state.rampMigrationStep + 1
+      if (nextStep >= RAMP_MIGRATION_STEPS.length) {
+        return {
+          effectPreset: 'migration',
+          effectRun: state.effectRun + 1,
+          experiencePhase: 'ramp',
+          lightingPreset: 'ramp',
+          rampMigrationLocked: true,
+          rampMigrationStep: RAMP_MIGRATION_STEPS.length,
+        }
       }
-    }
-    return { rampMigrationStep: nextStep }
-  }),
+      return {
+        effectPreset: 'migration',
+        effectRun: state.effectRun + 1,
+        rampMigrationLocked: true,
+        rampMigrationStep: nextStep,
+      }
+    })
+    if (didAdvance) window.setTimeout(() => set({ rampMigrationLocked: false }), 360)
+  },
   completeRampTransition: () => set({
     experiencePhase: 'ramp',
     lightingPreset: 'ramp',
+    rampMigrationLocked: false,
     rampMigrationStep: RAMP_MIGRATION_STEPS.length,
   }),
   exitGiraffeFocus: () => set({ giraffeFocused: false }),
@@ -115,6 +132,7 @@ export const useLabStore = create<LabState>((set) => ({
     experiencePhase: 'manual',
     giraffeFocused: false,
     lightingPreset: 'manual',
+    rampMigrationLocked: false,
     rampMigrationStep: 0,
     rampPromptVisible: true,
     workstationFocused: true,
