@@ -370,8 +370,6 @@ function CameraRig() {
     const canvas = gl.domElement
     let draggingPointer: number | null = null
     const look = playerLookRef.current
-    look.pitch = -0.282
-    look.yaw = 0
 
     const applyLook = () => {
       camera.rotation.order = 'YXZ'

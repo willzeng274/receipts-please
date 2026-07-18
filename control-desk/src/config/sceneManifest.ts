@@ -71,9 +71,9 @@ export const SCENE_LAYOUT_MANIFEST = {
     high: { position: [3.5, 2.95, 3.1], target: [0, 0.82, 0.08], fov: 44 },
     low: { position: [3.82, 0.52, 3.78], target: [0, 0.76, 0.16], fov: 40 },
     workstation: {
-      offset: [0.08, 0.025, 1.189] as SceneVector3,
-      targetOffset: [0.48, -0.225, 0.199] as SceneVector3,
-      fov: 68,
+      offset: [0, 0, 0.72] as SceneVector3,
+      targetOffset: [0, 0, 0] as SceneVector3,
+      fov: 40,
     },
     giraffe: { position: [0.04, 1.82, -2.72] as SceneVector3, target: [0.76, 2.02, -6.46] as SceneVector3, fov: 25 },
   },

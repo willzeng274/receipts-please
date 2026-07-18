@@ -9,10 +9,12 @@ function titleCase(value: string) {
 }
 
 const FIRE_GAGS = [
-  'Their Slack dot has gone spiritually offline. Their lunch is now communal property.',
-  'IT has converted their chair into an available resource and their laptop into “refurbished.”',
-  'Their calendar is now impressively open through the end of time.',
-  'LinkedIn detected a 900% increase in motivational posting.',
+  'Bro asked “what did I do?” Chat said 6. Payroll said 7.',
+  'Aura balance: −67,000. Badge access: absolutely cooked.',
+  'Unemployment speedrun any% — new office record.',
+  'Their worksona just got patched out in v6.7.',
+  'POV: the group chat stops typing when HR joins.',
+  'This firing has been added to the lore. 💀',
 ]
 
 export function GameDeskHud() {
@@ -68,7 +70,7 @@ export function GameDeskHud() {
       {fired && (
         <>
           <div aria-hidden="true" className="game-fire-ticker">
-            <span>BREAKING NEWS · LOCAL EMPLOYEE DISCOVERS UNLIMITED PTO · HEADCOUNT OPTIMIZED · VIBES: IMMACULATE · PAYROLL HATES THIS ONE WEIRD TRICK · </span>
+            <span>CHAT IS THIS REAL · 6 7 · AURA −67,000 · BRO GOT PATCHED OUT · EMPLOYMENT ARC ENDED · SKILL ISSUE (RESPECTFULLY) · 💀 · </span>
           </div>
           <div aria-hidden="true" className="game-fire-rain">
             {Array.from({ length: 32 }, (_, index) => (
@@ -81,38 +83,38 @@ export function GameDeskHud() {
                   '--fire-size': `${18 + (index % 5) * 7}px`,
                   '--fire-x': `${(index * 37) % 100}%`,
                 } as CSSProperties}
-              >{index % 4 === 0 ? '🗑️' : index % 3 === 0 ? '📉' : '🔥'}</i>
+              >{index % 4 === 0 ? '6' : index % 3 === 0 ? '7' : index % 2 === 0 ? '💀' : '😭'}</i>
             ))}
           </div>
-          <div aria-hidden="true" className="game-fire-mega-stamp"><span>YOU’RE</span><strong>FIRED</strong></div>
+          <div aria-hidden="true" className="game-fire-mega-stamp"><span>BRO GOT</span><strong>FIRED 💀</strong></div>
           <div aria-hidden="true" className="game-fire-popups">
-            <article className="is-slack"><b>SLACK</b><strong>{firedName} left the workspace.</strong><small>Everyone reacted with 👀</small></article>
-            <article className="is-linkedin"><b>LINKEDIN</b><strong>Profile updated 0.2 seconds ago</strong><small>“Open to work, revenge, and coffee chats.”</small></article>
-            <article className="is-it"><b>IT HELPDESK</b><strong>Laptop listed on Facebook Marketplace</strong><small>Condition: emotionally refurbished</small></article>
-            <article className="is-calendar"><b>CALENDAR</b><strong>37 recurring meetings deleted</strong><small>This could have been an email. It no longer can.</small></article>
+            <article className="is-slack"><b>THE GC</b><strong>bro got removed from the function</strong><small>67 people are typing…</small></article>
+            <article className="is-linkedin"><b>AURA CHECK</b><strong>−67,000 aura</strong><small>employment diff is actually insane</small></article>
+            <article className="is-it"><b>PATCH NOTES v6.7</b><strong>{firedName} removed from the build</strong><small>reason: got cooked</small></article>
+            <article className="is-calendar"><b>LORE UPDATE</b><strong>unemployment speedrun any%</strong><small>NEW PB · 0:00.67</small></article>
           </div>
         </>
       )}
       <div className="game-feedback-card">
-        <span>{fired ? 'HUMAN RESOURCES HAS LEFT THE CHAT' : feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
-        <h2>{fired ? `${firedName} has been promoted to customer.` : feedbackTitle}</h2>
+        <span>{fired ? 'CHAT WITNESSED A TERMINATION 💀' : feedback.correct ? 'JUDGMENT RECORDED' : 'AUDIT NOTE'} · SCORE {score}</span>
+        <h2>{fired ? `${firedName} got ratioed by payroll.` : feedbackTitle}</h2>
         <output className={feedback.points >= 0 ? 'is-positive' : 'is-negative'}>{feedback.points >= 0 ? '+' : ''}{feedback.points} points</output>
         <p>{feedback.explanation}</p>
         {fired && (
           <div className="game-fire-gag">
-            <span aria-hidden="true">🫡</span>
+            <span aria-hidden="true">💀</span>
             <div>
-              <strong>{firedName.toUpperCase()} HAS BEEN EJECTED FROM THE SPREADSHEET</strong>
+              <strong>{firedName.toUpperCase()} GOT 6 7’D OUT OF PAYROLL</strong>
               <small>{FIRE_GAGS[caseIndex % FIRE_GAGS.length]}</small>
             </div>
           </div>
         )}
-        {fired && <div className="game-fire-payroll"><span>UNSUBSCRIBING FROM PAYROLL</span><i><b /></i><strong>404: EMPLOYEE NOT FOUND</strong></div>}
+        {fired && <div className="game-fire-payroll"><span>DELETING EMPLOYMENT ARC</span><i><b /></i><strong>BRO IS COOKED</strong></div>}
         {missing.length > 0 && <small>Skipped: {missing.join(' · ')}</small>}
         <button onClick={() => {
           advanceCase()
           requestGameAudioCue('receipt-drop', 0.38)
-        }} type="button">{fired ? 'NEXT CORPORATE CASUALTY' : nextLabel}</button>
+        }} type="button">{fired ? 'NEXT AURA CHECK' : nextLabel}</button>
       </div>
     </section>
   )
