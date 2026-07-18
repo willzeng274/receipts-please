@@ -7,6 +7,7 @@ export type LabRoute = {
 }
 
 export const LAB_ROUTES: readonly LabRoute[] = [
+  { label: 'Play game', path: '/game' },
   { label: 'Model floor', mode: 'models', path: '/model-lab' },
   { label: 'Animation stage', mode: 'animation', path: '/animation-lab' },
   { label: 'Desk scene', mode: 'scene', path: '/scene-lab' },

@@ -12,6 +12,7 @@ import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../.
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
 import { WorkstationOS } from '../workstation/WorkstationOS'
+import { GameWorkstation } from '../../game/GameWorkstation'
 
 const DESK_COMPUTER_POSITION = SCENE_LAYOUT_MANIFEST.desk.computerPosition
 const WORKSTATION_SCREEN_WORLD = [
@@ -503,6 +504,7 @@ function WorkstationScreen() {
   const migrationStep = useLabStore((state) => state.rampMigrationStep)
   const rampPromptVisible = useLabStore((state) => state.rampPromptVisible)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
+  const gameActive = window.location.pathname === '/game'
 
   return (
     <Html
@@ -512,18 +514,20 @@ function WorkstationScreen() {
       transform={!focused}
       zIndexRange={[30, 0]}
     >
-      <WorkstationOS
-        effect={effectPreset}
-        effectRun={effectRun}
-        focused={focused}
-        migrationStep={migrationStep}
-        onAdvanceMigration={advanceRampMigration}
-        onExit={() => setFocused(false)}
-        onFocus={() => setFocused(true)}
-        onTryRamp={beginRampTransition}
-        phase={phase}
-        rampPromptVisible={rampPromptVisible}
-      />
+      {gameActive ? <GameWorkstation /> : (
+        <WorkstationOS
+          effect={effectPreset}
+          effectRun={effectRun}
+          focused={focused}
+          migrationStep={migrationStep}
+          onAdvanceMigration={advanceRampMigration}
+          onExit={() => setFocused(false)}
+          onFocus={() => setFocused(true)}
+          onTryRamp={beginRampTransition}
+          phase={phase}
+          rampPromptVisible={rampPromptVisible}
+        />
+      )}
     </Html>
   )
 }

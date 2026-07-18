@@ -10,7 +10,7 @@ Keep local Chrome QA evidence in the root `.codex/` directory and do not commit 
 
 ## Current scope
 
-Build the internal R3F production tool first. The current milestone includes:
+The internal R3F production tool remains the asset-review foundation. The current milestone now also includes a playable vertical-slice loop:
 
 - a local Bun + Vite + React + TypeScript + Tailwind + R3F/Drei environment;
 - `/model-lab` as the default route, with an orbitable/pannable/zoomable scene, overview and close cameras, lighting presets, model registry, selection, inspection framing, and performance visibility;
@@ -21,10 +21,11 @@ Build the internal R3F production tool first. The current milestone includes:
 - a focusable workstation-screen prototype: clicking the computer display moves into a readable OS view, mouse and keyboard input stay scoped to that OS, `Escape` and a visible close control exit, and the finance workspace demonstrates the manual-to-Ramp product transition without starting the full case loop;
 - polished procedural R3F hero props plus a growing modular desk/office kit. Six assets are only the first batch, not an environment-completeness claim;
 - project-local skills for model creation, audio sourcing, and Chrome visual QA.
+- `/game` as the user-facing vertical slice, consuming the receipt catalog for six manual cases and six Ramp cases, with decisions, required case actions, timing, scoring, the interactive migration, adaptive prototype audio, and the giraffe ending.
 
 The current review priority is the hero workstation, decision controls, and authored camera/interaction paths. The boxed office only needs to be coherent and extensible at this milestone; do not spend hero-prop time polishing background filler that does not support a remembered moment.
 
-Do not build the case loop, timer, scoring, decision state machine, dialogue system, or five-minute game sequence yet. A polished procedural giraffe reveal, windows/sky, plants, boxes, paper clutter, and alternate office furniture may be added as environment-review assets, but character gameplay and the full ending sequence remain deferred.
+The user explicitly advanced the project beyond the lab-only milestone. Keep `/game` as a thin orchestration layer over registered cases, effects, audio, migration state, and the existing scene; do not fork duplicate models or hardcode a second receipt catalog. Freeform document physics, organic employee characters, and branching dialogue remain deferred until the vertical slice is stable.
 
 We are not using Blender for this hackathon phase. Prefer carefully constructed procedural R3F models. Do not create a low-quality generated GLB merely to have a binary file. The installed `gltfjsx` path remains available only for a licensed, already-authored GLB that is clearly better than a procedural solution. The user has explicitly reopened the giraffe as a lab/environment asset: build a high-quality procedural head/neck/badge reveal now, while keeping organic employee characters and full ending choreography deferred.
 
