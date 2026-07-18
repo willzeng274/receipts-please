@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Game Model"
+  short_description: "Build and review production-ready R3F or GLB assets"
+  default_prompt: "Use $create-game-model to build one polished game asset and add it to the model lab."

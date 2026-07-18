@@ -1,0 +1,4 @@
+interface:
+  display_name: "Source Game Audio"
+  short_description: "Source and ship licensed browser-game audio"
+  default_prompt: "Use $source-game-audio to source, validate, catalog, and preview licensed audio for this browser game."

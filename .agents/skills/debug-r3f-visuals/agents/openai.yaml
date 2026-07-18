@@ -1,0 +1,4 @@
+interface:
+  display_name: "Debug R3F Visuals"
+  short_description: "Debug R3F game visuals end to end"
+  default_prompt: "Use $debug-r3f-visuals to visually debug the R3F game and asset/effects lab in Chrome."
