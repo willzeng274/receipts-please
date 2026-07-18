@@ -38,7 +38,6 @@ export function GameWorkstation() {
   const performAction = useGameStore((state) => state.performAction)
   const phase = useGameStore((state) => state.phase)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
-  const startGame = useGameStore((state) => state.startGame)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const togglePause = useGameStore((state) => state.togglePause)
   const toggleSound = useGameStore((state) => state.toggleSound)
@@ -97,7 +96,7 @@ export function GameWorkstation() {
       role="application"
     >
       <header className="game-os-bar">
-        <div><b>R/P</b><strong>{currentCase.era === 'manual' ? 'Expense OS' : 'Ramp · Expenses'}</strong><span>{currentCase.era === 'manual' ? 'LOCAL WORKSPACE' : 'CONNECTED WORKSPACE'}</span></div>
+        <div><b>R/P</b><strong>{currentCase.era === 'manual' ? 'Expense OS' : 'Ramp · Expenses'}</strong><span>{currentCase.era === 'manual' ? '0:20–2:10 · LOCAL WORKSPACE' : '2:35–4:40 · CONNECTED WORKSPACE'}</span></div>
         <div>
           <span>INBOX <strong>{inboxCount}</strong></span>
           <label><span>LOW CORTISOL</span><i><b style={{ width: `${100 - cortisol}%` }} /></i><em>{100 - cortisol}%</em></label>
@@ -197,16 +196,6 @@ export function GameWorkstation() {
           <dl><div><dt>Expenses checked</dt><dd>47</dd></div><div><dt>Need attention</dt><dd>6</dd></div></dl>
           <button onClick={handleTryRamp} type="button">Try Ramp</button>
           <small>This is the only way forward.</small>
-        </section>
-      )}
-
-      {phase === 'briefing' && (
-        <section aria-labelledby="game-cold-open-title" className="game-cold-open">
-          <span>FINANCE OPS · 11:54 AM</span>
-          <h2 id="game-cold-open-title">Need these cleared before lunch.</h2>
-          <p>The first receipt and transaction are already open. Compare the evidence, then send the case to Approve, Reject, or Investigate.</p>
-          <button onClick={startGame} type="button">Grab first receipt</button>
-          <small>Mouse only · five-minute target</small>
         </section>
       )}
 

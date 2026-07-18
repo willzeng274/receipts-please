@@ -68,7 +68,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     ? state
     : { activeActions: [...state.activeActions, action] }),
   resetGame: () => set(initialState),
-  startGame: () => set({ ...initialState, phase: 'manual' }),
+  startGame: () => set((state) => ({ ...initialState, elapsedSeconds: state.elapsedSeconds, phase: 'manual' })),
   submitDecision: (decision) => {
     const state = get()
     if (state.feedback || state.paused || !['manual', 'ramp'].includes(state.phase)) return
@@ -87,7 +87,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       feedback: result,
     })
   },
-  tick: () => set((state) => state.phase === 'briefing' || state.phase === 'complete' || state.paused
+  tick: () => set((state) => state.phase === 'complete' || state.paused
     ? state
     : { elapsedSeconds: state.elapsedSeconds + 1 }),
   togglePause: () => set((state) => ({ paused: !state.paused })),

@@ -22,6 +22,7 @@ export function GameShell() {
   const phase = useGameStore((state) => state.phase)
   const resetGame = useGameStore((state) => state.resetGame)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
+  const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
   const resetExperience = useLabStore((state) => state.resetExperience)
@@ -94,7 +95,7 @@ export function GameShell() {
     setGridVisible(false)
     setPerformanceVisible(false)
     setRenderQuality('low')
-    setWorkstationFocused(true)
+    setWorkstationFocused(false)
   }, [resetExperience, resetGame, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
 
   useEffect(() => {
@@ -152,6 +153,13 @@ export function GameShell() {
     }
   }, [completeGame, endingStep, phase, playCue])
 
+  const handleStart = () => {
+    startGame()
+    setWorkstationFocused(true)
+    switchAmbience('manual-adaptive-music-loop')
+    playCue('paper-pickup', 0.52)
+  }
+
   const handleReveal = () => {
     setEndingStep(1)
     playCue('slack-ping', 0.6)
@@ -176,9 +184,19 @@ export function GameShell() {
     <main className="game-shell">
       <LabViewport />
 
+      {phase === 'briefing' && (
+        <section className="game-cold-open">
+          <span>0:00–0:20 · FINANCE OPS · 11:54 AM</span>
+          <h2>Need these cleared before lunch.</h2>
+          <p>The first receipt is waiting on the desk and its transaction is already open. Pick it up to begin the shift.</p>
+          <button onClick={handleStart} type="button">Pick up receipt</button>
+          <small>Shift clock {formatElapsed(elapsedSeconds)} · mouse only</small>
+        </section>
+      )}
+
       {phase === 'ending' && endingStep === 0 && (
         <section className="game-ending-panel">
-          <span>INBOX ZERO · LOW CORTISOL 100%</span>
+          <span>4:40–5:00 · INBOX ZERO · LOW CORTISOL 100%</span>
           <h2>CEO: urgent</h2>
           <p>CEO: why did my card decline{`\n`}CEO: can you make a one time exception{`\n`}CEO: he already started monday</p>
           <article><span>{endingTransaction.merchant}</span><strong>{new Intl.NumberFormat('en-US', { currency: 'USD', style: 'currency' }).format(endingTransaction.amountCents / 100)}</strong><small>{endingTransaction.category} · {endingTransaction.memo} · {endingTransaction.result}</small></article>
