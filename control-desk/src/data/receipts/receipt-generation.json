@@ -36,8 +36,7 @@
   },
   "decisionValues": [
     "approve",
-    "reject",
-    "investigate"
+    "reject"
   ],
   "coverage": {
     "primaryManualCases": 8,
@@ -736,7 +735,7 @@
         }
       },
       "truth": {
-        "expectedDecision": "investigate",
+        "expectedDecision": "reject",
         "primaryClue": "The $980 tip is approximately 4,495 percent of the $21.80 meal.",
         "primaryEvidenceTargets": [
           "receipt.amounts.subtotalCents",
@@ -966,7 +965,7 @@
         }
       },
       "truth": {
-        "expectedDecision": "investigate",
+        "expectedDecision": "reject",
         "primaryClue": "A blurry handwritten napkin is not adequate documentation for a $14,000 technology purchase.",
         "primaryEvidenceTargets": [
           "receipt.copy.rawLines",
@@ -1054,7 +1053,7 @@
         ]
       },
       "truth": {
-        "expectedDecision": "investigate",
+        "expectedDecision": "reject",
         "primaryClue": "All three submissions share the same merchant, timestamp, item lines, tax, and authorization code.",
         "primaryEvidenceTargets": ["receipt", "relatedReceipts"],
         "secondaryClue": "The photos use different crops, rotations, stains, and memos to disguise one source receipt.",
@@ -1123,7 +1122,7 @@
         "anomalies": [{"type": "location-mismatch", "target": "merchant.addressLines", "parameters": {"receiptLocation": "New York", "approvedTripLocation": "London"}}]
       },
       "comparisonRecords": {"approvedTrip": {"origin": "New York", "destination": "London", "startDate": "2026-07-01", "endDate": "2026-07-05"}},
-      "truth": {"expectedDecision": "investigate", "primaryClue": "The employee was scheduled to be in London when this New York taxi ride occurred.", "primaryEvidenceTargets": ["receipt.issuedAt", "receipt.merchant.addressLines", "comparisonRecords.approvedTrip"], "secondaryClue": null, "explanation": "The charge location conflicts with the approved itinerary."},
+      "truth": {"expectedDecision": "reject", "primaryClue": "The employee was scheduled to be in London when this New York taxi ride occurred.", "primaryEvidenceTargets": ["receipt.issuedAt", "receipt.merchant.addressLines", "comparisonRecords.approvedTrip"], "secondaryClue": null, "explanation": "The charge location conflicts with the approved itinerary."},
       "generationNotes": "Render as a credible taxi slip; the discrepancy exists only across systems."
     },
     {
@@ -1220,7 +1219,7 @@
         }
       ],
       "comparisonRecords": {"departments": ["Sales", "Marketing"], "submissionCount": 2},
-      "truth": {"expectedDecision": "investigate", "primaryClue": "Both departments submitted the same receipt fingerprint and authorization code.", "primaryEvidenceTargets": ["receipt", "relatedReceipts"], "secondaryClue": null, "explanation": "Only one department can claim the physical receipt."},
+      "truth": {"expectedDecision": "reject", "primaryClue": "Both departments submitted the same receipt fingerprint and authorization code.", "primaryEvidenceTargets": ["receipt", "relatedReceipts"], "secondaryClue": null, "explanation": "Only one department can claim the physical receipt."},
       "generationNotes": "The second image should appear independently photographed while retaining identical source defects."
     },
     {
@@ -1245,7 +1244,7 @@
         "anomalies": [{"type": "one-cent-policy-overage", "target": "amounts.calculatedTotalCents", "parameters": {"limitCents": 3500, "overageCents": 1}}]
       },
       "comparisonRecords": {"policy": {"limitPerAttendeeCents": 3500}, "attendeeCount": 1},
-      "truth": {"expectedDecision": "investigate", "primaryClue": "The meal is exactly one cent above the policy limit.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.policy.limitPerAttendeeCents"], "secondaryClue": null, "explanation": "This deliberately annoying edge case should require player judgment rather than an obvious fraud response."},
+      "truth": {"expectedDecision": "approve", "primaryClue": "The meal is exactly one cent above the policy limit.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.policy.limitPerAttendeeCents"], "secondaryClue": null, "explanation": "This deliberately annoying edge case should require player judgment rather than an obvious fraud response."},
       "generationNotes": "Keep the document completely legitimate; the entire case is the one-cent threshold."
     },
     {
@@ -1277,7 +1276,7 @@
         "inventory": {"MacBooks": {"purchased": 24, "counted": 11}, "monitors": {"purchased": 40, "counted": 19}, "keyboards": {"purchased": 90, "counted": 143, "note": "Imported by weight"}},
         "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "sam.patel@company.example", "employeeId": "employee-sam-patel"}
       },
-      "truth": {"expectedDecision": "investigate", "requiredActions": ["freeze-card", "flag-transaction", "escalate-employee"], "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor."},
+      "truth": {"expectedDecision": "reject", "requiredActions": ["freeze-card", "flag-transaction", "escalate-employee"], "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor."},
       "generationNotes": "The invoice is legitimate; the suspicious pattern emerges from connected records."
     },
     {
@@ -1337,7 +1336,7 @@
         ],
         "employeeExplanation": "Long layover"
       },
-      "truth": {"expectedDecision": "investigate", "primaryClue": "Four charges are geographically incompatible with the approved Chicago itinerary.", "primaryEvidenceTargets": ["comparisonRecords.approvedTrip", "comparisonRecords.submittedCharges"], "secondaryClue": "Several timestamps overlap in ways that make the claimed travel physically impossible.", "explanation": "Ramp Travel maps each charge to the itinerary and exposes the impossible locations and timing."},
+      "truth": {"expectedDecision": "reject", "primaryClue": "Four charges are geographically incompatible with the approved Chicago itinerary.", "primaryEvidenceTargets": ["comparisonRecords.approvedTrip", "comparisonRecords.submittedCharges"], "secondaryClue": "Several timestamps overlap in ways that make the claimed travel physically impossible.", "explanation": "Ramp Travel maps each charge to the itinerary and exposes the impossible locations and timing."},
       "generationNotes": "The Chicago folio is the legitimate anchor; the other charges are rendered as connected transaction cards on the travel view."
     },
     {
@@ -1432,7 +1431,7 @@
         ],
         "approval": {"approvedBy": "CEO", "reason": "Let them cook"}
       },
-      "truth": {"expectedDecision": "investigate", "requiredActions": ["freeze-card", "escalate-approval"], "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The card configuration and purchase pattern require an immediate freeze and escalation."},
+      "truth": {"expectedDecision": "reject", "requiredActions": ["freeze-card", "escalate-approval"], "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The card configuration and purchase pattern require an immediate freeze and escalation."},
       "generationNotes": "Use the alpaca invoice as the tactile receipt while the unified workspace shows the wider card catastrophe."
     },
     {
