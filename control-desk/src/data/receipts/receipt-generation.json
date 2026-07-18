@@ -861,7 +861,7 @@
         }
       },
       "truth": {
-        "expectedDecision": "fire",
+        "expectedDecision": "reject",
         "primaryClue": "The receipt combines incompatible typefaces, weights, rotations, and baselines.",
         "primaryEvidenceTargets": [
           "receipt.merchant.name",
@@ -872,7 +872,7 @@
         ],
         "minimumEvidenceSelections": 2,
         "secondaryClue": null,
-        "explanation": "Although the arithmetic and transaction data match, the receipt image was assembled from inconsistent typographic sources."
+        "explanation": "The assembled receipt image is not reliable evidence for reimbursement, so Reject is correct. The matching transaction does not prove that the employee created the altered image, so Fire is not supported."
       },
       "generationNotes": "Typography differences must be visible at inspection zoom but subtle enough that the player has to compare regions."
     },
@@ -1054,11 +1054,11 @@
         ]
       },
       "truth": {
-        "expectedDecision": "fire",
+        "expectedDecision": "reject",
         "primaryClue": "All three submissions share the same merchant, timestamp, item lines, tax, and authorization code.",
         "primaryEvidenceTargets": ["receipt", "relatedReceipts"],
         "secondaryClue": "The photos use different crops, rotations, stains, and memos to disguise one source receipt.",
-        "explanation": "The first submission may be valid, but the other two are derived from the same physical receipt."
+        "explanation": "Reject the duplicate-derived submissions. The shared receipt fingerprint proves duplication, but the current evidence does not identify who organized it well enough to support firing a specific employee."
       },
       "generationNotes": "Generate all three from one canonical render so identical thermal-print defects survive the crop and rotation treatments."
     },
@@ -1093,11 +1093,11 @@
         "transaction": {"merchant": "Ocean Table & Grill", "amountCents": 9730, "occurredAt": "2026-03-03T20:14:00-05:00", "cardLast4": "9034", "employeeId": "employee-alex-morgan"}
       },
       "truth": {
-        "expectedDecision": "fire",
+        "expectedDecision": "reject",
         "primaryClue": "The document contains several mutually impossible fields characteristic of a synthetic receipt.",
         "primaryEvidenceTargets": ["receipt.printedIssuedAt", "receipt.merchant.addressLines", "receipt.copy.paymentMethodText", "receipt.amounts"],
         "secondaryClue": "The printed total is $5.00 greater than the receipt arithmetic.",
-        "explanation": "February 31, two currencies, an Atlantic Ocean address, filler text, and broken arithmetic make the document invalid."
+        "explanation": "February 31, two currencies, an Atlantic Ocean address, filler text, and broken arithmetic make the document invalid, so Reject is correct. The document alone does not prove that the employee knowingly generated it."
       },
       "generationNotes": "Keep individual errors discoverable without turning the image into visual noise; two selected regions are enough to establish the forgery."
     },
@@ -1432,7 +1432,7 @@
         ],
         "approval": {"approvedBy": "CEO", "reason": "Let them cook"}
       },
-      "truth": {"expectedDecision": "fire", "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The catastrophic card setup and purchase pattern are severe enough that Fire is the correct decision."},
+      "truth": {"expectedDecision": "reject", "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "Reject the expense and shut down the card program. Because the CEO approved the setup, the current evidence shows a control failure rather than grounds to fire the intern."},
       "generationNotes": "Use the alpaca invoice as the tactile receipt while the unified workspace shows the wider card catastrophe."
     },
     {
