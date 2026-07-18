@@ -333,7 +333,7 @@ export function GameShell() {
   }, [completeGame, endingStep, phase, playCue])
 
   const handleStart = () => {
-    setRenderQuality('default')
+    setRenderQuality('capture')
     startGame()
     setWorkstationFocused(true)
     switchAmbience('manual-adaptive-music-loop')
@@ -341,7 +341,7 @@ export function GameShell() {
   }
 
   const handleInstallRamp = () => {
-    setRenderQuality('default')
+    setRenderQuality('capture')
     installRamp()
     beginRampTransition()
   }
@@ -384,7 +384,7 @@ export function GameShell() {
     setPerformanceVisible(false)
 
     if (enabled) {
-      setRenderQuality('default')
+      setRenderQuality('capture')
       installRamp()
       beginRampTransition()
       return

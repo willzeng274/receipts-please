@@ -1,11 +1,7 @@
-import {
-  RoundedBox as DreiRoundedBox,
-  type RoundedBoxProps,
-} from '@react-three/drei'
+import { RoundedBox } from '@react-three/drei'
 import { useFrame, type ThreeElements } from '@react-three/fiber'
 import {
   Children,
-  forwardRef,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -13,23 +9,12 @@ import {
   useRef,
 } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import { useLabStore } from '../../store/useLabStore'
 import type { ProceduralAssetProps } from '../types'
 
 const HALF_PI = Math.PI / 2
-
-const RoundedBox = forwardRef<THREE.Mesh, RoundedBoxProps>(
-  function RoundedBox({ bevelSegments = 2, ...props }, ref) {
-    return (
-      <DreiRoundedBox
-        ref={ref}
-        bevelSegments={bevelSegments}
-        {...props}
-      />
-    )
-  },
-)
 
 // Root-local desk-fit contract. With the scene root at [0, .85, -.10], the
 // keyboard occupies world z .045….223 and the mouse .096….235: both sit in the
@@ -56,7 +41,7 @@ export const DESK_COMPUTER_SCREEN = {
 } as const
 
 const KEY_UNIT = 0.01905
-const KEY_GAP = 0.0018
+const KEY_GAP = 0.003
 const KEY_FACE = KEY_UNIT - KEY_GAP
 const KEY_ROW_STEP = 0.0205
 const KEY_BASE_Y = 0.0365
@@ -342,6 +327,19 @@ function buildKeyboardLayout() {
   addGridKey('num-0', 0, 4, NUMPAD_KEY_LEFT, -0.05225, 2)
   addGridKey('num-period', 2, 4, NUMPAD_KEY_LEFT, -0.05225)
 
+  // A restrained rear-to-front rise gives each row a readable manufactured
+  // step without turning the board into a tall gaming-keyboard wedge.
+  keys.forEach((key) => {
+    const rearBias = THREE.MathUtils.clamp((0.052 - key.z) / 0.13, 0, 1)
+    key.y = KEY_BASE_Y + rearBias * 0.0038
+    key.rotationX = -0.04
+    // The unshifted full 104-key field spans x -0.249…0.229 and
+    // z -0.074…0.059. Center that measured envelope in the 0.51 × 0.178 m
+    // housing so all four deck margins are deliberate and even.
+    key.x += 0.01
+    key.z += 0.0075
+  })
+
   return keys
 }
 
@@ -349,15 +347,10 @@ const KEY_LAYOUT = buildKeyboardLayout()
 const ESCAPE_KEY = KEY_LAYOUT.find((key) => key.id === 'esc') as KeySpec
 const STATIC_KEYS = KEY_LAYOUT.filter((key) => key.id !== 'esc')
 
-const KEYBOARD_LEGEND_BOUNDS = {
-  left: -0.246,
-  back: -0.082,
-  width: 0.492,
-  depth: 0.158,
-} as const
+const MOUSE_LEFT_BUTTON_PIVOT = [-0.011, 0.0412, -0.0158] as const
 
 const MONITOR_REAR_VENTS = Array.from({ length: 18 }, (_, index) => ({
-  position: [-0.284 + index * 0.024, 0.548, -0.033] as const,
+  position: [-0.284 + index * 0.024, 0.535, -0.012] as const,
   rotation: [0, 0, 0] as const,
 }))
 
@@ -367,10 +360,10 @@ const TOWER_SIDE_VENTS = Array.from({ length: 10 }, (_, index) => ({
 }))
 
 const MONITOR_REAR_SCREWS = [
-  [-0.33, 0.27, -0.033],
-  [0.17, 0.27, -0.033],
-  [-0.33, 0.54, -0.033],
-  [0.17, 0.54, -0.033],
+  [-0.31, 0.282, -0.013],
+  [0.15, 0.282, -0.013],
+  [-0.31, 0.528, -0.013],
+  [0.15, 0.528, -0.013],
 ] as const
 
 const TOWER_LED_IDLE_COLOR = new THREE.Color('#69dd92')
@@ -378,214 +371,48 @@ const TOWER_LED_IDLE_EMISSIVE = new THREE.Color('#3aff84')
 const TOWER_LED_ALERT_COLOR = new THREE.Color('#ff4a3f')
 const TOWER_LED_ALERT_EMISSIVE = new THREE.Color('#ff2f25')
 
-const MANUAL_WINDOW_BASES = {
-  transaction: [-0.142, 0.007, 0.002] as const,
-  policy: [0.138, 0.028, 0.003] as const,
-  notification: [0.11, -0.104, 0.004] as const,
-}
-
-const LABEL_ATLAS_SIZE = [1024, 512] as const
-
+const LABEL_ATLAS_SIZE = [512, 128] as const
 const LABEL_ATLAS_REGIONS = {
-  manualHeader: { x: 0, y: 0, width: 512, height: 32 },
-  rampHeader: { x: 512, y: 0, width: 512, height: 32 },
-  rearDisplay: { x: 0, y: 32, width: 320, height: 32 },
-  frontDisplay: { x: 320, y: 32, width: 200, height: 32 },
-  notification: { x: 520, y: 32, width: 280, height: 48 },
-  towerRevision: { x: 800, y: 32, width: 224, height: 32 },
-  transaction: { x: 0, y: 80, width: 256, height: 160 },
-  policy: { x: 256, y: 80, width: 256, height: 120 },
-  rampSummary: { x: 512, y: 80, width: 256, height: 160 },
-  mismatch: { x: 768, y: 80, width: 256, height: 80 },
-  evidence: { x: 768, y: 160, width: 256, height: 80 },
-  towerArchive: { x: 256, y: 200, width: 240, height: 40 },
-  keyboardBadge: { x: 0, y: 240, width: 240, height: 40 },
-  standBadge: { x: 240, y: 240, width: 200, height: 40 },
-  escape: { x: 440, y: 240, width: 64, height: 40 },
-  statusPaper: { x: 0, y: 288, width: 320, height: 48 },
-  statusApprove: { x: 320, y: 288, width: 320, height: 48 },
-  statusReject: { x: 640, y: 288, width: 320, height: 48 },
-  statusFraud: { x: 0, y: 336, width: 320, height: 48 },
-  statusJam: { x: 320, y: 336, width: 320, height: 48 },
-  statusReady: { x: 640, y: 336, width: 320, height: 48 },
+  rearDisplay: { x: 0, y: 0, width: 256, height: 40 },
+  towerArchive: { x: 256, y: 0, width: 160, height: 40 },
+  towerRevision: { x: 0, y: 40, width: 256, height: 40 },
+  escape: { x: 256, y: 40, width: 64, height: 40 },
+  keyboardBadge: { x: 0, y: 80, width: 256, height: 40 },
+  standBadge: { x: 256, y: 80, width: 160, height: 40 },
 } as const
-
 type LabelAtlasKey = keyof typeof LABEL_ATLAS_REGIONS
 
-type LabelDefinition = {
+const LABEL_DEFINITIONS: ReadonlyArray<{
   key: LabelAtlasKey
   text: string
   color: string
-  align?: CanvasTextAlign
-  outline?: boolean
-}
-
-const LABEL_DEFINITIONS: readonly LabelDefinition[] = [
-  {
-    key: 'manualHeader',
-    text: 'EXPENSE OS / INBOX 47 / 11:54',
-    color: '#daf0e9',
-    align: 'left',
-  },
-  {
-    key: 'rampHeader',
-    text: 'UNIFIED WORKFLOW 6 NEED ATTENTION',
-    color: '#e0f8ed',
-    align: 'left',
-  },
-  {
-    key: 'rearDisplay',
-    text: 'EXPENSE OS / DISPLAY 29',
-    color: '#9daaa2',
-  },
-  {
-    key: 'frontDisplay',
-    text: 'EXPENSE OS 29',
-    color: '#d6ddd5',
-  },
-  {
-    key: 'notification',
-    text: '9 UNREAD / FINANCE OPS',
-    color: '#ffb2a5',
-  },
-  {
-    key: 'towerRevision',
-    text: 'FINANCE DOCK / REV 04',
-    color: '#91a89e',
-  },
-  {
-    key: 'transaction',
-    text: 'TRANSACTION\nCHOPPED    $18.40\nRECEIPT    $81.40\nSTATUS     REVIEW',
-    color: '#f1dc97',
-    align: 'left',
-  },
-  {
-    key: 'policy',
-    text: 'POLICY.PDF\nMEALS $35 / PERSON\nTIP >25%  REVIEW',
-    color: '#dce2eb',
-    align: 'left',
-  },
-  {
-    key: 'rampSummary',
-    text: '47 CHECKED\nRECEIPT MATCH  ✓\nPOLICY STATUS  !\nTRAVEL LINKED  ✓',
-    color: '#eafaf3',
-    align: 'left',
-  },
-  {
-    key: 'mismatch',
-    text: 'AMOUNT MISMATCH\n$18.40 / $81.40',
-    color: '#7fe2a9',
-    align: 'left',
-  },
-  {
-    key: 'evidence',
-    text: 'EVIDENCE CONNECTED\nREADY FOR JUDGMENT',
-    color: '#c7ded5',
-    align: 'left',
-  },
-  {
-    key: 'towerArchive',
-    text: 'ARCHIVE / CARD I-O',
-    color: '#28302c',
-  },
-  {
-    key: 'keyboardBadge',
-    text: 'EXPENSE OS / K104',
-    color: '#303733',
-  },
-  {
-    key: 'standBadge',
-    text: 'EXPENSE OS',
-    color: '#dde2d9',
-  },
-  {
-    key: 'escape',
-    text: 'Esc',
-    color: '#edf4ed',
-  },
-  {
-    key: 'statusPaper',
-    text: 'INBOX +1',
-    color: '#f5fff9',
-    outline: true,
-  },
-  {
-    key: 'statusApprove',
-    text: 'APPROVED  ✓',
-    color: '#f5fff9',
-    outline: true,
-  },
-  {
-    key: 'statusReject',
-    text: 'REJECTED  ×',
-    color: '#f5fff9',
-    outline: true,
-  },
-  {
-    key: 'statusFraud',
-    text: 'FRAUD FLAGGED',
-    color: '#f5fff9',
-    outline: true,
-  },
-  {
-    key: 'statusJam',
-    text: 'PRINTER JAM',
-    color: '#f5fff9',
-    outline: true,
-  },
-  {
-    key: 'statusReady',
-    text: 'WORKSPACE READY',
-    color: '#f5fff9',
-    outline: true,
-  },
+}> = [
+  { key: 'rearDisplay', text: 'EXPENSE OS / DISPLAY 29', color: '#9daaa2' },
+  { key: 'towerArchive', text: 'ARCHIVE / CARD I-O', color: '#28302c' },
+  { key: 'towerRevision', text: 'FINANCE DOCK / REV 04', color: '#91a89e' },
+  { key: 'escape', text: 'Esc', color: '#edf4ed' },
+  { key: 'keyboardBadge', text: 'EXPENSE OS / K104', color: '#303733' },
+  { key: 'standBadge', text: 'EXPENSE OS', color: '#dde2d9' },
 ]
 
-function makeWorkstationLabelAtlas() {
+function makeLabelAtlas() {
   const canvas = document.createElement('canvas')
   canvas.width = LABEL_ATLAS_SIZE[0]
   canvas.height = LABEL_ATLAS_SIZE[1]
-
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Unable to create workstation label atlas')
 
   context.clearRect(0, 0, canvas.width, canvas.height)
+  context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.lineJoin = 'round'
-
-  LABEL_DEFINITIONS.forEach((definition) => {
-    const region = LABEL_ATLAS_REGIONS[definition.key]
-    const lines = definition.text.split('\n')
-    const longestLine = Math.max(...lines.map((line) => line.length))
-    const lineHeight = 1.28
-    const fontSize = Math.max(
-      10,
-      Math.floor(
-        Math.min(
-          (region.width - 12) / Math.max(longestLine * 0.62, 1),
-          (region.height - 8) / Math.max(lines.length * lineHeight, 1),
-        ),
-      ),
+  LABEL_DEFINITIONS.forEach(({ color, key, text }) => {
+    const region = LABEL_ATLAS_REGIONS[key]
+    const fontSize = Math.floor(
+      Math.min((region.width - 10) / Math.max(text.length * 0.62, 1), region.height - 10),
     )
-    const totalHeight = fontSize * lineHeight * lines.length
-    const align = definition.align ?? 'center'
-    const x = align === 'left' ? region.x + 6 : region.x + region.width / 2
-    const firstY =
-      region.y +
-      (region.height - totalHeight) / 2 +
-      (fontSize * lineHeight) / 2
-
-    context.textAlign = align
-    context.font = `600 ${fontSize}px "IBM Plex Mono", "SFMono-Regular", monospace`
-    context.fillStyle = definition.color
-    context.strokeStyle = '#15211e'
-    context.lineWidth = definition.outline ? 3 : 0
-
-    lines.forEach((line, lineIndex) => {
-      const y = firstY + lineIndex * fontSize * lineHeight
-      if (definition.outline) context.strokeText(line, x, y)
-      context.fillText(line, x, y)
-    })
+    context.fillStyle = color
+    context.font = `600 ${Math.max(11, fontSize)}px "IBM Plex Mono", "SFMono-Regular", monospace`
+    context.fillText(text, region.x + region.width / 2, region.y + region.height / 2)
   })
 
   const texture = new THREE.CanvasTexture(canvas)
@@ -593,32 +420,22 @@ function makeWorkstationLabelAtlas() {
   texture.generateMipmaps = false
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
-  texture.needsUpdate = true
   return texture
 }
 
-function makeAtlasPlaneGeometry(
-  width: number,
-  height: number,
-  key: LabelAtlasKey,
-) {
+function makeLabelGeometry(width: number, height: number, key: LabelAtlasKey) {
   const geometry = new THREE.PlaneGeometry(width, height)
   const uv = geometry.getAttribute('uv')
   const region = LABEL_ATLAS_REGIONS[key]
-  const atlasWidth = LABEL_ATLAS_SIZE[0]
-  const atlasHeight = LABEL_ATLAS_SIZE[1]
-  const uMin = region.x / atlasWidth
-  const uMax = (region.x + region.width) / atlasWidth
-  const vMin = 1 - (region.y + region.height) / atlasHeight
-  const vMax = 1 - region.y / atlasHeight
-
+  const uMin = region.x / LABEL_ATLAS_SIZE[0]
+  const uMax = (region.x + region.width) / LABEL_ATLAS_SIZE[0]
+  const vMin = 1 - (region.y + region.height) / LABEL_ATLAS_SIZE[1]
+  const vMax = 1 - region.y / LABEL_ATLAS_SIZE[1]
   for (let index = 0; index < uv.count; index += 1) {
-    const sourceU = uv.getX(index)
-    const sourceV = uv.getY(index)
     uv.setXY(
       index,
-      THREE.MathUtils.lerp(uMin, uMax, sourceU),
-      THREE.MathUtils.lerp(vMin, vMax, sourceV),
+      THREE.MathUtils.lerp(uMin, uMax, uv.getX(index)),
+      THREE.MathUtils.lerp(vMin, vMax, uv.getY(index)),
     )
   }
   uv.needsUpdate = true
@@ -631,19 +448,17 @@ function LabelPlane({
   material,
   width,
   ...meshProps
-}: Omit<ThreeElements['mesh'], 'geometry' | 'material' | 'ref'> & {
+}: Omit<ThreeElements['mesh'], 'geometry' | 'material'> & {
   atlasKey: LabelAtlasKey
   height: number
   material: THREE.MeshBasicMaterial
   width: number
 }) {
   const geometry = useMemo(
-    () => makeAtlasPlaneGeometry(width, height, atlasKey),
+    () => makeLabelGeometry(width, height, atlasKey),
     [atlasKey, height, width],
   )
-
   useEffect(() => () => geometry.dispose(), [geometry])
-
   return <mesh geometry={geometry} material={material} {...meshProps} />
 }
 
@@ -700,70 +515,255 @@ function makeRoundedKeyGeometry() {
 
   const geometry = new THREE.ExtrudeGeometry(shape, {
     bevelEnabled: true,
-    bevelSegments: 2,
+    bevelSegments: 3,
     bevelSize,
-    bevelThickness: 0.0008,
+    bevelThickness: 0.001,
     curveSegments: 3,
-    depth: 0.007,
+    depth: 0.008,
   })
   geometry.rotateX(-HALF_PI)
   geometry.computeVertexNormals()
   return geometry
 }
 
-function makeKeyboardLegendTexture(keys: readonly KeySpec[]) {
+function makeKeyboardLegendLayer(keys: readonly KeySpec[]) {
+  const columns = 16
+  const rows = Math.ceil(keys.length / columns)
   const canvas = document.createElement('canvas')
   canvas.width = 1024
-  canvas.height = 336
-
+  canvas.height = 512
   const context = canvas.getContext('2d')
-  if (!context) throw new Error('Unable to create keyboard legend canvas')
+  if (!context) throw new Error('Unable to create keyboard legend atlas')
 
   context.clearRect(0, 0, canvas.width, canvas.height)
+  context.fillStyle = '#f0f3ed'
+  context.strokeStyle = '#303733'
+  context.lineJoin = 'round'
+  context.lineWidth = 1.5
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.lineJoin = 'round'
 
-  keys.forEach((key) => {
-    if (key.id === 'esc') return
-
-    const x =
-      ((key.x - KEYBOARD_LEGEND_BOUNDS.left) / KEYBOARD_LEGEND_BOUNDS.width) *
-      canvas.width
-    const y =
-      ((key.z - KEYBOARD_LEGEND_BOUNDS.back) / KEYBOARD_LEGEND_BOUNDS.depth) *
-      canvas.height
-    const keyPixelWidth =
-      (key.width / KEYBOARD_LEGEND_BOUNDS.width) * canvas.width
+  const cellWidth = canvas.width / columns
+  const cellHeight = canvas.height / rows
+  const geometries = keys.map((key, index) => {
+    const column = index % columns
+    const row = Math.floor(index / columns)
     const lines = key.label.split('\n')
-    if (key.label.length === 0) return
-
-    const longestLine = Math.max(...lines.map((line) => line.length))
-    const sizeFromWidth = keyPixelWidth / Math.max(longestLine * 0.63, 1.65)
+    const longestLine = Math.max(...lines.map((line) => line.length), 1)
     const fontSize = THREE.MathUtils.clamp(
-      sizeFromWidth,
-      lines.length > 1 ? 17 : 19,
-      31,
+      Math.min(cellWidth / (longestLine * 0.62), cellHeight / (lines.length * 1.18)),
+      11,
+      28,
     )
-    const lineHeight = fontSize * 0.86
-
+    const centerX = (column + 0.5) * cellWidth
+    const centerY = (row + 0.5) * cellHeight
+    const lineHeight = fontSize * 0.92
     context.font = `600 ${fontSize}px "IBM Plex Mono", "SFMono-Regular", monospace`
-    context.fillStyle = '#cbd4cd'
-
     lines.forEach((line, lineIndex) => {
-      const lineY = y + (lineIndex - (lines.length - 1) / 2) * lineHeight
-      context.fillText(line, x, lineY)
+      const y = centerY + (lineIndex - (lines.length - 1) / 2) * lineHeight
+      context.strokeText(line, centerX, y)
+      context.fillText(line, centerX, y)
     })
+
+    const geometry = new THREE.PlaneGeometry(
+      key.width * 0.82,
+      Math.min(key.depth * 0.68, 0.014),
+    )
+    const uv = geometry.getAttribute('uv')
+    const uMin = column / columns
+    const uMax = (column + 1) / columns
+    const vMin = 1 - (row + 1) / rows
+    const vMax = 1 - row / rows
+    uv.setXY(0, uMin, vMax)
+    uv.setXY(1, uMax, vMax)
+    uv.setXY(2, uMin, vMin)
+    uv.setXY(3, uMax, vMin)
+    uv.needsUpdate = true
+    geometry.rotateX(-HALF_PI)
+    geometry.translate(0, 0.00925, 0)
+    geometry.rotateX(key.rotationX)
+    geometry.translate(key.x, key.y, key.z)
+    return geometry
   })
+
+  const geometry = mergeGeometries(geometries, false)
+  geometries.forEach((part) => part.dispose())
+  if (!geometry) throw new Error('Unable to merge keyboard legend geometry')
 
   const texture = new THREE.CanvasTexture(canvas)
   texture.colorSpace = THREE.SRGBColorSpace
-  texture.anisotropy = 1
   texture.generateMipmaps = false
   texture.minFilter = THREE.LinearFilter
   texture.magFilter = THREE.LinearFilter
   texture.needsUpdate = true
-  return texture
+  return { geometry, texture }
+}
+
+function getMouseSurfacePoint(u: number, v: number) {
+  const z = THREE.MathUtils.lerp(-0.061, 0.058, v)
+  const widthEnvelope = 0.78 + 0.22 * Math.pow(Math.sin(Math.PI * v), 0.7)
+  const halfWidth = 0.035 * widthEnvelope
+  const rise =
+    v < 0.58
+      ? smootherStep(v / 0.58)
+      : 1 - smootherStep((v - 0.58) / 0.42)
+  const centerHeight = THREE.MathUtils.lerp(0.026, 0.0545, rise)
+  const archExponent = THREE.MathUtils.lerp(0.18, 0.54, smootherStep(v))
+  const arch = Math.pow(
+    Math.max(0, 1 - Math.pow(Math.abs(u), 2.25)),
+    archExponent,
+  )
+  const handBias = 0.0016 * Math.sin(Math.PI * v) * (1 - Math.abs(u))
+  return new THREE.Vector3(
+    u * halfWidth + handBias,
+    0.0045 + (centerHeight - 0.0045) * arch,
+    z,
+  )
+}
+
+function makeMouseButtonGeometry(side: 'left' | 'right') {
+  const longitudinalSegments = 6
+  const lateralSegments = 5
+  const positions: number[] = []
+  const indices: number[] = []
+  const rowLength = lateralSegments + 1
+  const pivot =
+    side === 'left'
+      ? new THREE.Vector3(...MOUSE_LEFT_BUTTON_PIVOT)
+      : new THREE.Vector3(0.012, 0.0412, -0.0158)
+  const uStart = side === 'left' ? -0.61 : 0.05
+  const uEnd = side === 'left' ? -0.05 : 0.61
+
+  for (let zIndex = 0; zIndex <= longitudinalSegments; zIndex += 1) {
+    const v = THREE.MathUtils.lerp(0.045, 0.38, zIndex / longitudinalSegments)
+    for (let xIndex = 0; xIndex <= lateralSegments; xIndex += 1) {
+      const u = THREE.MathUtils.lerp(
+        uStart,
+        uEnd,
+        xIndex / lateralSegments,
+      )
+      const point = getMouseSurfacePoint(u, v)
+      point.y += 0.00035
+      point.sub(pivot)
+      positions.push(point.x, point.y, point.z)
+    }
+  }
+
+  for (let zIndex = 0; zIndex < longitudinalSegments; zIndex += 1) {
+    for (let xIndex = 0; xIndex < lateralSegments; xIndex += 1) {
+      const a = zIndex * rowLength + xIndex
+      const b = a + rowLength
+      indices.push(a, b, a + 1, a + 1, b, b + 1)
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, 3),
+  )
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
+function makeMouseShellGeometry() {
+  const longitudinalSegments = 28
+  const lateralSegments = 18
+  const positions: number[] = []
+  const indices: number[] = []
+  const rowLength = lateralSegments + 1
+  const bottomY = 0.003
+
+  for (let zIndex = 0; zIndex <= longitudinalSegments; zIndex += 1) {
+    const v = zIndex / longitudinalSegments
+
+    for (let xIndex = 0; xIndex <= lateralSegments; xIndex += 1) {
+      const u = -1 + (xIndex / lateralSegments) * 2
+      const point = getMouseSurfacePoint(u, v)
+      positions.push(point.x, point.y, point.z)
+    }
+  }
+
+  for (let zIndex = 0; zIndex < longitudinalSegments; zIndex += 1) {
+    for (let xIndex = 0; xIndex < lateralSegments; xIndex += 1) {
+      const a = zIndex * rowLength + xIndex
+      const b = a + rowLength
+      indices.push(a, b, a + 1, a + 1, b, b + 1)
+    }
+  }
+
+  // The flat underside only needs the footprint perimeter and one center
+  // vertex. Keeping a second 29 x 19 grid here added 916 invisible triangles.
+  // The perimeter runs clockwise from above so its fan faces down.
+  const bottomPerimeter: number[] = []
+  const bottomIndexByTopIndex: number[] = []
+  const addBottomVertex = (topIndex: number) => {
+    const vertexIndex = positions.length / 3
+    positions.push(
+      positions[topIndex * 3],
+      bottomY,
+      positions[topIndex * 3 + 2],
+    )
+    bottomPerimeter.push(vertexIndex)
+    bottomIndexByTopIndex[topIndex] = vertexIndex
+    return vertexIndex
+  }
+
+  for (let xIndex = 0; xIndex <= lateralSegments; xIndex += 1) {
+    addBottomVertex(xIndex)
+  }
+  for (let zIndex = 1; zIndex <= longitudinalSegments; zIndex += 1) {
+    addBottomVertex(zIndex * rowLength + lateralSegments)
+  }
+  for (let xIndex = lateralSegments - 1; xIndex >= 0; xIndex -= 1) {
+    addBottomVertex(longitudinalSegments * rowLength + xIndex)
+  }
+  for (let zIndex = longitudinalSegments - 1; zIndex > 0; zIndex -= 1) {
+    addBottomVertex(zIndex * rowLength)
+  }
+
+  const bottomCenter = positions.length / 3
+  positions.push(0, bottomY, (-0.061 + 0.058) / 2)
+  bottomPerimeter.forEach((vertex, index) => {
+    const next = bottomPerimeter[(index + 1) % bottomPerimeter.length]
+    indices.push(bottomCenter, vertex, next)
+  })
+
+  // Traverse each edge so the quad's first triangle faces away from the
+  // shell. The previous top -> bottom -> top order pointed every wall inward,
+  // making all four edges disappear under normal FrontSide culling.
+  const connectEdge = (topA: number, topB: number) => {
+    const bottomA = bottomIndexByTopIndex[topA]
+    const bottomB = bottomIndexByTopIndex[topB]
+    if (bottomA === undefined || bottomB === undefined) {
+      throw new Error('Mouse shell perimeter is not closed')
+    }
+    indices.push(topA, topB, bottomA, topB, bottomB, bottomA)
+  }
+
+  for (let xIndex = 0; xIndex < lateralSegments; xIndex += 1) {
+    connectEdge(xIndex, xIndex + 1)
+    const rear = longitudinalSegments * rowLength + xIndex
+    connectEdge(rear + 1, rear)
+  }
+  for (let zIndex = 0; zIndex < longitudinalSegments; zIndex += 1) {
+    const left = zIndex * rowLength
+    connectEdge(left + rowLength, left)
+    const right = left + lateralSegments
+    connectEdge(right, right + rowLength)
+  }
+
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute(
+    'position',
+    new THREE.Float32BufferAttribute(positions, 3),
+  )
+  geometry.setIndex(indices)
+  geometry.computeVertexNormals()
+  geometry.computeBoundingSphere()
+  return geometry
 }
 
 function makeCableGeometry(
@@ -797,29 +797,6 @@ function configureInstances(
   mesh.computeBoundingSphere()
 }
 
-function ScreenPanel({
-  color,
-  height,
-  position,
-  width,
-}: {
-  color: string
-  height: number
-  position: [number, number, number]
-  width: number
-}) {
-  return (
-    <RoundedBox
-      args={[width, height, 0.0015]}
-      position={position}
-      radius={0.006}
-      smoothness={4}
-    >
-      <meshBasicMaterial color={color} toneMapped={false} />
-    </RoundedBox>
-  )
-}
-
 export function DeskComputer({
   children,
   effectPreset,
@@ -831,19 +808,10 @@ export function DeskComputer({
   const hasLiveScreen = Children.count(children) > 0
 
   const assemblyMotionRef = useRef<THREE.Group>(null)
-  const screenContentRef = useRef<THREE.Group>(null)
-  const manualUiRef = useRef<THREE.Group>(null)
-  const manualTransactionRef = useRef<THREE.Group>(null)
-  const manualPolicyRef = useRef<THREE.Group>(null)
-  const manualNotificationRef = useRef<THREE.Group>(null)
-  const rampUiRef = useRef<THREE.Group>(null)
-  const statusOverlayRef = useRef<THREE.Group>(null)
   const mouseLeftButtonRef = useRef<THREE.Mesh>(null)
   const escapeKeyRef = useRef<THREE.Group>(null)
 
   const screenGlassRef = useRef<THREE.MeshPhysicalMaterial>(null)
-  const blackoutRef = useRef<THREE.MeshBasicMaterial>(null)
-  const statusPanelRef = useRef<THREE.MeshStandardMaterial>(null)
   const powerLedRef = useRef<THREE.MeshStandardMaterial>(null)
   const towerLedRef = useRef<THREE.MeshStandardMaterial>(null)
 
@@ -861,21 +829,30 @@ export function DeskComputer({
   const lastRunRef = useRef(effectRun)
 
   const keyGeometry = useMemo(makeRoundedKeyGeometry, [])
-  const keyboardLegendTexture = useMemo(
-    () => makeKeyboardLegendTexture(KEY_LAYOUT),
-    [],
-  )
-  const labelAtlasTexture = useMemo(makeWorkstationLabelAtlas, [])
+  const labelAtlasTexture = useMemo(makeLabelAtlas, [])
   const labelMaterial = useMemo(
     () =>
       new THREE.MeshBasicMaterial({
-        alphaTest: 0.04,
+        alphaTest: 0.08,
         depthWrite: false,
         map: labelAtlasTexture,
         toneMapped: false,
         transparent: true,
       }),
     [labelAtlasTexture],
+  )
+  const keyboardLegendLayer = useMemo(
+    () => makeKeyboardLegendLayer(STATIC_KEYS.filter((key) => key.label.length > 0)),
+    [],
+  )
+  const mouseShellGeometry = useMemo(makeMouseShellGeometry, [])
+  const mouseLeftButtonGeometry = useMemo(
+    () => makeMouseButtonGeometry('left'),
+    [],
+  )
+  const mouseRightButtonGeometry = useMemo(
+    () => makeMouseButtonGeometry('right'),
+    [],
   )
   const keyboardCableGeometry = useMemo(
     () =>
@@ -909,7 +886,7 @@ export function DeskComputer({
     () =>
       makeCableGeometry(
         [
-          [0.08, 0.292, -0.046],
+          [0.08, 0.292, -0.024],
           [0.02, 0.255, -0.09],
           [0.2, 0.205, -0.185],
           [0.32, 0.17, -0.174],
@@ -924,12 +901,25 @@ export function DeskComputer({
     () =>
       makeCableGeometry(
         [
-          [0, 0.051, -0.006],
-          [0, 0.05, 0.012],
-          [0, 0.0505, 0.032],
-          [0, 0.0438, 0.051],
+          [0, 0.045, -0.014],
+          [0.0008, 0.053, 0.005],
+          [0.0012, 0.051, 0.026],
+          [0.0006, 0.041, 0.047],
         ],
-        0.00062,
+        0.00052,
+      ),
+    [],
+  )
+  const mouseButtonSplitGeometry = useMemo(
+    () =>
+      makeCableGeometry(
+        [
+          [0, 0.0267, -0.055],
+          [0.0002, 0.0305, -0.044],
+          [0.0004, 0.0358, -0.034],
+          [0.0005, 0.041, -0.025],
+        ],
+        0.0004,
       ),
     [],
   )
@@ -961,9 +951,9 @@ export function DeskComputer({
         metalness: 0.08,
       }),
       keycap: new THREE.MeshStandardMaterial({
-        color: '#343a37',
-        roughness: 0.46,
-        metalness: 0.018,
+        color: '#59625c',
+        roughness: 0.38,
+        metalness: 0.035,
       }),
       keyAccent: new THREE.MeshStandardMaterial({
         color: '#789a86',
@@ -994,41 +984,17 @@ export function DeskComputer({
     [],
   )
 
-  const statusStyle = useMemo(() => {
-    switch (effectPreset) {
-      case 'paper-drop':
-        return { color: '#78c8ff', label: 'INBOX +1' }
-      case 'approve':
-        return { color: '#4fd981', label: 'APPROVED  ✓' }
-      case 'reject':
-        return { color: '#ff6658', label: 'REJECTED  ×' }
-      case 'fraud':
-        return { color: '#ff453c', label: 'FRAUD FLAGGED' }
-      case 'printer-jam':
-        return { color: '#ffad3d', label: 'PRINTER JAM' }
-      default:
-        return { color: '#55dc8a', label: 'WORKSPACE READY' }
-    }
-  }, [effectPreset])
-  const statusAtlasKey: LabelAtlasKey =
-    effectPreset === 'paper-drop'
-      ? 'statusPaper'
-      : effectPreset === 'approve'
-        ? 'statusApprove'
-        : effectPreset === 'reject'
-          ? 'statusReject'
-          : effectPreset === 'fraud'
-            ? 'statusFraud'
-            : effectPreset === 'printer-jam'
-              ? 'statusJam'
-              : 'statusReady'
-
   useEffect(
     () => () => {
       keyGeometry.dispose()
-      keyboardLegendTexture.dispose()
       labelAtlasTexture.dispose()
       labelMaterial.dispose()
+      keyboardLegendLayer.geometry.dispose()
+      keyboardLegendLayer.texture.dispose()
+      mouseButtonSplitGeometry.dispose()
+      mouseLeftButtonGeometry.dispose()
+      mouseRightButtonGeometry.dispose()
+      mouseShellGeometry.dispose()
       keyboardCableGeometry.dispose()
       mouseCableGeometry.dispose()
       mouseShellSeamGeometry.dispose()
@@ -1037,12 +1003,16 @@ export function DeskComputer({
     },
     [
       keyGeometry,
-      keyboardCableGeometry,
-      keyboardLegendTexture,
       labelAtlasTexture,
       labelMaterial,
+      keyboardLegendLayer,
+      keyboardCableGeometry,
       materials,
+      mouseButtonSplitGeometry,
       mouseCableGeometry,
+      mouseLeftButtonGeometry,
+      mouseRightButtonGeometry,
+      mouseShellGeometry,
       mouseShellSeamGeometry,
       rearCableGeometry,
     ],
@@ -1081,13 +1051,6 @@ export function DeskComputer({
 
   const resetAssembly = useCallback(() => {
     const assembly = assemblyMotionRef.current
-    const screenContent = screenContentRef.current
-    const manualUi = manualUiRef.current
-    const manualTransaction = manualTransactionRef.current
-    const manualPolicy = manualPolicyRef.current
-    const manualNotification = manualNotificationRef.current
-    const rampUi = rampUiRef.current
-    const status = statusOverlayRef.current
     const mouseButton = mouseLeftButtonRef.current
     const escapeKey = escapeKeyRef.current
 
@@ -1096,42 +1059,9 @@ export function DeskComputer({
       assembly.rotation.set(0, 0, 0)
       assembly.scale.set(1, 1, 1)
     }
-    if (screenContent) {
-      screenContent.position.set(0, 0, 0)
-      screenContent.rotation.set(0, 0, 0)
-      screenContent.scale.set(1, 1, 1)
-    }
-    if (manualUi) {
-      manualUi.visible = true
-      manualUi.position.set(0, 0, 0)
-      manualUi.scale.set(1, 1, 1)
-    }
-    if (manualTransaction) {
-      manualTransaction.position.set(...MANUAL_WINDOW_BASES.transaction)
-      manualTransaction.scale.set(1, 1, 1)
-    }
-    if (manualPolicy) {
-      manualPolicy.position.set(...MANUAL_WINDOW_BASES.policy)
-      manualPolicy.scale.set(1, 1, 1)
-    }
-    if (manualNotification) {
-      manualNotification.position.set(...MANUAL_WINDOW_BASES.notification)
-      manualNotification.scale.set(1, 1, 1)
-    }
-    if (rampUi) {
-      rampUi.visible = false
-      rampUi.position.set(0, -0.026, 0)
-      rampUi.scale.set(0.86, 0.86, 1)
-    }
-    if (status) {
-      status.visible = false
-      status.position.set(0, 0, 0.008)
-      status.rotation.set(0, 0, 0)
-      status.scale.set(0.86, 0.86, 1)
-    }
     if (mouseButton) {
-      mouseButton.position.set(-0.016, 0.0495, -0.031)
-      mouseButton.rotation.set(-0.045, 0, 0.008)
+      mouseButton.position.set(...MOUSE_LEFT_BUTTON_PIVOT)
+      mouseButton.rotation.set(0, 0, 0)
       mouseButton.scale.set(1, 1, 1)
     }
     if (escapeKey) {
@@ -1140,28 +1070,16 @@ export function DeskComputer({
       escapeKey.scale.set(1, 1, 1)
     }
     if (screenGlassRef.current) screenGlassRef.current.emissiveIntensity = 0.26
-    if (blackoutRef.current) blackoutRef.current.opacity = 0
-    if (statusPanelRef.current) {
-      statusPanelRef.current.color.set(statusStyle.color)
-      statusPanelRef.current.emissive.set(statusStyle.color)
-      statusPanelRef.current.opacity = 0
-    }
     if (powerLedRef.current) powerLedRef.current.emissiveIntensity = 1.65
     if (towerLedRef.current) {
       towerLedRef.current.color.set('#69dd92')
       towerLedRef.current.emissive.set('#3aff84')
       towerLedRef.current.emissiveIntensity = 1.4
     }
-  }, [statusStyle.color])
+  }, [])
 
   const finishMigration = useCallback(() => {
     resetAssembly()
-    if (manualUiRef.current) manualUiRef.current.visible = false
-    if (rampUiRef.current) {
-      rampUiRef.current.visible = true
-      rampUiRef.current.position.set(0, 0, 0)
-      rampUiRef.current.scale.set(1, 1, 1)
-    }
     if (screenGlassRef.current) screenGlassRef.current.emissiveIntensity = 0.46
   }, [resetAssembly])
 
@@ -1186,35 +1104,17 @@ export function DeskComputer({
     if (!state.active) return
 
     const assembly = assemblyMotionRef.current
-    const screenContent = screenContentRef.current
-    const manualUi = manualUiRef.current
-    const manualTransaction = manualTransactionRef.current
-    const manualPolicy = manualPolicyRef.current
-    const manualNotification = manualNotificationRef.current
-    const rampUi = rampUiRef.current
-    const status = statusOverlayRef.current
     const mouseButton = mouseLeftButtonRef.current
     const escapeKey = escapeKeyRef.current
     const screenGlass = screenGlassRef.current
-    const blackout = blackoutRef.current
-    const statusPanel = statusPanelRef.current
     const powerLed = powerLedRef.current
     const towerLed = towerLedRef.current
 
     if (
       !assembly ||
-      !screenContent ||
-      !manualUi ||
-      !manualTransaction ||
-      !manualPolicy ||
-      !manualNotification ||
-      !rampUi ||
-      !status ||
       !mouseButton ||
       !escapeKey ||
       !screenGlass ||
-      !blackout ||
-      !statusPanel ||
       !powerLed ||
       !towerLed
     ) {
@@ -1225,16 +1125,13 @@ export function DeskComputer({
     const time = state.elapsed
     const motionScale = reducedMotion ? 0.18 : 1
     const mechanismScale = reducedMotion ? 0.45 : 1
-    const uiMotionScale = reducedMotion ? 0 : 1
 
     resetAssembly()
 
     if (state.preset === 'migration') {
       const preShake = pulseEnvelope(time, 0.11, 0.31, 0.18)
-      const collapse = smootherStep((time - 0.18) / 0.32)
       const powerOff = smoothStep((time - 0.2) / 0.2)
       const powerOn = smootherStep((time - 0.7) / 0.23)
-      const unified = smootherStep((time - 0.84) / 0.46)
       const ledOff = smootherStep((time - 0.27) / 0.09)
       const ledOn = smootherStep((time - 0.65) / 0.13)
       const ledLevel = 1 - ledOff * (1 - ledOn)
@@ -1242,33 +1139,9 @@ export function DeskComputer({
 
       assembly.position.x = tremor * 0.0026
       assembly.rotation.z = tremor * 0.006
-
-      manualTransaction.position.x =
-        MANUAL_WINDOW_BASES.transaction[0] * (1 - collapse * uiMotionScale)
-      manualTransaction.position.y =
-        MANUAL_WINDOW_BASES.transaction[1] * (1 - collapse * uiMotionScale)
-      manualTransaction.scale.setScalar(1 - collapse * 0.74 * uiMotionScale)
-      manualPolicy.position.x =
-        MANUAL_WINDOW_BASES.policy[0] * (1 - collapse * uiMotionScale)
-      manualPolicy.position.y =
-        MANUAL_WINDOW_BASES.policy[1] * (1 - collapse * uiMotionScale)
-      manualPolicy.scale.setScalar(1 - collapse * 0.74 * uiMotionScale)
-      manualNotification.position.x =
-        MANUAL_WINDOW_BASES.notification[0] * (1 - collapse * uiMotionScale)
-      manualNotification.position.y =
-        MANUAL_WINDOW_BASES.notification[1] * (1 - collapse * uiMotionScale)
-      manualNotification.scale.setScalar(1 - collapse * 0.74 * uiMotionScale)
-
-      manualUi.visible = time < 0.58
-      blackout.opacity = Math.max(0, powerOff - powerOn) * 0.98
       powerLed.emissiveIntensity = 0.03 + 1.62 * ledLevel
       towerLed.emissiveIntensity = 0.02 + 1.38 * ledLevel
       screenGlass.emissiveIntensity = 0.26 * (1 - powerOff) + 0.46 * powerOn
-
-      rampUi.visible = time >= 0.68
-      rampUi.position.y = -0.026 * (1 - unified) * uiMotionScale
-      const rampScale = 1 - (1 - unified) * 0.14 * uiMotionScale
-      rampUi.scale.set(rampScale, rampScale, 1)
 
       if (time >= 1.62) {
         finishMigration()
@@ -1289,40 +1162,35 @@ export function DeskComputer({
               : 1.2
 
     const impact = pulseEnvelope(time, 0.065, duration * 0.46, duration * 0.46)
-    const statusIn = smootherStep((time - 0.055) / 0.14)
-    const statusOut =
-      1 - smoothStep((time - duration * 0.69) / (duration * 0.24))
-    const overlayEnvelope = statusIn * statusOut
-
-    status.visible = overlayEnvelope > 0.001
-    const statusScale = 1 - (1 - statusIn) * 0.14 * uiMotionScale
-    status.scale.set(statusScale, statusScale, 1)
-    status.position.y = -0.013 * (1 - statusIn) * uiMotionScale
-    statusPanel.opacity = 0.88 * overlayEnvelope
-    screenGlass.emissiveIntensity = 0.26 + 0.3 * overlayEnvelope
+    const responseEnvelope = pulseEnvelope(
+      time,
+      0.055,
+      duration * 0.56,
+      duration * 0.34,
+    )
+    screenGlass.emissiveIntensity = 0.26 + 0.18 * responseEnvelope
 
     if (state.preset === 'paper-drop') {
       const nod = pulseEnvelope(time, 0.045, 0.19, 0.27)
       assembly.rotation.x = -0.0045 * nod * motionScale
       assembly.position.y = 0.0007 * nod * motionScale
-      manualUi.position.y = 0.004 * overlayEnvelope * uiMotionScale
-      powerLed.emissiveIntensity = 1.65 + 1.5 * overlayEnvelope
+      powerLed.emissiveIntensity = 1.65 + 1.5 * responseEnvelope
     } else if (state.preset === 'approve') {
       const click = pulseEnvelope(time, 0.035, 0.14, 0.16)
       assembly.position.y = -0.0016 * impact * motionScale
       assembly.rotation.x = 0.0025 * Math.sin(time * 34) * impact * motionScale
-      mouseButton.position.y = 0.0495 - 0.0022 * click * mechanismScale
-      mouseButton.rotation.x = -0.045 + 0.032 * click * mechanismScale
-      powerLed.emissiveIntensity = 1.65 + 2.1 * overlayEnvelope
+      mouseButton.position.y =
+        MOUSE_LEFT_BUTTON_PIVOT[1] - 0.0007 * click * mechanismScale
+      mouseButton.rotation.x = 0.024 * click * mechanismScale
+      powerLed.emissiveIntensity = 1.65 + 2.1 * responseEnvelope
     } else if (state.preset === 'reject') {
       const keyPress = pulseEnvelope(time, 0.03, 0.14, 0.17)
       const snap = Math.sin(time * 41) * impact
       assembly.position.x = 0.0032 * snap * motionScale
       assembly.rotation.z =
         -0.007 * impact * motionScale + 0.0025 * snap * motionScale
-      screenContent.position.x = -0.006 * impact * uiMotionScale
       escapeKey.position.y = ESCAPE_KEY.y - 0.0045 * keyPress * mechanismScale
-      status.rotation.z = -0.018 * impact * uiMotionScale
+      screenGlass.emissiveIntensity = 0.26 - 0.16 * responseEnvelope
     } else if (state.preset === 'fraud') {
       const heavy = pulseEnvelope(time, 0.035, 0.5, 0.46)
       const shake = Math.sin(time * 58) * heavy
@@ -1342,13 +1210,7 @@ export function DeskComputer({
         .lerp(TOWER_LED_ALERT_EMISSIVE, alarmMix)
       towerLed.emissiveIntensity = 1.4 + (1.1 + 2.8 * alarmPulse) * heavy
       powerLed.emissiveIntensity = 1.65 + 3.2 * heavy
-      if (!reducedMotion) {
-        status.scale.set(
-          0.82 + 0.18 * statusIn + 0.035 * heavy,
-          0.82 + 0.18 * statusIn,
-          1,
-        )
-      }
+      screenGlass.emissiveIntensity = 0.26 + 0.28 * heavy
     } else if (state.preset === 'printer-jam') {
       const motor = pulseEnvelope(time, 0.075, 0.77, 0.36)
       const rattle = Math.sin(time * 64) * motor
@@ -1356,14 +1218,10 @@ export function DeskComputer({
       assembly.position.y =
         Math.abs(Math.sin(time * 49)) * motor * 0.0017 * motionScale
       assembly.rotation.z = rattle * 0.01 * motionScale
-      screenContent.position.x = rattle * 0.0025 * uiMotionScale
-      manualTransaction.position.x =
-        MANUAL_WINDOW_BASES.transaction[0] + rattle * 0.002 * uiMotionScale
-      manualPolicy.position.y =
-        MANUAL_WINDOW_BASES.policy[1] - rattle * 0.0017 * uiMotionScale
       towerLed.color.set('#ffae3f')
       towerLed.emissive.set('#ff9b24')
       towerLed.emissiveIntensity = 1.1 + 3.2 * motor
+      screenGlass.emissiveIntensity = 0.26 + 0.12 * motor
     }
 
     if (time >= duration) {
@@ -1375,7 +1233,7 @@ export function DeskComputer({
   return (
     <group {...groupProps}>
       <group ref={assemblyMotionRef}>
-        {/* 29-inch 16:9 monitor: slim front frame, stepped rear housing, VESA hinge, and grounded stand. */}
+        {/* 29-inch 16:9 monitor: slim front frame and one continuous VESA-to-foot load path. */}
         <RoundedBox
           args={[0.32, 0.008, 0.205]}
           material={materials.rubber}
@@ -1386,61 +1244,61 @@ export function DeskComputer({
           receiveShadow
         />
         <RoundedBox
-          args={[0.286, 0.034, 0.178]}
+          args={[0.286, 0.026, 0.178]}
           material={materials.shellDark}
-          position={[-0.08, 0.021, MONITOR_STAND_FOOT_Z]}
+          position={[-0.08, 0.017, MONITOR_STAND_FOOT_Z]}
           radius={0.012}
           smoothness={7}
           castShadow
           receiveShadow
         />
         <RoundedBox
-          args={[0.064, 0.29, 0.046]}
+          args={[0.106, 0.034, 0.084]}
           material={materials.metal}
-          position={[-0.08, 0.172, 0.004]}
-          radius={0.015}
-          smoothness={7}
-          castShadow
-          receiveShadow
-        />
-        <RoundedBox
-          args={[0.038, 0.238, 0.049]}
-          material={materials.shellDark}
-          position={[-0.08, 0.17, 0.006]}
-          radius={0.012}
-          smoothness={6}
-          castShadow
-        />
-        <RoundedBox
-          args={[0.096, 0.032, 0.076]}
-          material={materials.metal}
-          position={[-0.08, 0.041, 0.012]}
+          position={[-0.08, 0.039, 0.016]}
           radius={0.011}
           smoothness={7}
           castShadow
           receiveShadow
         />
         <RoundedBox
-          args={[0.116, 0.06, 0.054]}
+          args={[0.062, 0.282, 0.047]}
           material={materials.metal}
-          position={[-0.08, 0.309, -0.007]}
-          radius={0.016}
+          position={[-0.08, 0.177, 0.004]}
+          radius={0.014}
           smoothness={7}
+          castShadow
+          receiveShadow
+        />
+        <RoundedBox
+          args={[0.036, 0.25, 0.051]}
+          material={materials.shellDark}
+          position={[-0.08, 0.176, 0.006]}
+          radius={0.01}
+          smoothness={6}
           castShadow
         />
         <mesh
           material={materials.metal}
-          position={[-0.08, 0.313, -0.009]}
+          position={[-0.08, 0.319, -0.01]}
           rotation={[0, 0, HALF_PI]}
           castShadow
         >
           <cylinderGeometry args={[0.022, 0.022, 0.112, 36]} />
         </mesh>
         <RoundedBox
+          args={[0.104, 0.084, 0.052]}
+          material={materials.metal}
+          position={[-0.08, 0.354, -0.013]}
+          radius={0.015}
+          smoothness={7}
+          castShadow
+        />
+        <RoundedBox
           args={[0.162, 0.142, 0.018]}
           material={materials.metal}
-          position={[-0.08, 0.365, -0.035]}
-          radius={0.012}
+          position={[-0.08, 0.405, -0.017]}
+          radius={0.011}
           smoothness={6}
           castShadow
         />
@@ -1455,35 +1313,27 @@ export function DeskComputer({
           receiveShadow
         />
         <RoundedBox
-          args={[0.69, 0.4, 0.018]}
-          material={materials.shellDark}
-          position={[-0.08, 0.405, 0.087]}
-          radius={0.025}
-          smoothness={9}
+          args={[0.686, 0.396, 0.008]}
+          material={materials.trim}
+          position={[-0.08, 0.405, 0.092]}
+          radius={0.018}
+          smoothness={8}
           castShadow
           receiveShadow
-        />
-        <RoundedBox
-          args={[0.662, 0.382, 0.01]}
-          material={materials.trim}
-          position={[-0.08, 0.405, 0.093]}
-          radius={0.021}
-          smoothness={9}
-          castShadow
         />
         <RoundedBox
           args={[
             DESK_COMPUTER_SCREEN.glassWidth,
             DESK_COMPUTER_SCREEN.glassHeight,
-            0.006,
+            0.004,
           ]}
           position={[
             DESK_COMPUTER_SCREEN.position[0],
             DESK_COMPUTER_SCREEN.position[1],
-            DESK_COMPUTER_SCREEN.position[2] - 0.005,
+            DESK_COMPUTER_SCREEN.position[2] - 0.002,
           ]}
-          radius={0.017}
-          smoothness={10}
+          radius={0.012}
+          smoothness={8}
           castShadow
         >
           <meshPhysicalMaterial
@@ -1499,42 +1349,42 @@ export function DeskComputer({
         </RoundedBox>
 
         <RoundedBox
-          args={[0.54, 0.31, 0.058]}
+          args={[0.5, 0.286, 0.052]}
           material={materials.shellDark}
-          position={[-0.08, 0.405, 0.019]}
-          radius={0.025}
+          position={[-0.08, 0.405, 0.015]}
+          radius={0.022}
           smoothness={8}
           castShadow
         />
         <RoundedBox
-          args={[0.49, 0.274, 0.026]}
+          args={[0.126, 0.118, 0.026]}
           material={materials.shell}
-          position={[-0.08, 0.405, -0.019]}
-          radius={0.021}
+          position={[-0.08, 0.405, -0.004]}
+          radius={0.013}
           smoothness={7}
           castShadow
         />
         <RoundedBox
           args={[0.22, 0.056, 0.009]}
           material={materials.trim}
-          position={[-0.08, 0.486, -0.032]}
+          position={[-0.08, 0.486, -0.015]}
           radius={0.009}
           smoothness={6}
           castShadow
         />
         <LabelPlane
           atlasKey="rearDisplay"
-          width={0.2}
-          height={0.018}
+          height={0.012}
           material={labelMaterial}
-          position={[-0.08, 0.486, -0.038]}
+          position={[-0.08, 0.486, -0.0205]}
           rotation={[0, Math.PI, 0]}
+          width={0.18}
         />
 
         <RoundedBox
           args={[0.046, 0.026, 0.014]}
           material={materials.trim}
-          position={[0.08, 0.292, -0.034]}
+          position={[0.08, 0.292, -0.014]}
           radius={0.004}
           smoothness={4}
           castShadow
@@ -1542,7 +1392,7 @@ export function DeskComputer({
         <RoundedBox
           args={[0.034, 0.016, 0.01]}
           material={materials.rubber}
-          position={[0.08, 0.292, -0.044]}
+          position={[0.08, 0.292, -0.022]}
           radius={0.004}
           smoothness={4}
           castShadow
@@ -1550,7 +1400,7 @@ export function DeskComputer({
         <RoundedBox
           args={[0.048, 0.023, 0.01]}
           material={materials.trim}
-          position={[-0.215, 0.292, -0.032]}
+          position={[-0.215, 0.292, -0.015]}
           radius={0.004}
           smoothness={4}
           castShadow
@@ -1573,21 +1423,6 @@ export function DeskComputer({
           <primitive object={materials.screw} attach="material" />
         </instancedMesh>
 
-        <RoundedBox
-          args={[0.102, 0.022, 0.012]}
-          material={materials.trim}
-          position={[-0.22, 0.205, 0.088]}
-          radius={0.004}
-          smoothness={4}
-          castShadow
-        />
-        <LabelPlane
-          atlasKey="frontDisplay"
-          width={0.096}
-          height={0.016}
-          material={labelMaterial}
-          position={[-0.22, 0.205, 0.095]}
-        />
         <mesh position={[0.218, 0.205, 0.096]}>
           <sphereGeometry args={[0.0045, 18, 12]} />
           <meshStandardMaterial
@@ -1599,222 +1434,13 @@ export function DeskComputer({
           />
         </mesh>
 
-        {/* Keep the native screen visible beneath the live Html layer. From the wide
-            opening camera the perspective Html layer is too small to cover the glass,
-            so hiding this fallback made the workstation look powered off. */}
+        {/* Blank physical glass by default; the optional Html child is the sole screen-content owner. */}
         <group
           name="desk-computer-screen-anchor"
           position={DESK_COMPUTER_SCREEN.position}
           rotation={DESK_COMPUTER_SCREEN.rotation}
           userData={DESK_COMPUTER_SCREEN}
         >
-          <group ref={screenContentRef}>
-            <group ref={manualUiRef}>
-              <mesh position={[0, 0, -0.001]}>
-                <planeGeometry
-                  args={[
-                    DESK_COMPUTER_SCREEN.safeWidth,
-                    DESK_COMPUTER_SCREEN.safeHeight,
-                  ]}
-                />
-                <meshBasicMaterial color="#102126" toneMapped={false} />
-              </mesh>
-              <ScreenPanel
-                color="#31555b"
-                height={0.034}
-                position={[0, 0.15, 0.001]}
-                width={0.604}
-              />
-              <LabelPlane
-                atlasKey="manualHeader"
-                width={0.58}
-                height={0.026}
-                material={labelMaterial}
-                position={[0, 0.15, 0.004]}
-              />
-
-              <group
-                ref={manualTransactionRef}
-                position={MANUAL_WINDOW_BASES.transaction}
-              >
-                <ScreenPanel
-                  color="#243b42"
-                  height={0.21}
-                  position={[0, 0, 0]}
-                  width={0.292}
-                />
-                <ScreenPanel
-                  color="#41616a"
-                  height={0.028}
-                  position={[0, 0.084, 0.002]}
-                  width={0.278}
-                />
-                <LabelPlane
-                  atlasKey="transaction"
-                  width={0.252}
-                  height={0.16}
-                  material={labelMaterial}
-                  position={[0, 0.004, 0.005]}
-                />
-              </group>
-
-              <group
-                ref={manualPolicyRef}
-                position={MANUAL_WINDOW_BASES.policy}
-              >
-                <ScreenPanel
-                  color="#29313a"
-                  height={0.158}
-                  position={[0, 0, 0]}
-                  width={0.25}
-                />
-                <ScreenPanel
-                  color="#4b5361"
-                  height={0.026}
-                  position={[0, 0.061, 0.002]}
-                  width={0.236}
-                />
-                <LabelPlane
-                  atlasKey="policy"
-                  width={0.216}
-                  height={0.11}
-                  material={labelMaterial}
-                  position={[0, 0, 0.005]}
-                />
-              </group>
-
-              <group
-                ref={manualNotificationRef}
-                position={MANUAL_WINDOW_BASES.notification}
-              >
-                <ScreenPanel
-                  color="#493138"
-                  height={0.052}
-                  position={[0, 0, 0]}
-                  width={0.28}
-                />
-                <LabelPlane
-                  atlasKey="notification"
-                  width={0.26}
-                  height={0.038}
-                  material={labelMaterial}
-                  position={[0, 0, 0.004]}
-                />
-              </group>
-            </group>
-
-            <group ref={rampUiRef} visible={false}>
-              <mesh position={[0, 0, -0.001]}>
-                <planeGeometry
-                  args={[
-                    DESK_COMPUTER_SCREEN.safeWidth,
-                    DESK_COMPUTER_SCREEN.safeHeight,
-                  ]}
-                />
-                <meshBasicMaterial color="#10241f" toneMapped={false} />
-              </mesh>
-              <ScreenPanel
-                color="#23483c"
-                height={0.038}
-                position={[0, 0.148, 0.001]}
-                width={0.604}
-              />
-              <LabelPlane
-                atlasKey="rampHeader"
-                width={0.58}
-                height={0.026}
-                material={labelMaterial}
-                position={[0, 0.148, 0.004]}
-              />
-              <ScreenPanel
-                color="#18352e"
-                height={0.246}
-                position={[-0.154, -0.015, 0.001]}
-                width={0.276}
-              />
-              <LabelPlane
-                atlasKey="rampSummary"
-                width={0.24}
-                height={0.2}
-                material={labelMaterial}
-                position={[-0.154, -0.005, 0.004]}
-              />
-              <ScreenPanel
-                color="#1e3e34"
-                height={0.113}
-                position={[0.155, 0.053, 0.001]}
-                width={0.292}
-              />
-              <ScreenPanel
-                color="#1e3e34"
-                height={0.103}
-                position={[0.155, -0.078, 0.001]}
-                width={0.292}
-              />
-              <LabelPlane
-                atlasKey="mismatch"
-                width={0.26}
-                height={0.075}
-                material={labelMaterial}
-                position={[0.155, 0.052, 0.004]}
-              />
-              <LabelPlane
-                atlasKey="evidence"
-                width={0.26}
-                height={0.07}
-                material={labelMaterial}
-                position={[0.155, -0.078, 0.004]}
-              />
-            </group>
-
-            <group
-              ref={statusOverlayRef}
-              visible={false}
-              position={[0, 0, 0.008]}
-            >
-              <RoundedBox
-                args={[0.43, 0.088, 0.004]}
-                radius={0.012}
-                smoothness={6}
-              >
-                <meshStandardMaterial
-                  ref={statusPanelRef}
-                  color={statusStyle.color}
-                  emissive={statusStyle.color}
-                  emissiveIntensity={0.42}
-                  opacity={0}
-                  transparent
-                  depthWrite={false}
-                  roughness={0.4}
-                />
-              </RoundedBox>
-              <LabelPlane
-                atlasKey={statusAtlasKey}
-                width={0.4}
-                height={0.06}
-                material={labelMaterial}
-                position={[0, 0, 0.004]}
-              />
-            </group>
-
-            <mesh position={[0, 0, 0.015]}>
-              <planeGeometry
-                args={[
-                  DESK_COMPUTER_SCREEN.safeWidth,
-                  DESK_COMPUTER_SCREEN.safeHeight,
-                ]}
-              />
-              <meshBasicMaterial
-                ref={blackoutRef}
-                color="#020504"
-                opacity={0}
-                transparent
-                depthWrite={false}
-                toneMapped={false}
-              />
-            </mesh>
-          </group>
-
           <mesh
             name="desk-computer-screen-hit"
             position={[0, 0, 0.018]}
@@ -1886,10 +1512,10 @@ export function DeskComputer({
         />
         <LabelPlane
           atlasKey="towerArchive"
-          width={0.1}
-          height={0.018}
+          height={0.009}
           material={labelMaterial}
           position={[0.389, 0.125, 0.136]}
+          width={0.09}
         />
         <RoundedBox
           args={[0.044, 0.012, 0.008]}
@@ -1910,10 +1536,10 @@ export function DeskComputer({
         </mesh>
         <LabelPlane
           atlasKey="towerRevision"
-          width={0.14}
-          height={0.016}
+          height={0.009}
           material={labelMaterial}
           position={[0.4, 0.041, 0.133]}
+          width={0.12}
         />
         <instancedMesh
           ref={towerVentsRef}
@@ -1926,19 +1552,37 @@ export function DeskComputer({
 
         {/* Full-size 104-key ANSI layout with separated system, navigation, and numpad islands. */}
         <group position={[-0.07, 0, KEYBOARD_Z]}>
+          {[
+            [-0.205, 0.003, -0.069],
+            [0.205, 0.003, -0.069],
+            [-0.205, 0.002, 0.069],
+            [0.205, 0.002, 0.069],
+          ].map((position, index) => (
+            <RoundedBox
+              // oxlint-disable-next-line react/no-array-index-key -- fixed manufactured foot set.
+              key={index}
+              args={[0.05, index < 2 ? 0.006 : 0.004, 0.02]}
+              material={materials.rubber}
+              position={position as [number, number, number]}
+              radius={0.004}
+              smoothness={4}
+              castShadow
+              receiveShadow
+            />
+          ))}
           <RoundedBox
-            args={[0.51, 0.028, 0.178]}
+            args={[0.51, 0.018, 0.178]}
             material={materials.shellDark}
-            position={[0, 0.014, 0]}
-            radius={0.015}
+            position={[0, 0.011, 0]}
+            radius={0.013}
             smoothness={8}
             castShadow
             receiveShadow
           />
           <RoundedBox
-            args={[0.492, 0.014, 0.158]}
+            args={[0.492, 0.016, 0.162]}
             material={materials.trim}
-            position={[0, 0.03, -0.003]}
+            position={[0, 0.028, -0.003]}
             radius={0.01}
             smoothness={6}
             castShadow
@@ -1962,56 +1606,44 @@ export function DeskComputer({
             />
             <LabelPlane
               atlasKey="escape"
-              width={0.016}
-              height={0.009}
+              height={0.006}
               material={labelMaterial}
-              position={[0, 0.0087, 0]}
+              position={[0, 0.0092, 0]}
               rotation={[-HALF_PI, 0, 0]}
+              width={0.012}
             />
           </group>
 
-          <mesh
-            position={[0, 0.04455, -0.003]}
-            rotation={[-HALF_PI, 0, 0]}
-            renderOrder={2}
-          >
-            <planeGeometry
-              args={[
-                KEYBOARD_LEGEND_BOUNDS.width,
-                KEYBOARD_LEGEND_BOUNDS.depth,
-              ]}
-            />
+          <mesh geometry={keyboardLegendLayer.geometry} renderOrder={2}>
             <meshBasicMaterial
-              alphaTest={0.08}
-              depthWrite
-              map={keyboardLegendTexture}
-              polygonOffset
-              polygonOffsetFactor={-1}
+              alphaTest={0.12}
+              depthWrite={false}
+              map={keyboardLegendLayer.texture}
               toneMapped={false}
               transparent
             />
           </mesh>
 
           <RoundedBox
-            args={[0.078, 0.008, 0.012]}
+            args={[0.088, 0.004, 0.014]}
             material={materials.shellLight}
-            position={[-0.205, 0.021, 0.082]}
+            position={[-0.198, 0.0205, 0.08]}
             radius={0.003}
             smoothness={4}
             castShadow
           />
           <LabelPlane
             atlasKey="keyboardBadge"
-            width={0.075}
-            height={0.012}
+            height={0.008}
             material={labelMaterial}
-            position={[-0.205, 0.026, 0.082]}
+            position={[-0.198, 0.023, 0.08]}
             rotation={[-HALF_PI, 0, 0]}
+            width={0.075}
           />
           <RoundedBox
             args={[0.052, 0.018, 0.019]}
             material={materials.rubber}
-            position={[0.186, 0.019, -0.089]}
+            position={[0.186, 0.017, -0.089]}
             radius={0.006}
             smoothness={5}
             castShadow
@@ -2020,129 +1652,88 @@ export function DeskComputer({
 
         {/* Right-handed mouse: one continuous molded shell with inset controls, grip, skids, and cable. */}
         <group position={[MOUSE_X, 0, MOUSE_Z]} rotation={[0, -0.035, 0]}>
-          <RoundedBox
-            args={[0.07, 0.009, 0.116]}
-            material={materials.rubber}
-            position={[0, 0.0045, 0]}
-            radius={0.018}
-            smoothness={8}
+          <mesh
+            geometry={mouseShellGeometry}
+            material={materials.shellDark}
             castShadow
             receiveShadow
           />
-          <mesh
-            material={materials.shellDark}
-            position={[0, 0.0275, 0.003]}
-            rotation={[HALF_PI, 0, 0]}
-            scale={[1, 1, 0.65]}
-            castShadow
-            receiveShadow
-          >
-            <capsuleGeometry args={[0.036, 0.05, 12, 32]} />
-          </mesh>
           <mesh
             geometry={mouseShellSeamGeometry}
             material={materials.trim}
-            castShadow
           />
-          <RoundedBox
+          <mesh
             ref={mouseLeftButtonRef}
-            args={[0.029, 0.004, 0.044]}
+            geometry={mouseLeftButtonGeometry}
             material={materials.shellDark}
-            position={[-0.016, 0.0495, -0.031]}
-            rotation={[-0.045, 0, 0.008]}
-            radius={0.007}
-            smoothness={7}
-            castShadow
+            position={MOUSE_LEFT_BUTTON_PIVOT}
           />
-          <RoundedBox
-            args={[0.029, 0.004, 0.044]}
+          <mesh
+            geometry={mouseRightButtonGeometry}
             material={materials.shellDark}
-            position={[0.016, 0.0495, -0.031]}
-            rotation={[-0.045, 0, -0.008]}
-            radius={0.007}
-            smoothness={7}
-            castShadow
+            position={[0.012, 0.0412, -0.0158]}
           />
-          <RoundedBox
-            args={[0.016, 0.004, 0.028]}
+          <mesh
+            geometry={mouseButtonSplitGeometry}
             material={materials.trim}
-            position={[0, 0.0505, -0.029]}
+          />
+          <RoundedBox
+            args={[0.012, 0.0014, 0.026]}
+            material={materials.trim}
+            position={[0.0005, 0.0395, -0.021]}
+            rotation={[-0.33, 0, 0]}
+            radius={0.004}
+            smoothness={5}
+          />
+          <mesh
+            material={materials.rubber}
+            position={[0.0005, 0.0435, -0.021]}
+            rotation={[0, 0, HALF_PI]}
+            castShadow
+          >
+            <cylinderGeometry args={[0.0048, 0.0048, 0.009, 24]} />
+          </mesh>
+          <RoundedBox
+            args={[0.0022, 0.011, 0.034]}
+            material={materials.rubber}
+            position={[-0.0325, 0.011, 0.012]}
+            rotation={[0, 0, -0.1]}
+            radius={0.001}
+            smoothness={4}
+          />
+          <RoundedBox
+            args={[0.0022, 0.011, 0.034]}
+            material={materials.rubber}
+            position={[0.034, 0.011, 0.012]}
+            rotation={[0, 0, 0.1]}
+            radius={0.001}
+            smoothness={4}
+          />
+          <RoundedBox
+            args={[0.016, 0.014, 0.022]}
+            material={materials.rubber}
+            position={[0, 0.011, -0.064]}
             radius={0.005}
             smoothness={5}
             castShadow
           />
-          <RoundedBox
-            args={[0.0012, 0.002, 0.039]}
-            material={materials.trim}
-            position={[0, 0.052, -0.035]}
-            radius={0.0005}
-            smoothness={3}
-          />
-          <mesh
-            material={materials.rubber}
-            position={[0, 0.0565, -0.029]}
-            rotation={[0, 0, HALF_PI]}
-            castShadow
-          >
-            <cylinderGeometry args={[0.007, 0.007, 0.014, 24]} />
-          </mesh>
-          <mesh
-            material={materials.trim}
-            position={[-0.0036, 0.0565, -0.029]}
-            rotation={[0, HALF_PI, 0]}
-          >
-            <torusGeometry args={[0.0068, 0.00045, 6, 20]} />
-          </mesh>
-          <mesh
-            material={materials.trim}
-            position={[0, 0.0565, -0.029]}
-            rotation={[0, HALF_PI, 0]}
-          >
-            <torusGeometry args={[0.0068, 0.00045, 6, 20]} />
-          </mesh>
-          <mesh
-            material={materials.trim}
-            position={[0.0036, 0.0565, -0.029]}
-            rotation={[0, HALF_PI, 0]}
-          >
-            <torusGeometry args={[0.0068, 0.00045, 6, 20]} />
-          </mesh>
-          <RoundedBox
-            args={[0.003, 0.014, 0.038]}
-            material={materials.rubber}
-            position={[-0.035, 0.021, 0.012]}
-            radius={0.002}
-            smoothness={4}
-          />
-          <RoundedBox
-            args={[0.003, 0.014, 0.038]}
-            material={materials.rubber}
-            position={[0.035, 0.021, 0.012]}
-            radius={0.002}
-            smoothness={4}
-          />
-          <RoundedBox
-            args={[0.018, 0.018, 0.024]}
-            material={materials.rubber}
-            position={[0, 0.014, -0.061]}
-            radius={0.006}
-            smoothness={5}
-            castShadow
-          />
-          <RoundedBox
-            args={[0.014, 0.003, 0.052]}
-            material={materials.rubber}
-            position={[-0.02, 0.0015, 0.012]}
-            radius={0.002}
-            smoothness={4}
-          />
-          <RoundedBox
-            args={[0.014, 0.003, 0.052]}
-            material={materials.rubber}
-            position={[0.02, 0.0015, 0.012]}
-            radius={0.002}
-            smoothness={4}
-          />
+          {[
+            [-0.018, 0.0015, -0.027],
+            [0.018, 0.0015, -0.027],
+            [-0.018, 0.0015, 0.029],
+            [0.018, 0.0015, 0.029],
+          ].map((position, index) => (
+            <RoundedBox
+              // oxlint-disable-next-line react/no-array-index-key -- fixed molded foot set.
+              key={index}
+              args={[0.012, 0.003, 0.024]}
+              material={materials.rubber}
+              position={position as [number, number, number]}
+              radius={0.002}
+              smoothness={4}
+              receiveShadow
+            />
+          ))}
         </group>
 
         {/* Every cable shares the assembly parent; endpoints overlap modeled strain reliefs. */}
@@ -2166,7 +1757,7 @@ export function DeskComputer({
         <RoundedBox
           args={[0.024, 0.024, 0.024]}
           material={materials.rubber}
-          position={[0.08, 0.292, -0.047]}
+          position={[0.08, 0.292, -0.024]}
           radius={0.006}
           smoothness={5}
           castShadow
@@ -2196,11 +1787,11 @@ export function DeskComputer({
         </RoundedBox>
         <LabelPlane
           atlasKey="standBadge"
-          width={0.08}
-          height={0.012}
+          height={0.008}
           material={labelMaterial}
           position={[-0.08, 0.043, 0.048]}
           rotation={[-HALF_PI, 0, 0]}
+          width={0.072}
         />
       </group>
     </group>
