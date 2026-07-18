@@ -127,7 +127,7 @@ const CASE_PRESENTATION: Record<string, {
     ],
   },
   'ramp-09-it-inventory-theft': {
-    employee: 'Sam Patel · IT Director',
+    employee: 'William Zeng · IT Director',
     queueLabel: 'Inventory theft',
     workflow: {
       automation: 'Connected exception review',
@@ -142,7 +142,7 @@ const CASE_PRESENTATION: Record<string, {
     ],
   },
   'ramp-10-influencer-marketing-deal': {
-    employee: 'Nora Vale · Marketing',
+    employee: 'William Zeng · Marketing',
     queueLabel: 'Influencer deal',
     workflow: {
       automation: 'Vendor approval review',

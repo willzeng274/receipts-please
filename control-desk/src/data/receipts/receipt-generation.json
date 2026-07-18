@@ -1270,12 +1270,12 @@
         ],
         "amounts": {"subtotalCents": 7400000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 7400000, "printedTotalCents": 7400000},
         "payment": {"method": "CORPORATE CARD", "cardLast4": "2910", "authorizationCode": "PO24001"},
-        "copy": {"memo": "IT REFRESH", "footer": "NET 30"},
+        "copy": {"employeeName": "William Zeng", "memo": "IT REFRESH", "footer": "NET 30"},
         "anomalies": [{"type": "inventory-theft-signal", "target": "lineItems", "parameters": {"purchasedMacBooks": 24, "purchasedMonitors": 40, "purchasedKeyboards": 90, "countedMacBooks": 11, "countedMonitors": 19, "countedKeyboards": 143, "missingSerialNumbers": 13}}]
       },
       "comparisonRecords": {
         "inventory": {"MacBooks": {"purchased": 24, "counted": 11}, "monitors": {"purchased": 40, "counted": 19}, "keyboards": {"purchased": 90, "counted": 143, "note": "Imported by weight"}},
-        "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "sam.patel@company.example", "employeeId": "employee-sam-patel"}
+        "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "william.zeng@company.example", "employeeId": "employee-william-zeng"}
       },
       "truth": {"expectedDecision": "fire", "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor. The evidence is severe enough that Fire is the correct decision."},
       "generationNotes": "The invoice is legitimate; the suspicious pattern emerges from connected records."
@@ -1298,10 +1298,10 @@
         "lineItems": [{"description": "ONE VIBE-BASED ACTIVATION", "quantity": 1, "unitPriceCents": 7500000, "lineTotalCents": 7500000}],
         "amounts": {"subtotalCents": 7500000, "taxCents": 0, "tipCents": 0, "feesCents": 0, "discountCents": 0, "calculatedTotalCents": 7500000, "printedTotalCents": 7500000},
         "payment": {"method": "ACH", "cardLast4": null, "authorizationCode": "VIBE001"},
-        "copy": {"memo": "Q3 BRAND MOMENTUM", "footer": "PAYABLE IMMEDIATELY"},
+        "copy": {"employeeName": "William Zeng", "memo": "Q3 BRAND MOMENTUM", "footer": "PAYABLE IMMEDIATELY"},
         "anomalies": [{"type": "suspicious-vendor", "target": "merchant", "parameters": {"vendorAgeDays": 1, "followers": 14, "verifiedFollowers": 14, "missingApproval": "Legal"}}]
       },
-      "comparisonRecords": {"vendor": {"createdDaysAgo": 1, "addressMatchesEmployee": true, "socialFollowers": 14, "employeeOwnedFollowers": 8, "legalApproval": false, "campaignLikes": 3}},
+      "comparisonRecords": {"vendor": {"employeeId": "employee-william-zeng", "employeeName": "William Zeng", "createdDaysAgo": 1, "addressMatchesEmployee": true, "socialFollowers": 14, "employeeOwnedFollowers": 8, "legalApproval": false, "campaignLikes": 3}},
       "truth": {"expectedDecision": "fire", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The undisclosed self-dealing vendor, approval gap, and fabricated campaign performance support termination."},
       "generationNotes": "Present as a confident but thin corporate invoice rather than an obvious fake."
     },

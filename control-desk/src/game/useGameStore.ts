@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 import { GAME_CASES, MANUAL_CASE_COUNT, type GameDecision } from './gameData'
 
+export const GAME_DURATION_SECONDS = 5 * 60
+
 export type GamePhase = 'briefing' | 'complete' | 'ending' | 'manual' | 'migrating' | 'migration-prompt' | 'overload' | 'ramp'
 
 export type DecisionResult = {
@@ -26,6 +28,7 @@ type GameState = {
   reviewedEvidence: number[]
   score: number
   soundEnabled: boolean
+  timedOut: boolean
   acknowledgeOverload: () => void
   advanceCase: () => void
   beginMigration: () => void
@@ -50,6 +53,7 @@ const initialState = {
   reviewedEvidence: [] as number[],
   score: 0,
   soundEnabled: true,
+  timedOut: false,
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -71,7 +75,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     return { caseIndex: nextIndex, feedback: null, reviewedEvidence: [] }
   }),
   beginMigration: () => set({ phase: 'migrating' }),
-  completeGame: () => set({ phase: 'complete' }),
+  completeGame: () => set({ phase: 'complete', timedOut: false }),
   finishMigration: () => set({
     caseIndex: MANUAL_CASE_COUNT,
     feedback: null,
@@ -82,10 +86,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     ? state
     : { reviewedEvidence: [...state.reviewedEvidence, index] }),
   resetGame: () => set(initialState),
-  startGame: () => set((state) => ({ ...initialState, elapsedSeconds: state.elapsedSeconds, phase: 'manual' })),
+  startGame: () => set({ ...initialState, phase: 'manual' }),
   submitDecision: (decision) => {
     const state = get()
-    if (state.feedback || state.paused || !['manual', 'ramp'].includes(state.phase)) return
+    if (state.elapsedSeconds >= GAME_DURATION_SECONDS || state.feedback || state.paused || !['manual', 'ramp'].includes(state.phase)) return
     const currentCase = GAME_CASES[state.caseIndex]
     const missingEvidence = currentCase.era === 'manual'
       ? currentCase.evidence.map((_, index) => index).filter((index) => !state.reviewedEvidence.includes(index))
@@ -110,9 +114,20 @@ export const useGameStore = create<GameState>((set, get) => ({
       score: state.score + points,
     })
   },
-  tick: () => set((state) => state.phase === 'complete' || state.paused || state.elapsedSeconds >= 300
-    ? state
-    : { elapsedSeconds: Math.min(300, state.elapsedSeconds + 1) }),
+  tick: () => set((state) => {
+    if (state.phase === 'briefing' || state.phase === 'complete' || state.paused) return state
+    const elapsedSeconds = Math.min(GAME_DURATION_SECONDS, state.elapsedSeconds + 1)
+    if (elapsedSeconds === GAME_DURATION_SECONDS) {
+      return {
+        elapsedSeconds,
+        feedback: null,
+        paused: false,
+        phase: 'complete',
+        timedOut: true,
+      }
+    }
+    return { elapsedSeconds }
+  }),
   togglePause: () => set((state) => ({ paused: !state.paused })),
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
 }))

@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { useLabStore } from '../store/useLabStore'
 import { GAME_CASES, MANUAL_CASE_COUNT, formatMoney, formatReceiptDate, type GameCase } from './gameData'
 import { requestGameAudioCue } from './gameAudio'
-import { useGameStore } from './useGameStore'
+import { GAME_DURATION_SECONDS, useGameStore } from './useGameStore'
 
 import './game.css'
 
 function formatTime(seconds: number) {
-  const remaining = Math.max(0, 300 - seconds)
+  const remaining = Math.max(0, GAME_DURATION_SECONDS - seconds)
   return `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`
 }
 
@@ -22,6 +22,7 @@ function ReceiptDocument({ gameCase }: { gameCase: GameCase }) {
       <span className={frankenstein ? 'is-merchant-font' : ''}>{gameCase.receipt.merchant.name}</span>
       <small>{gameCase.receipt.merchant.addressLines[0]}</small>
       <small>{formatReceiptDate(gameCase.receipt.issuedAt)}</small>
+      {typeof gameCase.receipt.copy.employeeName === 'string' && <small>EMPLOYEE · {gameCase.receipt.copy.employeeName}</small>}
       <hr />
       {gameCase.receipt.lineItems.map((line) => (
         <div key={`${line.description}-${line.quantity}`}><b>{line.quantity}× {line.description}</b><strong>{formatMoney(line.lineTotalCents)}</strong></div>

@@ -28,6 +28,7 @@ export function GameShell() {
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
+  const timedOut = useGameStore((state) => state.timedOut)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
   const resetExperience = useLabStore((state) => state.resetExperience)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
@@ -218,10 +219,15 @@ export function GameShell() {
   }, [phase, playCue, rampMigrationStep])
 
   useEffect(() => {
-    if (phase !== 'ending') return
-    setWorkstationFocused(false)
-    ambience.current?.pause()
-  }, [phase, setWorkstationFocused])
+    if (phase === 'ending') {
+      setWorkstationFocused(false)
+      ambience.current?.pause()
+    }
+    if (phase === 'complete') {
+      setWorkstationFocused(false)
+      stopAllAudio()
+    }
+  }, [phase, setWorkstationFocused, stopAllAudio])
 
   useEffect(() => {
     if (phase !== 'ending' || endingStep !== 1) return
@@ -293,8 +299,8 @@ export function GameShell() {
 
       {phase === 'complete' && (
         <section className="game-title-card">
-          <span>THE NEW CHIEF GROWTH OFFICER HAS ARRIVED</span>
-          <h1>Receipts,<br />Please</h1>
+          <span>{timedOut ? 'SHIFT CLOSED · FIVE-MINUTE LIMIT REACHED' : 'THE NEW CHIEF GROWTH OFFICER HAS ARRIVED'}</span>
+          <h1>{timedOut ? <>Time's<br />Up</> : <>Receipts,<br />Please</>}</h1>
           <dl><div><dt>Cases reviewed</dt><dd>{decisions.length}/{GAME_CASES.length}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Score</dt><dd>{score}</dd></div><div><dt>Rating</dt><dd>{rating}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
           <button onClick={handleRestart} type="button">Review another shift</button>
         </section>

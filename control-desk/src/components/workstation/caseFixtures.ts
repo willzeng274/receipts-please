@@ -319,7 +319,7 @@ const IT_INVENTORY_THEFT = defineCase({
   calculator: { evidenceId: 'it:variance', expression: '24 - 11', finding: 'Thirteen MacBooks are missing before monitor variance is counted.', result: '13 missing MacBooks', title: 'Inventory variance' },
   card: { activeCardCount: 3, id: 'card-2910', last4: '2910', monthlyLimit: '$100,000' },
   caseNumber: '09',
-  employee: { department: 'IT', employmentStatus: 'Full time', initials: 'SP', location: 'New York', monthlySpend: '$92,400', name: 'Sam Patel', role: 'IT director', startDate: 'Aug 12, 2021' },
+  employee: { department: 'IT', employmentStatus: 'Full time', initials: 'WZ', location: 'New York', monthlySpend: '$92,400', name: 'William Zeng', role: 'IT director', startDate: 'Aug 12, 2021' },
   evidence: [
     evidence('it:invoice', 'Purchase invoice', '24 MacBooks / 40 monitors', 'The approved invoice establishes the purchased quantities.', 'transactions'),
     evidence('it:inventory', 'Physical inventory', '11 MacBooks / 19 monitors', 'The latest inventory count is missing 34 high-value devices.', 'inventory', 'risk'),
@@ -348,7 +348,7 @@ const INFLUENCER_DEAL = defineCase({
   calculator: { evidenceId: 'vendor:follower-cost', expression: '75000 / 14', finding: 'The campaign costs $5,357.14 per follower.', result: '$5,357.14 per follower', title: 'Audience cost' },
   card: { id: 'card-ach-synergy', last4: '----', monthlyLimit: '$80,000' },
   caseNumber: '10',
-  employee: { department: 'Marketing', employmentStatus: 'Full time', initials: 'JL', location: 'Los Angeles', monthlySpend: '$78,210', name: 'Jordan Lane', role: 'Marketing director', startDate: 'Apr 2, 2022' },
+  employee: { department: 'Marketing', employmentStatus: 'Full time', initials: 'WZ', location: 'Los Angeles', monthlySpend: '$78,210', name: 'William Zeng', role: 'Marketing director', startDate: 'Apr 2, 2022' },
   evidence: [
     evidence('vendor:payment', 'Vendor payment', '$75,000', 'The payment was submitted one day after vendor creation.', 'transactions', 'risk'),
     evidence('vendor:identity', 'Vendor identity', 'Address matches employee', 'The LLC address is the marketing director apartment.', 'vendor', 'risk'),
