@@ -54,7 +54,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (!state.feedback) return state
     const nextIndex = state.caseIndex + 1
     if (nextIndex === MANUAL_CASE_COUNT) {
-      return { activeActions: [], caseIndex: nextIndex, feedback: null, phase: 'migration-prompt' }
+      return { activeActions: [], feedback: null, phase: 'migration-prompt' }
     }
     if (nextIndex >= GAME_CASES.length) {
       return { activeActions: [], feedback: null, phase: 'ending' }
@@ -63,7 +63,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   beginMigration: () => set({ phase: 'migrating' }),
   completeGame: () => set({ phase: 'complete' }),
-  finishMigration: () => set({ activeActions: [], feedback: null, phase: 'ramp' }),
+  finishMigration: () => set({ activeActions: [], caseIndex: MANUAL_CASE_COUNT, feedback: null, phase: 'ramp' }),
   performAction: (action) => set((state) => state.activeActions.includes(action)
     ? state
     : { activeActions: [...state.activeActions, action] }),

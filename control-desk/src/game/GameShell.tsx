@@ -3,6 +3,7 @@ import { LabViewport } from '../components/lab/LabViewport'
 import { useLabStore } from '../store/useLabStore'
 import { ENDING_CASE, GAME_CASES } from './gameData'
 import { GiraffeEndingStage } from './GiraffeEndingStage'
+import { GAME_AUDIO_EVENT, type GameAudioRequest } from './gameAudio'
 import { useGameStore } from './useGameStore'
 
 type AudioCue = { id: string; loop: boolean; path: string }
@@ -19,6 +20,7 @@ export function GameShell() {
   const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
   const feedback = useGameStore((state) => state.feedback)
   const finishMigration = useGameStore((state) => state.finishMigration)
+  const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
   const resetGame = useGameStore((state) => state.resetGame)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
@@ -26,6 +28,7 @@ export function GameShell() {
   const tick = useGameStore((state) => state.tick)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
   const resetExperience = useLabStore((state) => state.resetExperience)
+  const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
   const setCameraPreset = useLabStore((state) => state.setCameraPreset)
   const setGridVisible = useLabStore((state) => state.setGridVisible)
   const setMode = useLabStore((state) => state.setMode)
@@ -33,12 +36,16 @@ export function GameShell() {
   const setRenderQuality = useLabStore((state) => state.setRenderQuality)
   const setWorkstationFocused = useLabStore((state) => state.setWorkstationFocused)
   const [audioReady, setAudioReady] = useState(false)
+  const [calmBeat, setCalmBeat] = useState(false)
   const [endingStep, setEndingStep] = useState(0)
   const catalog = useRef(new Map<string, AudioCue>())
   const ambience = useRef<HTMLAudioElement | null>(null)
+  const ambienceId = useRef<string | null>(null)
   const oneShots = useRef(new Set<HTMLAudioElement>())
+  const preloadedAudio = useRef<HTMLAudioElement[]>([])
   const previousCase = useRef(-1)
   const previousFeedback = useRef<typeof feedback>(null)
+  const previousMigrationStep = useRef(0)
 
   const playCue = useCallback((id: string, volume = 0.68) => {
     if (!useGameStore.getState().soundEnabled) return
@@ -52,8 +59,13 @@ export function GameShell() {
   }, [])
 
   const switchAmbience = useCallback((id: string) => {
+    if (ambience.current && ambienceId.current === id) {
+      if (useGameStore.getState().soundEnabled) void ambience.current.play().catch(() => {})
+      return
+    }
     ambience.current?.pause()
     ambience.current = null
+    ambienceId.current = null
     if (!useGameStore.getState().soundEnabled) return
     const cue = catalog.current.get(id)
     if (!cue) return
@@ -61,15 +73,30 @@ export function GameShell() {
     audio.loop = true
     audio.volume = 0.24
     ambience.current = audio
-    void audio.play().catch(() => { if (ambience.current === audio) ambience.current = null })
+    ambienceId.current = id
+    void audio.play().catch(() => {
+      if (ambience.current !== audio) return
+      ambience.current = null
+      ambienceId.current = null
+    })
   }, [])
 
   const stopAllAudio = useCallback(() => {
     ambience.current?.pause()
     ambience.current = null
+    ambienceId.current = null
     oneShots.current.forEach((audio) => audio.pause())
     oneShots.current.clear()
   }, [])
+
+  useEffect(() => {
+    const onAudioCue = (event: Event) => {
+      const request = (event as CustomEvent<GameAudioRequest>).detail
+      if (request) playCue(request.id, request.volume)
+    }
+    window.addEventListener(GAME_AUDIO_EVENT, onAudioCue)
+    return () => window.removeEventListener(GAME_AUDIO_EVENT, onAudioCue)
+  }, [playCue])
 
   useEffect(() => {
     let active = true
@@ -78,12 +105,22 @@ export function GameShell() {
       .then((nextCatalog) => {
         if (!active) return
         catalog.current = new Map(nextCatalog.assets.map((cue) => [cue.id, cue]))
+        preloadedAudio.current = nextCatalog.assets.map((cue) => {
+          const audio = new Audio(cue.path)
+          audio.preload = 'auto'
+          return audio
+        })
         setAudioReady(true)
       })
       .catch(() => { /* The game remains playable when prototype audio is absent. */ })
     return () => {
       active = false
       stopAllAudio()
+      preloadedAudio.current.forEach((audio) => {
+        audio.removeAttribute('src')
+        audio.load()
+      })
+      preloadedAudio.current = []
     }
   }, [stopAllAudio])
 
@@ -107,8 +144,10 @@ export function GameShell() {
     if (phase === 'migrating' && experiencePhase === 'ramp') {
       finishMigration()
       setWorkstationFocused(true)
+      playCue('monitor-power-on', 0.58)
       playCue('migration-complete', 0.72)
-      switchAmbience('ramp-adaptive-music-loop')
+      setCalmBeat(true)
+      switchAmbience('low-cortisol-music-loop')
     }
   }, [experiencePhase, finishMigration, phase, playCue, setWorkstationFocused, switchAmbience])
 
@@ -116,6 +155,7 @@ export function GameShell() {
     if (!feedback || feedback === previousFeedback.current) return
     previousFeedback.current = feedback
     playCue(feedback.correct ? 'decision-correct' : 'decision-wrong', 0.62)
+    if (!feedback.correct) playCue('paper-crumple', 0.34)
     playCue(feedback.decision === 'approve' ? 'approve-stamp' : feedback.decision === 'reject' ? 'reject-stamp' : 'fraud-stamp', 0.55)
   }, [feedback, playCue])
 
@@ -126,14 +166,44 @@ export function GameShell() {
   }, [caseIndex, phase, playCue])
 
   useEffect(() => {
-    if (soundEnabled) {
+    if (soundEnabled && !paused) {
       if (phase === 'manual') switchAmbience('manual-adaptive-music-loop')
-      else if (phase === 'ramp') switchAmbience('ramp-adaptive-music-loop')
+      else if (phase === 'ramp' && !calmBeat) switchAmbience('ramp-adaptive-music-loop')
       return
     }
     ambience.current?.pause()
     oneShots.current.forEach((audio) => audio.pause())
-  }, [audioReady, phase, soundEnabled, switchAmbience])
+  }, [audioReady, calmBeat, paused, phase, soundEnabled, switchAmbience])
+
+  useEffect(() => {
+    if (!calmBeat) return
+    const calmTimer = window.setTimeout(() => setCalmBeat(false), 2400)
+    return () => window.clearTimeout(calmTimer)
+  }, [calmBeat])
+
+  useEffect(() => {
+    if (phase === 'migration-prompt') {
+      playCue('printer-jam', 0.68)
+      playCue('slack-ping', 0.55)
+      const phoneTimer = window.setTimeout(() => playCue('phone-ring', 0.5), 520)
+      return () => window.clearTimeout(phoneTimer)
+    }
+    if (phase === 'migrating') {
+      ambience.current?.pause()
+      playCue('monitor-power-off', 0.62)
+      playCue('office-light-flicker', 0.54)
+    }
+  }, [phase, playCue])
+
+  useEffect(() => {
+    if (phase !== 'migrating') {
+      previousMigrationStep.current = 0
+      return
+    }
+    if (rampMigrationStep === previousMigrationStep.current) return
+    previousMigrationStep.current = rampMigrationStep
+    playCue('evidence-link', 0.4)
+  }, [phase, playCue, rampMigrationStep])
 
   useEffect(() => {
     if (phase !== 'ending') return
@@ -168,6 +238,7 @@ export function GameShell() {
 
   const handleRestart = () => {
     stopAllAudio()
+    setCalmBeat(false)
     setEndingStep(0)
     previousCase.current = -1
     previousFeedback.current = null

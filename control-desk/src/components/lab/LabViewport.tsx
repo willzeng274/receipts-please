@@ -8,6 +8,7 @@ import { ScreenEffectPreview } from './ScreenEffectPreview'
 import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 
 export function LabViewport() {
+  const gameActive = window.location.pathname === '/game'
   const advanceRampMigration = useLabStore((state) => state.advanceRampMigration)
   const assetId = useLabStore((state) => state.assetId)
   const cameraPreset = useLabStore((state) => state.cameraPreset)
@@ -80,7 +81,7 @@ export function LabViewport() {
       )}
       {experiencePhase === 'migrating' && (
         <section aria-live="polite" className="ramp-migration-controller">
-          <span>Expense OS migration · step {rampMigrationStep + 1} of {RAMP_MIGRATION_STEPS.length}</span>
+          <span>{gameActive ? '2:10–2:35 · ' : ''}Expense OS migration · step {rampMigrationStep + 1} of {RAMP_MIGRATION_STEPS.length}</span>
           <strong>{RAMP_MIGRATION_STEPS[rampMigrationStep]}</strong>
           <small>The workstation and this controller share the same real progress state.</small>
           <button onClick={advanceRampMigration} type="button">

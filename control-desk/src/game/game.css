@@ -44,7 +44,9 @@
 .game-workstation--ramp .game-case-view > header em { color: var(--game-accent); }
 
 .game-document-stage { display: grid; grid-template-columns: minmax(230px, .9fr) minmax(280px, 1.1fr); gap: 16px; }
-.game-receipt { width: min(100%, 310px); min-height: 300px; justify-self: center; padding: 18px 21px; color: #292b27; background: #f8f1dc; box-shadow: 6px 8px 0 rgba(40,43,38,.12), 0 16px 40px rgba(40,43,38,.16); transform: rotate(-.65deg); font: 500 8px/1.35 'IBM Plex Mono', monospace; }
+.game-receipt { width: min(100%, 310px); min-height: 300px; justify-self: center; padding: 18px 21px; color: #292b27; background: #f8f1dc; box-shadow: 6px 8px 0 rgba(40,43,38,.12), 0 16px 40px rgba(40,43,38,.16); transform: rotate(-.65deg); cursor: grab; font: 500 8px/1.35 'IBM Plex Mono', monospace; transition: opacity .16s ease, transform .16s ease; }
+.game-receipt:active { cursor: grabbing; }
+.game-receipt.is-dragging { opacity: .42; transform: rotate(-2deg) scale(.97); }
 .game-receipt--unacceptable-photo { filter: blur(.45px) contrast(.78); transform: rotate(-4deg); }
 .game-receipt--phone-photo { transform: rotate(1.6deg); }
 .game-receipt--synthetic-image { box-shadow: 0 0 0 2px rgba(65,147,205,.18), 6px 8px 0 rgba(40,43,38,.12); }
@@ -56,6 +58,7 @@
 .game-receipt > div.is-risk, .game-receipt > div.is-altered { color: #aa3d35; font-weight: 800; }
 .game-receipt > div.is-altered strong { text-decoration: underline wavy #b43f36 1px; }
 .game-receipt p { margin: 13px 0 0; color: #4c504a; text-align: center; text-transform: uppercase; }
+.game-receipt .game-drag-hint { display: block; margin: 14px -10px -8px; padding: 7px; color: #8d5c28; border: 1px dashed #b98b50; background: #f1e3bd; font-size: 7px; font-style: normal; text-align: center; text-transform: uppercase; animation: game-drag-hint 1.2s ease-in-out infinite alternate; }
 
 .game-evidence-inspector { min-width: 0; display: flex; flex-direction: column; }
 .game-evidence-inspector nav { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
@@ -79,6 +82,29 @@
 .game-ramp-summary strong { display: block; margin: 5px 0; color: #eaf2ed; }
 .game-ramp-summary p { margin: 0; }
 
+.game-policy-context { margin-top: 11px; padding: 9px 11px; display: flex; align-items: center; gap: 12px; border: 1px solid #bbb6a4; background: #ddd6bd; }
+.game-policy-context > span { flex: 0 0 auto; color: #6d716b; font: 700 7px/1 'IBM Plex Mono', monospace; letter-spacing: .06em; }
+.game-policy-context > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.game-policy-context i { padding: 5px 7px; color: #4f5651; border: 1px solid #b8b29f; background: #ebe5ce; font: 600 7px/1 'IBM Plex Mono', monospace; font-style: normal; }
+.game-policy-context--ramp { border-color: #355249; background: #142b24; }
+.game-policy-context--ramp > span { color: var(--game-accent); }
+.game-policy-context--ramp i { color: #a8bbb2; border-color: #3c5a50; background: #1b372e; }
+
+.game-slack-toast { position: absolute; z-index: 18; top: 49px; right: 13px; width: 235px; padding: 11px 13px; color: #e6ebe7; border: 1px solid #59645f; border-left: 4px solid #c88f43; background: rgba(28,37,34,.96); box-shadow: 0 14px 42px rgba(0,0,0,.36); pointer-events: none; animation: game-slack-in .32s ease-out both; }
+.game-slack-toast span { color: #bdc6c1; font: 650 7px/1 'IBM Plex Mono', monospace; letter-spacing: .08em; }
+.game-slack-toast strong { display: block; margin: 7px 0 4px; color: #e8bd68; font-size: 10px; }
+.game-slack-toast p { margin: 0; color: #aeb9b3; font-size: 9px; line-height: 1.4; }
+
+@keyframes game-slack-in {
+  from { opacity: 0; transform: translate3d(18px, -8px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes game-drag-hint {
+  from { transform: translateY(0); }
+  to { transform: translateY(2px); }
+}
+
 .game-case-actions { margin-top: 12px; padding: 9px 10px; border: 1px solid #375047; background: #142a24; }
 .game-case-actions > span { color: var(--game-accent); font: 650 7px/1 'IBM Plex Mono', monospace; text-transform: uppercase; letter-spacing: .08em; }
 .game-case-actions > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
@@ -92,6 +118,7 @@
 .game-decision-bar > button { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 0 13px; color: #e9ede8; border: 1px solid #4b5954; background: #202b28; cursor: pointer; text-transform: uppercase; }
 .game-decision-bar > button:hover { transform: translateY(-2px); }
 .game-decision-bar > button:disabled { opacity: .36; cursor: default; transform: none; }
+.game-decision-bar > button.is-drop-ready { border-color: var(--game-accent); background: #293a34; box-shadow: inset 0 0 0 1px var(--game-accent); }
 .game-decision-bar > button span { font-size: 11px; font-weight: 750; }
 .game-decision-bar > button small { margin-top: 4px; color: #8d9792; font: 500 7px/1 'IBM Plex Mono', monospace; }
 .game-decision-bar > button.is-approve { border-bottom: 3px solid #4f9a71; }
@@ -113,6 +140,11 @@
 .game-migration-prompt dt { color: #789287; font-size: 9px; }
 .game-migration-prompt dd { margin: 4px 0 0; color: white; font-size: 20px; font-weight: 750; }
 .game-migration-prompt > small { margin-top: 9px; color: #5f786d; font: 600 8px/1 'IBM Plex Mono', monospace; }
+.game-pressure-stack { width: min(560px, 100%); margin-top: 12px; display: grid; gap: 5px; }
+.game-pressure-stack span { padding: 8px 10px; color: #9eaaa4; border: 1px solid #2f473e; background: #10221c; font-size: 9px; }
+.game-pressure-stack span:nth-child(2) { transform: translateX(12px); }
+.game-pressure-stack span:nth-child(3) { transform: translateX(24px); }
+.game-pressure-stack b { margin-right: 7px; color: #e2b763; font: 650 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; }
 .game-pause-screen { z-index: 80; inset: 0; align-items: center; padding: 0; background: rgba(7,13,11,.96); }
 .game-cold-open { position: absolute; z-index: 75; inset: auto 42px 42px auto; width: min(430px, calc(100vw - 84px)); min-height: 240px; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; padding: 28px; color: #edf2ed; border: 1px solid #58665f; background: linear-gradient(145deg, rgba(13,24,20,.94), rgba(20,33,28,.9)); box-shadow: 0 24px 72px rgba(0,0,0,.48); }
 .game-cold-open > span { color: #eebd55; font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; text-transform: uppercase; }
@@ -165,5 +197,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .game-decision-bar > button:hover { transform: none; }
+  .game-receipt .game-drag-hint { animation: none; }
   .game-giraffe-stage { animation: none; }
 }

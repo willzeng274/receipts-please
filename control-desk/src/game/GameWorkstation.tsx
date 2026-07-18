@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type DragEvent } from 'react'
 import { useLabStore, type EffectPreset } from '../store/useLabStore'
 import { GAME_CASES, MANUAL_CASE_COUNT, formatMoney, formatReceiptDate, type GameDecision } from './gameData'
+import { requestGameAudioCue } from './gameAudio'
 import { useGameStore } from './useGameStore'
 
 import './game.css'
@@ -16,6 +17,29 @@ const EFFECT_FOR_DECISION: Record<GameDecision, EffectPreset> = {
   investigate: 'fraud',
   reject: 'reject',
 }
+
+const MANUAL_SLACK_MESSAGES = [
+  ['Finance Manager', 'Need these cleared before lunch. Inbox: 12 and developing ambitions.'],
+  ['People Ops', 'Rowan starts Friday. Why is there already a receipt?'],
+  ['Rowan', 'The dinner was executive in spirit.'],
+  ['Finance Ops', 'A 4,495% tip has entered the chat.'],
+  ['Alex', 'The fonts looked consistent on my phone.'],
+  ['IT Inventory', 'We cannot locate the laptops or, currently, Sam.'],
+] as const
+
+const MANUAL_POLICY_RULES = [
+  '$35 per meal attendee',
+  'Tips above 25% require review',
+  'Receipt amount and date must match',
+  'Technology requires inventory records',
+]
+
+const RAMP_POLICY_RULES = [
+  'Policy automatically checked',
+  'Vendor and approval history connected',
+  'Travel and inventory linked',
+  'Judgment still required',
+]
 
 function formatTime(seconds: number) {
   const remaining = Math.max(0, 300 - seconds)
@@ -45,16 +69,21 @@ export function GameWorkstation() {
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const [selectedEvidence, setSelectedEvidence] = useState(0)
   const [calculatorVisible, setCalculatorVisible] = useState(false)
+  const [receiptDragging, setReceiptDragging] = useState(false)
   const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
   const correctCount = decisions.filter((decision) => decision.correct).length
   const phaseCaseNumber = currentCase.era === 'manual' ? caseIndex + 1 : caseIndex - MANUAL_CASE_COUNT + 1
   const phaseCaseTotal = currentCase.era === 'manual' ? MANUAL_CASE_COUNT : GAME_CASES.length - MANUAL_CASE_COUNT
-  const inboxCount = currentCase.era === 'manual'
-    ? Math.max(12, 12 + Math.floor(elapsedSeconds / 24) - decisions.length)
-    : Math.max(0, GAME_CASES.length - caseIndex)
-  const cortisol = currentCase.era === 'manual'
-    ? Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
-    : Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6)
+  const inboxCount = phase === 'migration-prompt'
+    ? 47
+    : currentCase.era === 'manual'
+      ? Math.max(12, 12 + Math.floor(elapsedSeconds / 18) - Math.floor(decisions.length / 2))
+      : Math.max(0, GAME_CASES.length - caseIndex)
+  const cortisol = phase === 'migration-prompt'
+    ? 97
+    : currentCase.era === 'manual'
+      ? Math.min(97, 69 + Math.floor(elapsedSeconds / 12) + caseIndex * 3)
+      : Math.max(8, 38 - (caseIndex - MANUAL_CASE_COUNT) * 6)
   const selected = currentCase.evidence[selectedEvidence] ?? currentCase.evidence[0]
   const requiredActions = currentCase.truth.requiredActions ?? []
   const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
@@ -62,27 +91,73 @@ export function GameWorkstation() {
     : caseIndex === GAME_CASES.length - 1
       ? 'Clear the inbox'
       : 'Next case'
+  const slackMessage = MANUAL_SLACK_MESSAGES[Math.min(caseIndex, MANUAL_SLACK_MESSAGES.length - 1)]
 
   useEffect(() => {
     setSelectedEvidence(0)
     setCalculatorVisible(false)
+    setReceiptDragging(false)
   }, [currentCase.caseId])
 
   const queueCases = useMemo(() => GAME_CASES.filter((entry) => entry.era === currentCase.era), [currentCase.era])
 
   const handleDecision = (decision: GameDecision) => {
+    requestGameAudioCue('stamp-pickup', 0.46)
     submitDecision(decision)
     triggerEffect(EFFECT_FOR_DECISION[decision])
   }
 
+  const handleReceiptDragStart = (event: DragEvent<HTMLElement>) => {
+    if (feedback || paused || !['manual', 'ramp'].includes(phase)) {
+      event.preventDefault()
+      return
+    }
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('application/x-receipts-please-case', currentCase.caseId)
+    setReceiptDragging(true)
+    requestGameAudioCue('paper-pickup', 0.4)
+  }
+
+  const handleReceiptDrop = (event: DragEvent<HTMLButtonElement>, decision: GameDecision) => {
+    event.preventDefault()
+    if (event.dataTransfer.getData('application/x-receipts-please-case') !== currentCase.caseId) return
+    setReceiptDragging(false)
+    requestGameAudioCue('receipt-drop', 0.42)
+    handleDecision(decision)
+  }
+
   const handleAction = (action: string) => {
     performAction(action)
-    if (action === 'freeze-card') triggerEffect('fraud')
+    if (action === 'freeze-card') {
+      requestGameAudioCue('freeze-cover', 0.5)
+      requestGameAudioCue('freeze-button', 0.64)
+      triggerEffect('fraud')
+      return
+    }
+    requestGameAudioCue('evidence-link', 0.38)
+  }
+
+  const handleEvidence = (index: number) => {
+    setSelectedEvidence(index)
+    setCalculatorVisible(false)
+    requestGameAudioCue('evidence-link', 0.34)
+  }
+
+  const handleCalculator = () => {
+    const opening = !calculatorVisible
+    setCalculatorVisible(opening)
+    requestGameAudioCue('calculator-key', 0.36)
+    if (opening) requestGameAudioCue('calculator-print', 0.44)
   }
 
   const handleTryRamp = () => {
     beginMigration()
     beginRampTransition()
+  }
+
+  const handleAdvanceCase = () => {
+    if (caseIndex === MANUAL_CASE_COUNT - 1) triggerEffect('printer-jam')
+    advanceCase()
   }
 
   return (
@@ -129,7 +204,12 @@ export function GameWorkstation() {
           </header>
 
           <div className="game-document-stage">
-            <article className={`game-receipt game-receipt--${currentCase.receipt.visualTreatmentId}`}>
+            <article
+              className={`game-receipt game-receipt--${currentCase.receipt.visualTreatmentId}${receiptDragging ? ' is-dragging' : ''}`}
+              draggable={!feedback && !paused && ['manual', 'ramp'].includes(phase)}
+              onDragEnd={() => setReceiptDragging(false)}
+              onDragStart={handleReceiptDragStart}
+            >
               <span>{currentCase.receipt.merchant.name}</span>
               <small>{currentCase.receipt.merchant.addressLines[0]}</small>
               <small>{formatReceiptDate(currentCase.receipt.issuedAt)}</small>
@@ -145,14 +225,15 @@ export function GameWorkstation() {
               <hr />
               <small>{currentCase.receipt.payment.method} •••• {currentCase.receipt.payment.cardLast4}</small>
               {typeof currentCase.receipt.copy.memo === 'string' && <p>{currentCase.receipt.copy.memo}</p>}
+              {caseIndex === 0 && !feedback && <em className="game-drag-hint">Drag this receipt to a decision tray</em>}
             </article>
 
             <section className="game-evidence-inspector">
               <nav aria-label="Case evidence">
                 {currentCase.evidence.map((evidence, index) => (
-                  <button className={selectedEvidence === index ? 'is-active' : ''} key={evidence.label} onClick={() => setSelectedEvidence(index)} type="button">{evidence.label}</button>
+                  <button className={!calculatorVisible && selectedEvidence === index ? 'is-active' : ''} key={evidence.label} onClick={() => handleEvidence(index)} type="button">{evidence.label}</button>
                 ))}
-                {currentCase.truth.calculatorOperation && <button className={calculatorVisible ? 'is-active' : ''} onClick={() => setCalculatorVisible((value) => !value)} type="button">Calculator</button>}
+                {currentCase.truth.calculatorOperation && <button className={calculatorVisible ? 'is-active' : ''} onClick={handleCalculator} type="button">Calculator</button>}
               </nav>
 
               {calculatorVisible && currentCase.truth.calculatorOperation ? (
@@ -173,6 +254,11 @@ export function GameWorkstation() {
             </section>
           </div>
 
+          <section className={`game-policy-context game-policy-context--${currentCase.era}`}>
+            <span>{currentCase.era === 'manual' ? 'POLICY SHEET · PAPER COPY' : 'RAMP · STRUCTURED POLICY'}</span>
+            <div>{(currentCase.era === 'manual' ? MANUAL_POLICY_RULES : RAMP_POLICY_RULES).map((rule) => <i key={rule}>{rule}</i>)}</div>
+          </section>
+
           {requiredActions.length > 0 && (
             <section className="game-case-actions">
               <span>Required case actions</span>
@@ -182,9 +268,33 @@ export function GameWorkstation() {
         </main>
       </div>
 
+      {currentCase.era === 'manual' && phase === 'manual' && !feedback && (
+        <aside className="game-slack-toast" aria-live="polite">
+          <span>SLACK · NEW MESSAGE</span>
+          <strong>{slackMessage[0]}</strong>
+          <p>{slackMessage[1]}</p>
+        </aside>
+      )}
+
       <footer className="game-decision-bar">
         <div><span>Decision trays</span><small>One main clue · judgment stays with you</small></div>
-        {DECISIONS.map(({ decision, label }) => <button className={`is-${decision}`} disabled={Boolean(feedback) || paused} key={decision} onClick={() => handleDecision(decision)} type="button"><span>{label}</span><small>{decision === 'investigate' ? 'Hold + escalate' : `Stamp ${label.toLowerCase()}`}</small></button>)}
+        {DECISIONS.map(({ decision, label }) => (
+          <button
+            className={`is-${decision}${receiptDragging ? ' is-drop-ready' : ''}`}
+            disabled={Boolean(feedback) || paused}
+            key={decision}
+            onClick={() => handleDecision(decision)}
+            onDragOver={(event) => {
+              if (!receiptDragging) return
+              event.preventDefault()
+              event.dataTransfer.dropEffect = 'move'
+            }}
+            onDrop={(event) => handleReceiptDrop(event, decision)}
+            type="button"
+          >
+            <span>{label}</span><small>{decision === 'investigate' ? 'Hold + escalate' : `Stamp ${label.toLowerCase()}`}</small>
+          </button>
+        ))}
       </footer>
 
       {phase === 'migration-prompt' && (
@@ -194,6 +304,11 @@ export function GameWorkstation() {
           <h2 id="game-ramp-title">Your Ramp workspace is ready.</h2>
           <p>Receipts, policy, travel, vendors, inventory, and card controls can now meet in one place. Your judgment stays in the loop.</p>
           <dl><div><dt>Expenses checked</dt><dd>47</dd></div><div><dt>Need attention</dt><dd>6</dd></div></dl>
+          <div className="game-pressure-stack" aria-label="Finance Ops messages">
+            <span><b>Finance Ops</b> Inbox is moving in the wrong direction.</span>
+            <span><b>Finance Manager</b> Printer is doing something medically concerning.</span>
+            <span><b>Finance Ops</b> Migration is ready. Please click the only button.</span>
+          </div>
           <button onClick={handleTryRamp} type="button">Try Ramp</button>
           <small>This is the only way forward.</small>
         </section>
@@ -205,7 +320,7 @@ export function GameWorkstation() {
           <h2>{feedback.correct ? currentCase.truth.primaryClue : `Expected: ${titleCase(feedback.expectedDecision)}`}</h2>
           <p>{feedback.explanation}</p>
           {feedback.missingActions.length > 0 && <small>Missing actions: {feedback.missingActions.map((action) => currentCase.actionLabels[action] ?? titleCase(action)).join(', ')}</small>}
-          <button onClick={advanceCase} type="button">{nextLabel}</button>
+          <button onClick={handleAdvanceCase} type="button">{nextLabel}</button>
         </section>
       )}
 
