@@ -19,7 +19,7 @@ import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../.
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
 import { WorkstationOS } from '../workstation/WorkstationOS'
-import { GAME_CASES, type GameDecision } from '../../game/gameData'
+import { type GameDecision } from '../../game/gameData'
 import { requestGameAudioCue } from '../../game/gameAudio'
 import { GameWorkstation } from '../../game/GameWorkstation'
 import { useGameStore } from '../../game/useGameStore'
@@ -735,36 +735,6 @@ function WorkstationScreen() {
   )
 }
 
-const DESK_HOTSPOT_POSITIONS = Object.fromEntries(
-  DESK_ASSET_PLACEMENTS
-    .filter((placement) => placement.position)
-    .map((placement) => [placement.id, placement.position]),
-) as Record<string, [number, number, number]>
-
-function DeskGameHotspot({ id, label, onActivate, tone = 'neutral' }: {
-  id: string
-  label: string
-  onActivate: () => void
-  tone?: 'approve' | 'danger' | 'neutral' | 'warn'
-}) {
-  const position = DESK_HOTSPOT_POSITIONS[id]
-  if (!position) return null
-  return (
-    <Html center position={[position[0], position[1] + (id === 'desk-computer' ? 0.48 : 0.2), position[2]]} zIndexRange={[24, 1]}>
-      <button
-        className={`game-world-hotspot is-${tone}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          onActivate()
-        }}
-        type="button"
-      >
-        {label}
-      </button>
-    </Html>
-  )
-}
-
 const DESK_DECISION_POSITIONS = Object.fromEntries(
   DESK_ASSET_PLACEMENTS
     .filter((placement) => ['approval-stamp', 'fraud-stamp', 'reject-stamp'].includes(placement.id) && placement.position)
@@ -799,20 +769,13 @@ function DeskDecisionLabel({ hint, id, label, onActivate, tone }: {
 }
 
 function DeskGameControls() {
-  const activeActions = useGameStore((state) => state.activeActions)
-  const calculatorComplete = useGameStore((state) => state.calculatorComplete)
-  const caseIndex = useGameStore((state) => state.caseIndex)
-  const completeCalculator = useGameStore((state) => state.completeCalculator)
   const feedback = useGameStore((state) => state.feedback)
   const paused = useGameStore((state) => state.paused)
-  const performAction = useGameStore((state) => state.performAction)
   const phase = useGameStore((state) => state.phase)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const focused = useLabStore((state) => state.workstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const gameActive = window.location.pathname === '/game'
-  const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
-  const requiredActions = currentCase.truth.requiredActions ?? []
   const active = gameActive && !focused && !paused && !feedback && ['manual', 'ramp'].includes(phase)
 
   if (!active) return null
@@ -823,28 +786,8 @@ function DeskGameControls() {
     triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
   }
 
-  const useCalculator = () => {
-    completeCalculator()
-    requestGameAudioCue('calculator-key', 0.42)
-    requestGameAudioCue('calculator-print', 0.52)
-    triggerEffect('paper-drop')
-  }
-
-  const freezeCard = () => {
-    performAction('freeze-card')
-    requestGameAudioCue('freeze-cover', 0.5)
-    requestGameAudioCue('freeze-button', 0.64)
-    triggerEffect('fraud')
-  }
-
   return (
     <>
-      {currentCase.workflow.requiredDeskTool === 'calculator' && !calculatorComplete && (
-        <DeskGameHotspot id="desk-calculator" label="USE CALCULATOR" onActivate={useCalculator} tone="warn" />
-      )}
-      {requiredActions.includes('freeze-card') && !activeActions.includes('freeze-card') && (
-        <DeskGameHotspot id="freeze-card-button" label="FREEZE CARD" onActivate={freezeCard} tone="danger" />
-      )}
       <DeskDecisionLabel hint="Pay this expense" id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
       <DeskDecisionLabel hint="Send it back" id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="reject" />
       <DeskDecisionLabel hint="Terminate employee" id="fraud-stamp" label="FIRE" onActivate={() => decide('fire')} tone="fire" />
@@ -922,39 +865,21 @@ function AnimationFloor() {
 }
 
 function DeskEnvironment() {
-  const caseIndex = useGameStore((state) => state.caseIndex)
-  const completeCalculator = useGameStore((state) => state.completeCalculator)
   const feedback = useGameStore((state) => state.feedback)
   const giraffeFocused = useLabStore((state) => state.giraffeFocused)
   const focused = useLabStore((state) => state.workstationFocused)
   const paused = useGameStore((state) => state.paused)
-  const performAction = useGameStore((state) => state.performAction)
   const phase = useGameStore((state) => state.phase)
   const submitDecision = useGameStore((state) => state.submitDecision)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const gameActive = window.location.pathname === '/game'
-  const currentCase = GAME_CASES[Math.min(caseIndex, GAME_CASES.length - 1)]
-  const requiredActions = currentCase.truth.requiredActions ?? []
 
   const activateAsset = (id: string) => {
     if (!gameActive || focused || paused || feedback || !['manual', 'ramp'].includes(phase)) return
     if (id === 'desk-computer') {
       setFocused(true)
       requestGameAudioCue('paper-slide', 0.32)
-      return
-    }
-    if (id === 'desk-calculator') {
-      completeCalculator()
-      requestGameAudioCue('calculator-print', 0.52)
-      triggerEffect('paper-drop')
-      return
-    }
-    if (id === 'freeze-card-button') {
-      if (!requiredActions.includes('freeze-card')) return
-      performAction('freeze-card')
-      requestGameAudioCue('freeze-button', 0.64)
-      triggerEffect('fraud')
       return
     }
     const decisions: Partial<Record<string, GameDecision>> = {
@@ -969,19 +894,6 @@ function DeskEnvironment() {
     triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
   }
 
-  const handleModelGameAction = (action: 'calculator-complete' | 'freeze-card') => {
-    if (!gameActive || focused || paused || feedback || !['manual', 'ramp'].includes(phase)) return
-    if (action === 'calculator-complete') {
-      completeCalculator()
-      requestGameAudioCue('calculator-print', 0.52)
-      return
-    }
-    if (!requiredActions.includes('freeze-card')) return
-    performAction('freeze-card')
-    requestGameAudioCue('freeze-button', 0.64)
-    triggerEffect('fraud')
-  }
-
   return (
     <group>
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
@@ -994,11 +906,10 @@ function DeskEnvironment() {
           <RegisteredAsset
             key={key}
             {...placement}
-            onActivate={gameActive && ['approval-stamp', 'desk-calculator', 'desk-computer', 'fraud-stamp', 'freeze-card-button', 'reject-stamp'].includes(placement.id)
+            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
               ? () => activateAsset(placement.id)
               : undefined}
-            onGameAction={gameActive && ['desk-calculator', 'freeze-card-button'].includes(placement.id) ? handleModelGameAction : undefined}
-            visible={placement.id === 'giraffe-reveal' ? giraffeFocused : true}
+            visible={placement.id === 'giraffe-reveal' ? giraffeFocused : placement.id !== 'freeze-card-button' || !gameActive}
           >
             {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
           </RegisteredAsset>

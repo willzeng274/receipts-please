@@ -52,8 +52,6 @@ export function GameDeskHud() {
 
   const missing: string[] = []
   if (feedback.missingEvidence.length) missing.push(`${feedback.missingEvidence.length} unopened record${feedback.missingEvidence.length === 1 ? '' : 's'}`)
-  if (feedback.missingDeskTool) missing.push('calculator tape')
-  if (feedback.missingActions.length) missing.push(...feedback.missingActions.map(titleCase))
   const nextLabel = caseIndex === MANUAL_CASE_COUNT - 1
     ? 'Face the backlog'
     : caseIndex === GAME_CASES.length - 1
@@ -63,9 +61,7 @@ export function GameDeskHud() {
   const firedName = currentCase.employee.split(' · ')[0]
   const feedbackTitle = feedback.correct
     ? currentCase.truth.primaryClue
-    : feedback.decision === feedback.expectedDecision
-      ? 'Complete the required review steps'
-      : `Expected: ${titleCase(feedback.expectedDecision)}`
+    : `Expected: ${titleCase(feedback.expectedDecision)}`
 
   return (
     <section aria-live="polite" className={`game-desk-feedback ${feedback.correct ? 'is-correct' : 'is-wrong'} ${fired ? 'is-fired' : ''}`}>

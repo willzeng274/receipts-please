@@ -1,50 +1,12 @@
-import receiptCatalog from '../data/receipts/receipt-generation.json'
+import {
+  getPlayableReceiptCases,
+  getReceiptCatalogCase,
+  type ReceiptCatalogCase,
+  type ReceiptDecision,
+} from '../data/receipts/receiptCatalog'
 
-export type GameDecision = 'approve' | 'fire' | 'reject'
+export type GameDecision = ReceiptDecision
 export type GameEra = 'manual' | 'ramp'
-
-type ReceiptAmounts = {
-  calculatedTotalCents: number
-  printedTotalCents: number
-  subtotalCents: number
-  taxCents: number
-  tipCents: number
-}
-
-type ReceiptLine = {
-  description: string
-  lineTotalCents: number
-  quantity: number
-  unitPriceCents: number
-}
-
-type ReceiptDocument = {
-  amounts: ReceiptAmounts
-  anomalies: Array<{ type: string }>
-  copy: Record<string, unknown>
-  issuedAt: string
-  lineItems: ReceiptLine[]
-  merchant: { addressLines: string[]; name: string }
-  payment: { cardLast4: string; method: string }
-  receiptId: string
-  visualTreatmentId: string
-}
-
-type CatalogCase = {
-  caseId: string
-  comparisonRecords: Record<string, unknown>
-  receipt: ReceiptDocument
-  sequence: number
-  title: string
-  truth: {
-    calculatorOperation?: { resultDisplay: string }
-    expectedDecision: GameDecision
-    explanation: string
-    primaryClue: string
-    requiredActions?: string[]
-    secondaryClue?: string | null
-  }
-}
 
 export type GameEvidence = {
   detail: string
@@ -59,11 +21,9 @@ export type GameWorkflow = {
   connectedSystems: string[]
   exceptionReason: string
   policyCitation?: string
-  requiredDeskTool?: 'calculator'
 }
 
-export type GameCase = CatalogCase & {
-  actionLabels: Record<string, string>
+export type GameCase = ReceiptCatalogCase & {
   employee: string
   era: GameEra
   evidence: GameEvidence[]
@@ -71,29 +31,10 @@ export type GameCase = CatalogCase & {
   workflow: GameWorkflow
 }
 
-const catalogCases = receiptCatalog.cases as CatalogCase[]
-
-const PLAYABLE_CASE_IDS = [
-  'manual-01-amount-mismatch',
-  'manual-02-impossible-date',
-  'manual-03-omakase-intern',
-  'manual-04-infinite-tip',
-  'manual-05-frankenstein-receipt',
-  'manual-06-garbage-receipt',
-  'ramp-09-it-inventory-theft',
-  'ramp-10-influencer-marketing-deal',
-  'ramp-11-travel-impossibility',
-  'ramp-12-ai-expense-paradox',
-  'ramp-13-procurement-mismatch',
-  'ramp-14-intern-card-catastrophe',
-] as const
-
 const CASE_PRESENTATION: Record<string, {
-  actionLabels?: Record<string, string>
   employee: string
   evidence: GameEvidence[]
   queueLabel: string
-  requiredActions?: string[]
   workflow: GameWorkflow
 }> = {
   'manual-01-amount-mismatch': {
@@ -148,7 +89,6 @@ const CASE_PRESENTATION: Record<string, {
       connectedSystems: ['Receipt viewer', 'Policy PDF', 'Calculator'],
       exceptionReason: 'The tip exceeds the configured review threshold.',
       policyCitation: 'Tips above 25% require review.',
-      requiredDeskTool: 'calculator',
     },
     evidence: [
       { source: 'Receipt viewer', label: 'Meal subtotal', value: '$21.80', detail: 'Corner Diner · lunch special.', tone: 'neutral' },
@@ -195,12 +135,6 @@ const CASE_PRESENTATION: Record<string, {
       exceptionReason: 'Ramp connected the purchase trail to missing inventory and a related resale account.',
       policyCitation: 'Technology purchases require inventory records.',
     },
-    actionLabels: {
-      'freeze-card': 'Freeze card',
-      'flag-transaction': 'Flag transaction',
-      'escalate-employee': 'Escalate employee',
-    },
-    requiredActions: ['freeze-card', 'flag-transaction', 'escalate-employee'],
     evidence: [
       { label: 'MacBooks', value: '24 bought / 11 found', detail: '13 serial numbers missing.', tone: 'risk' },
       { label: 'Monitors', value: '40 bought / 19 found', detail: '21 units unaccounted for.', tone: 'risk' },
@@ -246,11 +180,6 @@ const CASE_PRESENTATION: Record<string, {
       exceptionReason: 'Automated review fees cost more than six times the underlying expense.',
       policyCitation: 'Recurring software spend requires a business owner and reviewable value.',
     },
-    actionLabels: {
-      'approve-coffee': 'Approve coffee',
-      'cancel-ai-vendor': 'Cancel AI vendor',
-    },
-    requiredActions: ['approve-coffee', 'cancel-ai-vendor'],
     evidence: [
       { label: 'Coffee', value: '$8.50', detail: 'Legitimate client expense.', tone: 'good' },
       { label: 'AI review cost', value: '$51.50', detail: 'Six automated processing charges.', tone: 'risk' },
@@ -281,11 +210,6 @@ const CASE_PRESENTATION: Record<string, {
       exceptionReason: 'Seven cards and a $40,000 limit conflict with the intern spend program.',
       policyCitation: 'Intern card limits may not exceed $500 per month.',
     },
-    actionLabels: {
-      'freeze-card': 'Freeze all seven cards',
-      'escalate-approval': 'Escalate CEO approval',
-    },
-    requiredActions: ['freeze-card', 'escalate-approval'],
     evidence: [
       { label: 'Card profile', value: '7 active · $40k limit', detail: 'Policy limit is $500 per month.', tone: 'risk' },
       { label: 'Purchases', value: 'Forklift · alpaca', detail: 'Plus 600 hoodies and energy drinks.', tone: 'risk' },
@@ -294,26 +218,20 @@ const CASE_PRESENTATION: Record<string, {
   },
 }
 
-export const GAME_CASES: readonly GameCase[] = PLAYABLE_CASE_IDS.map((caseId) => {
-  const source = catalogCases.find((entry) => entry.caseId === caseId)
-  const presentation = CASE_PRESENTATION[caseId]
-  if (!source || !presentation) throw new Error(`Missing playable case data for ${caseId}`)
+export const GAME_CASES: readonly GameCase[] = getPlayableReceiptCases().map((source) => {
+  const presentation = CASE_PRESENTATION[source.caseId]
+  if (!presentation) throw new Error(`Missing playable case presentation for ${source.caseId}`)
   return {
     ...source,
     ...presentation,
-    actionLabels: presentation.actionLabels ?? {},
-    era: caseId.startsWith('manual-') ? 'manual' : 'ramp',
-    truth: {
-      ...source.truth,
-      ...(presentation.requiredActions ? { requiredActions: presentation.requiredActions } : {}),
-    },
+    era: source.caseId.startsWith('manual-') ? 'manual' : 'ramp',
     workflow: presentation.workflow,
   }
 })
 
 export const MANUAL_CASE_COUNT = GAME_CASES.filter((entry) => entry.era === 'manual').length
 export const RAMP_CASE_COUNT = GAME_CASES.filter((entry) => entry.era === 'ramp').length
-export const ENDING_CASE = catalogCases.find((entry) => entry.caseId === 'ending-15-giraffe-executive-hire')!
+export const ENDING_CASE = getReceiptCatalogCase('ending-15-giraffe-executive-hire')
 
 export function formatMoney(cents: number) {
   return new Intl.NumberFormat('en-US', { currency: 'USD', style: 'currency' }).format(cents / 100)

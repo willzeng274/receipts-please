@@ -1,3 +1,4 @@
+import { RECEIPT_CATALOG, getReceiptCatalogCase } from '../../data/receipts/receiptCatalog'
 import type {
   WorkstationCase,
   WorkstationCaseId,
@@ -18,19 +19,45 @@ type ReceiptProjection = {
   visualTreatment: 'clean' | 'handled' | 'phone-photo' | 'unacceptable-photo'
 }
 
-const RECEIPT_PROJECTIONS: Record<WorkstationCaseId, ReceiptProjection> = {
-  'manual-01-amount-mismatch': { lineItems: ['1x HARVEST BOWL'], merchant: 'CHOPPED', receiptId: 'receipt-chopped-20260618-4812', seed: 'receipt-cases-v1:manual-01-amount-mismatch:overwritten-first-digit', templateId: 'thermal-restaurant', variantId: 'overwritten-first-digit', visualTreatment: 'handled' },
-  'manual-02-impossible-date': { lineItems: ['2x BREAKFAST SANDWICH', '2x COLD BREW'], merchant: 'METRO CAFE', receiptId: 'receipt-metro-cafe-20260618-1038', seed: 'receipt-cases-v1:manual-02-impossible-date:three-days-before-start', templateId: 'thermal-restaurant', variantId: 'three-days-before-start', visualTreatment: 'clean' },
-  'manual-03-omakase-intern': { lineItems: ['1x CHEF OMAKASE', '1x RESERVE PAIRING'], merchant: 'KUMO OMAKASE', receiptId: 'receipt-kumo-omakase-20260624-1038', seed: 'receipt-cases-v1:manual-03-omakase-intern:one-person-executive-dinner', templateId: 'premium-restaurant', variantId: 'one-person-executive-dinner', visualTreatment: 'clean' },
-  'manual-04-infinite-tip': { lineItems: ['1x LUNCH SPECIAL'], merchant: 'CORNER DINER', receiptId: 'receipt-corner-diner-20260625-6621', seed: 'receipt-cases-v1:manual-04-infinite-tip:four-thousand-percent', templateId: 'thermal-restaurant', variantId: 'four-thousand-percent', visualTreatment: 'phone-photo' },
-  'manual-05-frankenstein-receipt': { lineItems: ['2x CLIENT DINNER', '2x SPARKLING WATER'], merchant: 'HELVETICA BISTRO', receiptId: 'receipt-helvetica-bistro-20260626-7754', seed: 'receipt-cases-v1:manual-05-frankenstein-receipt:five-font-forgery', templateId: 'thermal-restaurant', variantId: 'five-font-forgery', visualTreatment: 'handled' },
-  'manual-06-garbage-receipt': { lineItems: ['7 laptop', '$14,000', 'paid', 'trust me'], merchant: 'DAVE', receiptId: 'receipt-dave-20260627-2910', seed: 'receipt-cases-v1:manual-06-garbage-receipt:napkin-trust-me', templateId: 'handwritten-napkin', variantId: 'napkin-trust-me', visualTreatment: 'unacceptable-photo' },
-  'ramp-09-it-inventory-theft': { lineItems: ['24x MACBOOK PRO 14', '40x 27-INCH MONITOR', '90x MECHANICAL KEYBOARD'], merchant: 'NORTHSTAR TECHNOLOGY SUPPLY', receiptId: 'invoice-northstar-tech-24001', seed: 'receipt-cases-v1:ramp-09-it-inventory-theft:missing-macbooks-resale-account', templateId: 'corporate-invoice', variantId: 'missing-macbooks-resale-account', visualTreatment: 'clean' },
-  'ramp-10-influencer-marketing-deal': { lineItems: ['1x ONE VIBE-BASED ACTIVATION'], merchant: 'SYNERGYALPHAWOLF MEDIA LLC', receiptId: 'invoice-synergy-alpha-wolf-001', seed: 'receipt-cases-v1:ramp-10-influencer-marketing-deal:vibe-based-activation', templateId: 'corporate-invoice', variantId: 'vibe-based-activation', visualTreatment: 'clean' },
-  'ramp-11-travel-impossibility': { lineItems: ['1x ROOM 1812 - TWO NIGHTS'], merchant: 'LAKESHORE HOTEL CHICAGO', receiptId: 'folio-lakeshore-chicago-1812', seed: 'receipt-cases-v1:ramp-11-travel-impossibility:five-cities-one-trip', templateId: 'hotel-folio', variantId: 'five-cities-one-trip', visualTreatment: 'clean' },
-  'ramp-12-ai-expense-paradox': { lineItems: ['2x CLIENT COFFEE'], merchant: 'LITTLE OWL COFFEE', receiptId: 'receipt-little-owl-coffee-7710', seed: 'receipt-cases-v1:ramp-12-ai-expense-paradox:coffee-costs-six-times-more-to-review', templateId: 'thermal-restaurant', variantId: 'coffee-costs-six-times-more-to-review', visualTreatment: 'clean' },
-  'ramp-13-procurement-mismatch': { lineItems: ['1000x ERGONOMIC OFFICE CHAIR'], merchant: 'ERGODYNAMIC OFFICE SYSTEMS', receiptId: 'invoice-ergodynamic-1000-chairs', seed: 'receipt-cases-v1:ramp-13-procurement-mismatch:one-thousand-chairs-one-beanbag', templateId: 'corporate-invoice', variantId: 'one-thousand-chairs-one-beanbag', visualTreatment: 'clean' },
+const WORKSTATION_RECEIPT_CASE_IDS = [
+  'manual-01-amount-mismatch',
+  'manual-02-impossible-date',
+  'manual-03-omakase-intern',
+  'manual-04-infinite-tip',
+  'manual-05-frankenstein-receipt',
+  'manual-06-garbage-receipt',
+  'ramp-09-it-inventory-theft',
+  'ramp-10-influencer-marketing-deal',
+  'ramp-11-travel-impossibility',
+  'ramp-12-ai-expense-paradox',
+  'ramp-13-procurement-mismatch',
+] as const satisfies readonly WorkstationCaseId[]
+
+function workstationVisualTreatment(value: string): ReceiptProjection['visualTreatment'] {
+  if (value === 'clean' || value === 'handled' || value === 'phone-photo' || value === 'unacceptable-photo') return value
+  throw new Error(`Unsupported workstation receipt treatment: ${value}`)
 }
+
+function receiptProjection(caseId: WorkstationCaseId): ReceiptProjection {
+  const receiptCase = getReceiptCatalogCase(caseId)
+  const receipt = receiptCase.receipt
+  const handwritten = receipt.templateId === 'handwritten-napkin'
+  return {
+    lineItems: receipt.lineItems.map((line) => handwritten ? line.description : `${line.quantity}x ${line.description}`),
+    merchant: receipt.merchant.name,
+    receiptId: receipt.receiptId,
+    seed: receiptCase.seed,
+    templateId: receipt.templateId,
+    variantId: receiptCase.variantId,
+    visualTreatment: workstationVisualTreatment(receipt.visualTreatmentId),
+  }
+}
+
+if (RECEIPT_CATALOG.catalogId !== CATALOG_ID) throw new Error(`Unexpected receipt catalog: ${RECEIPT_CATALOG.catalogId}`)
+
+const RECEIPT_PROJECTIONS = Object.fromEntries(
+  WORKSTATION_RECEIPT_CASE_IDS.map((caseId) => [caseId, receiptProjection(caseId)]),
+) as Record<WorkstationCaseId, ReceiptProjection>
 
 function receiptVisual(projection: ReceiptProjection): WorkstationReceiptVisual {
   const handled = projection.visualTreatment === 'handled'
