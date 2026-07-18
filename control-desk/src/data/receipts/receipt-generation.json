@@ -36,7 +36,8 @@
   },
   "decisionValues": [
     "approve",
-    "reject"
+    "reject",
+    "fire"
   ],
   "coverage": {
     "primaryManualCases": 8,
@@ -860,7 +861,7 @@
         }
       },
       "truth": {
-        "expectedDecision": "reject",
+        "expectedDecision": "fire",
         "primaryClue": "The receipt combines incompatible typefaces, weights, rotations, and baselines.",
         "primaryEvidenceTargets": [
           "receipt.merchant.name",
@@ -1053,7 +1054,7 @@
         ]
       },
       "truth": {
-        "expectedDecision": "reject",
+        "expectedDecision": "fire",
         "primaryClue": "All three submissions share the same merchant, timestamp, item lines, tax, and authorization code.",
         "primaryEvidenceTargets": ["receipt", "relatedReceipts"],
         "secondaryClue": "The photos use different crops, rotations, stains, and memos to disguise one source receipt.",
@@ -1092,7 +1093,7 @@
         "transaction": {"merchant": "Ocean Table & Grill", "amountCents": 9730, "occurredAt": "2026-03-03T20:14:00-05:00", "cardLast4": "9034", "employeeId": "employee-alex-morgan"}
       },
       "truth": {
-        "expectedDecision": "reject",
+        "expectedDecision": "fire",
         "primaryClue": "The document contains several mutually impossible fields characteristic of a synthetic receipt.",
         "primaryEvidenceTargets": ["receipt.printedIssuedAt", "receipt.merchant.addressLines", "receipt.copy.paymentMethodText", "receipt.amounts"],
         "secondaryClue": "The printed total is $5.00 greater than the receipt arithmetic.",
@@ -1276,7 +1277,7 @@
         "inventory": {"MacBooks": {"purchased": 24, "counted": 11}, "monitors": {"purchased": 40, "counted": 19}, "keyboards": {"purchased": 90, "counted": 143, "note": "Imported by weight"}},
         "resaleVendor": {"createdDaysAgo": 2, "ownerEmail": "sam.patel@company.example", "employeeId": "employee-sam-patel"}
       },
-      "truth": {"expectedDecision": "reject", "requiredActions": ["freeze-card", "flag-transaction", "escalate-employee"], "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor."},
+      "truth": {"expectedDecision": "fire", "primaryClue": "Missing inventory and a resale account connect the purchases to the IT director.", "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.inventory", "comparisonRecords.resaleVendor"], "secondaryClue": "The keyboard overage was caused by importing a count by weight.", "explanation": "Ramp connects the invoice, inventory shortage, missing serials, and employee-owned resale vendor. The evidence is severe enough that Fire is the correct decision."},
       "generationNotes": "The invoice is legitimate; the suspicious pattern emerges from connected records."
     },
     {
@@ -1301,7 +1302,7 @@
         "anomalies": [{"type": "suspicious-vendor", "target": "merchant", "parameters": {"vendorAgeDays": 1, "followers": 14, "verifiedFollowers": 14, "missingApproval": "Legal"}}]
       },
       "comparisonRecords": {"vendor": {"createdDaysAgo": 1, "addressMatchesEmployee": true, "socialFollowers": 14, "employeeOwnedFollowers": 8, "legalApproval": false, "campaignLikes": 3}},
-      "truth": {"expectedDecision": "reject", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The vendor identity, approval gap, and implausible campaign performance justify rejection."},
+      "truth": {"expectedDecision": "fire", "primaryClue": "The new vendor shares the marketing director's home address and lacks required approval.", "primaryEvidenceTargets": ["receipt.merchant", "comparisonRecords.vendor"], "secondaryClue": "The $75,000 campaign generated three likes from a 14-follower account.", "calculatorOperation": {"operation": "divide", "numeratorPath": "receipt.amounts.calculatedTotalCents", "denominatorValue": 14, "resultDisplay": "$5,357 per verified follower. Premium audience."}, "explanation": "The undisclosed self-dealing vendor, approval gap, and fabricated campaign performance support termination."},
       "generationNotes": "Present as a confident but thin corporate invoice rather than an obvious fake."
     },
     {
@@ -1371,7 +1372,7 @@
         ],
         "cancellationConfirmationChargeCents": 320
       },
-      "truth": {"expectedDecision": "approve", "requiredActions": ["approve-coffee", "cancel-ai-vendor"], "primaryClue": "The legitimate $8.50 coffee generated $51.50 in automated review charges.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.processingCharges"], "secondaryClue": "The vendor adds a final $3.20 charge for generating the cancellation confirmation.", "calculatorOperation": {"operation": "divide", "numeratorValue": 5150, "denominatorValue": 850, "resultDisplay": "Review cost is 6.06 times the expense."}, "explanation": "Approve the ordinary coffee and cancel the vendor whose review costs dwarf the expense."},
+      "truth": {"expectedDecision": "approve", "primaryClue": "The legitimate $8.50 coffee generated $51.50 in automated review charges.", "primaryEvidenceTargets": ["receipt.amounts.calculatedTotalCents", "comparisonRecords.processingCharges"], "secondaryClue": "The vendor adds a final $3.20 charge for generating the cancellation confirmation.", "calculatorOperation": {"operation": "divide", "numeratorValue": 5150, "denominatorValue": 850, "resultDisplay": "Review cost is 6.06 times the expense."}, "explanation": "The coffee itself is an ordinary legitimate expense, so Approve is the correct receipt decision."},
       "generationNotes": "Render the coffee receipt as boring and legitimate; the comedy belongs to the connected processing-charge stack."
     },
     {
@@ -1431,7 +1432,7 @@
         ],
         "approval": {"approvedBy": "CEO", "reason": "Let them cook"}
       },
-      "truth": {"expectedDecision": "reject", "requiredActions": ["freeze-card", "escalate-approval"], "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The card configuration and purchase pattern require an immediate freeze and escalation."},
+      "truth": {"expectedDecision": "fire", "primaryClue": "An intern has seven cards, a $40,000 monthly limit, and purchases far outside policy.", "primaryEvidenceTargets": ["receipt", "comparisonRecords.cardProfile", "comparisonRecords.recentPurchases", "comparisonRecords.approval"], "secondaryClue": "The CEO approved the setup with the reason 'Let them cook.'", "explanation": "The catastrophic card setup and purchase pattern are severe enough that Fire is the correct decision."},
       "generationNotes": "Use the alpaca invoice as the tactile receipt while the unified workspace shows the wider card catastrophe."
     },
     {
@@ -1471,7 +1472,6 @@
       },
       "truth": {
         "expectedDecision": "reject",
-        "requiredActions": ["preserve-automatic-decline"],
         "primaryClue": "The $280,000 giraffe purchase lacks required facilities approval.",
         "primaryEvidenceTargets": ["receipt.lineItems", "comparisonRecords.transaction", "comparisonRecords.policy"],
         "secondaryClue": "The CEO categorized the giraffe as recruiting with the memo 'High-level hire.'",

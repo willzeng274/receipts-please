@@ -122,23 +122,6 @@ function ManualWorkspace({ currentCase }: { currentCase: GameCase }) {
 }
 
 function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
-  const activeActions = useGameStore((state) => state.activeActions)
-  const performAction = useGameStore((state) => state.performAction)
-  const triggerEffect = useLabStore((state) => state.triggerEffect)
-  const requiredActions = currentCase.truth.requiredActions ?? []
-
-  const handleAction = (action: string) => {
-    performAction(action)
-    if (action === 'freeze-card') {
-      requestGameAudioCue('freeze-cover', 0.45)
-      requestGameAudioCue('freeze-button', 0.6)
-      triggerEffect('fraud')
-      return
-    }
-    requestGameAudioCue('evidence-link', 0.35)
-    triggerEffect('paper-drop')
-  }
-
   return (
     <main className="game-case-view game-ramp-workspace">
       <section className="game-ramp-automation">
@@ -174,23 +157,6 @@ function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
         </section>
       </div>
 
-      {requiredActions.length > 0 && (
-        <section className="game-case-actions">
-          <span>CONTROL ACTIONS · COMPLETE BEFORE YOUR FINAL JUDGMENT</span>
-          <div>{requiredActions.map((action) => (
-            <button
-              className={`${activeActions.includes(action) ? 'is-complete' : ''}${action === 'freeze-card' ? ' is-desk-only' : ''}`}
-              disabled={action === 'freeze-card'}
-              key={action}
-              onClick={() => handleAction(action)}
-              type="button"
-            >
-              {activeActions.includes(action) ? '✓ ' : ''}{currentCase.actionLabels[action] ?? titleCase(action)}
-              {action === 'freeze-card' && !activeActions.includes(action) ? ' · use physical control' : ''}
-            </button>
-          ))}</div>
-        </section>
-      )}
     </main>
   )
 }
@@ -202,6 +168,7 @@ export function GameWorkstation() {
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
   const reviewedEvidence = useGameStore((state) => state.reviewedEvidence)
+  const score = useGameStore((state) => state.score)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const togglePause = useGameStore((state) => state.togglePause)
   const toggleSound = useGameStore((state) => state.toggleSound)
@@ -238,6 +205,7 @@ export function GameWorkstation() {
         <div><b>{rampActive ? 'R' : 'R/P'}</b><strong>{rampActive ? 'Ramp · Expenses' : 'Expense OS'}</strong><span>{rampActive ? 'CONNECTED EXCEPTION WORKSPACE' : 'LOCAL FILES · MANUAL MATCHING'}</span></div>
         <div>
           <span>INBOX <strong>{inboxCount}</strong></span>
+          <span>SCORE <strong>{score}</strong></span>
           <label><span>LOW CORTISOL</span><i><b style={{ width: `${100 - cortisol}%` }} /></i><em>{100 - cortisol}%</em></label>
           <button aria-label={soundEnabled ? 'Mute game audio' : 'Enable game audio'} onClick={toggleSound} type="button">{soundEnabled ? 'VOL' : 'MUTE'}</button>
           <button onClick={togglePause} type="button">{paused ? 'RESUME' : 'PAUSE'}</button>

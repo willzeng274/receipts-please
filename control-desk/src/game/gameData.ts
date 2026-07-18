@@ -1,6 +1,6 @@
 import receiptCatalog from '../data/receipts/receipt-generation.json'
 
-export type GameDecision = 'approve' | 'investigate' | 'reject'
+export type GameDecision = 'approve' | 'fire' | 'reject'
 export type GameEra = 'manual' | 'ramp'
 
 type ReceiptAmounts = {

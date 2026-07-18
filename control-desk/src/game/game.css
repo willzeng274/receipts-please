@@ -110,6 +110,9 @@
 .game-case-actions > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
 .game-case-actions button { min-height: 30px; padding: 0 10px; color: #b7c9c0; border: 1px solid #49675c; background: #1c362e; cursor: pointer; font-size: 9px; }
 .game-case-actions button:hover, .game-case-actions button.is-complete { color: #0d2119; border-color: var(--game-accent); background: var(--game-accent); }
+.game-case-actions button.is-fire { margin-left: auto; color: #f2b4a8; border-color: #8f493e; background: #3a1d19; }
+.game-case-actions button.is-fire:hover { color: #fff4ef; border-color: #e06d59; background: #8d3025; }
+.game-case-actions button.is-fire.is-complete { color: #fff4ef; border-color: #e06d59; background: #a63b2e; }
 
 .game-decision-bar { position: absolute; z-index: 12; right: 0; bottom: 0; left: 0; height: 76px; padding: 8px 11px; display: grid; grid-template-columns: 1fr repeat(3, 148px); gap: 7px; color: #dae0db; border-top: 1px solid #3c4a45; background: #17201e; }
 .game-decision-bar > div { align-self: center; display: flex; flex-direction: column; gap: 5px; }
@@ -123,7 +126,7 @@
 .game-decision-bar > button small { margin-top: 4px; color: #8d9792; font: 500 7px/1 'IBM Plex Mono', monospace; }
 .game-decision-bar > button.is-approve { border-bottom: 3px solid #4f9a71; }
 .game-decision-bar > button.is-reject { border-bottom: 3px solid #b64d43; }
-.game-decision-bar > button.is-investigate { border-bottom: 3px solid #cb8d3f; }
+.game-decision-bar > button.is-fire { border-bottom: 3px solid #e05a43; }
 
 .game-feedback, .game-migration-prompt, .game-pause-screen { position: absolute; z-index: 50; inset: 38px 0 76px 190px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 54px; color: #edf2ed; background: rgba(12,22,19,.97); }
 .game-feedback > span, .game-migration-prompt > span, .game-pause-screen > span { color: var(--game-accent); font: 700 9px/1 'IBM Plex Mono', monospace; letter-spacing: .1em; text-transform: uppercase; }
@@ -165,7 +168,7 @@
 .game-ending-panel article strong { display: block; margin: 5px 0; color: #f0dfb9; font-size: 18px; }
 .game-ending-panel article small { color: #dc765e; }
 .game-title-card { z-index: 90; background: #0a1110; }
-.game-title-card dl { display: flex; gap: 32px; margin: 26px 0 0; }
+.game-title-card dl { max-width: 900px; display: flex; flex-wrap: wrap; justify-content: center; gap: 24px 32px; margin: 26px 0 0; }
 .game-title-card dt { color: #728078; font: 600 8px/1 'IBM Plex Mono', monospace; text-transform: uppercase; }
 .game-title-card dd { margin: 5px 0 0; font-size: 24px; }
 
@@ -280,12 +283,19 @@
 .game-desk-hud li.is-complete b { background: #79d5ae; }
 .game-desk-hud > button, .game-desk-feedback button, .game-overload-panel > button { min-height: 40px; padding: 0 13px; color: #102018; border: 1px solid #ffe19b; background: #e8bb62; cursor: pointer; font-weight: 800; text-transform: uppercase; }
 .game-desk-hud > small { display: block; margin-top: 9px; color: #687a71; font: 600 7px/1 'IBM Plex Mono', monospace; }
+.game-score-rules { margin: 0 0 13px; color: #829089; font: 600 8px/1.45 'IBM Plex Mono', monospace; }
+.game-score-rules summary { color: #e8bb62; cursor: pointer; text-transform: uppercase; }
+.game-score-rules p { margin: 7px 0 0; font: inherit; }
+.game-score-rules b { color: #dfe8e3; }
 .game-desk-feedback { top: 50%; left: 50%; width: min(520px, calc(100vw - 42px)); transform: translate(-50%, -50%); }
 .game-desk-feedback.is-correct { border-color: #72cfa2; }
 .game-desk-feedback.is-correct > span { color: #72cfa2; }
 .game-desk-feedback.is-wrong { border-color: #d96b57; }
 .game-desk-feedback.is-wrong > span, .game-desk-feedback.is-wrong > small { color: #ef8e78; }
 .game-desk-feedback > small { display: block; margin: 10px 0; font: 650 8px/1.4 'IBM Plex Mono', monospace; }
+.game-desk-feedback output { display: block; margin: 9px 0; font: 800 18px/1 'IBM Plex Mono', monospace; }
+.game-desk-feedback output.is-positive { color: #72cfa2; }
+.game-desk-feedback output.is-negative { color: #ef8e78; }
 .game-overload-panel { right: 28px; bottom: 28px; width: min(430px, calc(100vw - 56px)); border-color: #9b473d; background: radial-gradient(circle at 90% 10%, rgba(197,65,49,.2), transparent 30%), rgba(17,22,20,.96); }
 .game-overload-feed { margin: 12px 0; display: grid; gap: 5px; }
 .game-overload-feed p { margin: 0; padding: 8px 9px; border-left: 3px solid #d68643; background: #242e2a; }

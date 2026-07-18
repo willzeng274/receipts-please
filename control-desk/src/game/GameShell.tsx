@@ -24,6 +24,7 @@ export function GameShell() {
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
   const resetGame = useGameStore((state) => state.resetGame)
+  const score = useGameStore((state) => state.score)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
   const startGame = useGameStore((state) => state.startGame)
   const tick = useGameStore((state) => state.tick)
@@ -250,6 +251,7 @@ export function GameShell() {
   }
 
   const correct = decisions.filter((decision) => decision.correct).length
+  const rating = score >= 1400 ? 'Audit legend' : score >= 1100 ? 'Controller material' : score >= 700 ? 'Still employed' : 'Please see HR'
   const endingTransaction = ENDING_CASE.comparisonRecords.transaction as { amountCents: number; category: string; memo: string; merchant: string; result: string }
 
   return (
@@ -283,7 +285,7 @@ export function GameShell() {
         <section className="game-title-card">
           <span>THE NEW CHIEF GROWTH OFFICER HAS ARRIVED</span>
           <h1>Receipts,<br />Please</h1>
-          <dl><div><dt>Cases reviewed</dt><dd>{decisions.length}/{GAME_CASES.length}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
+          <dl><div><dt>Cases reviewed</dt><dd>{decisions.length}/{GAME_CASES.length}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Score</dt><dd>{score}</dd></div><div><dt>Rating</dt><dd>{rating}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
           <button onClick={handleRestart} type="button">Review another shift</button>
         </section>
       )}

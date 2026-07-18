@@ -1599,14 +1599,16 @@ export function DeskComputer({
           />
         </mesh>
 
-        {/* The fallback stays mounted for refs/animation, but a live Html child owns the visible screen. */}
+        {/* Keep the native screen visible beneath the live Html layer. From the wide
+            opening camera the perspective Html layer is too small to cover the glass,
+            so hiding this fallback made the workstation look powered off. */}
         <group
           name="desk-computer-screen-anchor"
           position={DESK_COMPUTER_SCREEN.position}
           rotation={DESK_COMPUTER_SCREEN.rotation}
           userData={DESK_COMPUTER_SCREEN}
         >
-          <group ref={screenContentRef} visible={!hasLiveScreen}>
+          <group ref={screenContentRef}>
             <group ref={manualUiRef}>
               <mesh position={[0, 0, -0.001]}>
                 <planeGeometry
