@@ -94,7 +94,7 @@ export const OFFICE_ROOM_SHELL_CONTRACT = Object.freeze({
       leftPosterRail: Object.freeze([-4.055, 1.62, -0.72] as const),
       rightPosterRail: Object.freeze([4.055, 1.62, 0.44] as const),
     }),
-    desk: Object.freeze([0, 0.07, 0.28] as const),
+    desk: Object.freeze([0, 0.07, 0.12] as const),
     door: Object.freeze({
       center: Object.freeze([4.14, 1.2, -2.85] as const),
       clearBounds: Object.freeze({

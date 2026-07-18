@@ -303,6 +303,7 @@ function createWallGeometry() {
 function createFrontTrimGeometry() {
   return mergeParts(
     [
+      // A single broad pane keeps the reveal readable from the authored camera.
       // Front and rear frame skins are tied by deep jamb returns.
       roundedPart([0.135, 1.7, 0.19], [-1.705, 1.85, 0.075], 0.022, [0, 0, 0], 4),
       roundedPart([0.135, 1.7, 0.19], [1.705, 1.85, 0.075], 0.022, [0, 0, 0], 4),
@@ -310,7 +311,6 @@ function createFrontTrimGeometry() {
       roundedPart([0.105, 1.64, 0.12], [-1.705, 1.85, -0.17], 0.018, [0, 0, 0], 3),
       roundedPart([0.105, 1.64, 0.12], [1.705, 1.85, -0.17], 0.018, [0, 0, 0], 3),
       roundedPart([3.505, 0.115, 0.12], [0, 2.71, -0.17], 0.02, [0, 0, 0], 3),
-      roundedPart([0.055, 1.31, 0.085], [-0.64, 1.985, 0.062], 0.012, [0, 0, 0], 3),
       // Pocket and horizontal guide for the reject shutter.
       roundedPart([0.18, 1.62, 0.24], [1.81, 1.93, 0.02], 0.025, [0, 0, 0], 4),
       roundedPart([1.55, 0.09, 0.16], [1.24, 2.675, 0.05], 0.02, [0, 0, 0], 3),
@@ -326,13 +326,9 @@ function createGasketGeometry() {
   return mergeParts(
     [
       roundedPart([0.026, 1.3, 0.025], [-1.62, 1.98, 0.146], 0.008),
-      roundedPart([0.026, 1.3, 0.025], [-0.66, 1.98, 0.146], 0.008),
-      roundedPart([0.026, 1.3, 0.025], [-0.62, 1.98, 0.146], 0.008),
       roundedPart([0.026, 1.3, 0.025], [1.62, 1.98, 0.146], 0.008),
-      roundedPart([0.97, 0.026, 0.025], [-1.14, 1.335, 0.146], 0.008),
-      roundedPart([0.97, 0.026, 0.025], [-1.14, 2.625, 0.146], 0.008),
-      roundedPart([2.25, 0.026, 0.025], [0.5, 1.335, 0.146], 0.008),
-      roundedPart([2.25, 0.026, 0.025], [0.5, 2.625, 0.146], 0.008),
+      roundedPart([3.24, 0.026, 0.025], [0, 1.335, 0.146], 0.008),
+      roundedPart([3.24, 0.026, 0.025], [0, 2.625, 0.146], 0.008),
       // Matching rear compression beads remain visible in rear inspection.
       roundedPart([0.022, 1.3, 0.022], [-1.62, 1.98, -0.075], 0.007),
       roundedPart([0.022, 1.3, 0.022], [1.62, 1.98, -0.075], 0.007),
@@ -345,10 +341,7 @@ function createGasketGeometry() {
 
 function createFrontGlassGeometry(depth = 0.026) {
   return mergeParts(
-    [
-      roundedPart([0.925, 1.26, depth], [-1.14, 1.98, 0.125], 0.012, [0, 0, 0], 4),
-      roundedPart([2.205, 1.26, depth], [0.5, 1.98, 0.125], 0.012, [0, 0, 0], 4),
-    ],
+    [roundedPart([3.24, 1.26, depth], [0, 1.98, 0.125], 0.012, [0, 0, 0], 4)],
     'laminated service glass',
   )
 }
@@ -356,12 +349,10 @@ function createFrontGlassGeometry(depth = 0.026) {
 function createFrontGlassFilmGeometry() {
   return mergeParts(
     [
-      roundedPart([0.88, 0.13, 0.004], [-1.14, 1.44, 0.143], 0.009, [0, 0, 0], 3),
-      roundedPart([2.16, 0.13, 0.004], [0.5, 1.44, 0.143], 0.009, [0, 0, 0], 3),
-      roundedPart([0.83, 0.012, 0.004], [-1.12, 2.34, 0.143], 0.004, [0, 0, -0.012]),
-      roundedPart([1.82, 0.012, 0.004], [0.47, 1.73, 0.143], 0.004, [0, 0, 0.009]),
+      roundedPart([0.72, 0.012, 0.004], [-1.16, 2.38, 0.143], 0.004, [0, 0, -0.012]),
+      roundedPart([0.58, 0.012, 0.004], [1.22, 2.5, 0.143], 0.004, [0, 0, 0.009]),
     ],
-    'privacy band and manual-mode glass film',
+    'restrained manual-mode glass film',
   )
 }
 
@@ -532,8 +523,6 @@ function createExteriorTrimGeometry() {
       roundedPart([0.11, 2.32, 0.14], [2.555, 1.715, -2.035], 0.02, [0, 0, 0], 4),
       roundedPart([3.07, 0.11, 0.14], [1.075, 0.525, -2.035], 0.02, [0, 0, 0], 4),
       roundedPart([3.07, 0.11, 0.14], [1.075, 2.905, -2.035], 0.02, [0, 0, 0], 4),
-      // One offset mullion sits outside the protected x 0.20–1.38 rise column.
-      roundedPart([0.075, 2.27, 0.13], [1.78, 1.715, -2.03], 0.016, [0, 0, 0], 3),
       // Exterior gasket shadow lines sell glazing depth without another glass plane.
       roundedPart([0.025, 2.23, 0.025], [-0.337, 1.715, -1.95], 0.007),
       roundedPart([0.025, 2.23, 0.025], [2.487, 1.715, -1.95], 0.007),

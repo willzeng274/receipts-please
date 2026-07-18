@@ -4,7 +4,6 @@ import { DeskCalculator } from './procedural/DeskCalculator'
 import { DeskComputer } from './procedural/DeskComputer'
 import { DeskLamp } from './procedural/DeskLamp'
 import { DeskPhone } from './procedural/DeskPhone'
-import { DeskShredder } from './procedural/DeskShredder'
 import { FreezeCardButton } from './procedural/FreezeCardButton'
 import { FraudStamp } from './procedural/FraudStamp'
 import { GiraffeReveal } from './procedural/GiraffeReveal'
@@ -115,14 +114,6 @@ export const ASSET_DEFINITIONS = [
     status: 'review',
     scale: 2.6,
     component: ContractorNameplate,
-  },
-  {
-    id: 'desk-shredder',
-    label: 'Rejection intake',
-    category: 'Hero rejection mechanism',
-    status: 'review',
-    scale: 2.2,
-    component: DeskShredder,
   },
   {
     id: 'reject-stamp',

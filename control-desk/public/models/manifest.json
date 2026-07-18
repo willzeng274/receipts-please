@@ -181,21 +181,6 @@
       "animations": ["paper-memo-catch", "approve-ledger-tab", "reject-ledger-snap", "fraud-warning-fin", "jam-paper-eruption", "migration-scan-align"]
     },
     {
-      "id": "desk-shredder",
-      "file": "src/models/procedural/DeskShredder.tsx",
-      "kind": "procedural-r3f",
-      "status": "review",
-      "dimensions_m": [0.36, 0.56, 0.397],
-      "scale": 1,
-      "rotation": [0, 0, 0],
-      "position": [0, 0, 0],
-      "source": "src/models/procedural/DeskShredder.tsx",
-      "author": "Receipts, Please procedural asset agent",
-      "license": "Project-owned source",
-      "modifications": "Original parametric R3F guarded rejection intake and shredder; no external geometry or image textures.",
-      "animations": ["paper-feed", "approve-return", "reject-shred", "fraud-triple-bite", "printer-jam", "migration-purge"]
-    },
-    {
       "id": "reject-stamp",
       "file": "src/models/procedural/RejectStamp.tsx",
       "kind": "procedural-r3f",
@@ -272,18 +257,33 @@
     },
     {
       "id": "giraffe-reveal",
-      "file": "src/models/procedural/GiraffeReveal.tsx",
-      "kind": "procedural-r3f",
+      "file": "public/models/source/Giraffe.glb",
+      "kind": "glb",
       "status": "review",
-      "dimensions_m": [1.06, 2.78, 0.58],
+      "dimensions_m": [0.559, 2.78, 1.813],
       "scale": 1,
       "rotation": [0, 0, 0],
       "position": [0, 0, 0],
-      "source": "src/models/procedural/GiraffeReveal.tsx",
-      "author": "Receipts, Please procedural asset agent",
-      "license": "Project-owned source",
-      "modifications": "Original procedural premium giraffe head/neck reveal with integrated generated coat spots, attached facial features, eyelids, ears, ossicones, mane, woven strap, and a double-sided Chief Growth Officer badge; no external geometry or files.",
-      "animations": ["curious-paper-blink", "approve-nod-chew", "reject-skeptical-lean", "fraud-double-take", "printer-irritated-shake", "migration-rise-eye-lock-chew-badge-swing"]
+      "source": "public/models/source/Giraffe.glb",
+      "author": "User-supplied asset; original author not provided",
+      "license": "Rights status unknown; user-supplied; do not redistribute until cleared",
+      "modifications": "Untouched source preserved and used at runtime to avoid an external Draco-decoder dependency. The typed component was generated with gltfjsx 6.5.3 using --transform --types --shadows; its graph/path cleanup points back to the decoder-free source GLB. R3F wrapper applies a 0.136591 uniform meter scale, deterministic lab responses, missing-to-rise-to-hold reveal motion, and an attached two-line Chief Growth Officer lanyard badge.",
+      "animations": ["no-embedded-clips", "curious-paper-lean", "approve-nod", "reject-skeptical-lean", "fraud-double-take", "printer-irritated-shake", "migration-missing-rise-hold-badge-swing"]
+    },
+    {
+      "id": "merged-animation-character",
+      "file": "public/models/source/merged_animations_3_clips.glb",
+      "kind": "glb",
+      "status": "wip",
+      "dimensions_m": [1.7, 1.652, 0.32],
+      "scale": 100,
+      "rotation": [0, 0, 0],
+      "position": [0, 0, 0],
+      "source": "User-supplied file merged_animations_3_clips.glb",
+      "author": "User-supplied asset; original author not provided",
+      "license": "Rights status unknown; user-supplied; do not redistribute until cleared",
+      "modifications": "Untouched source preserved byte-for-byte. gltfjsx 6.5.3 generated a typed skinned-mesh graph with --transform --types --shadows and a 496.8 KB Draco/WebP review artifact. The generated component intentionally loads the decoder-free source and applies a 100x wrapper correction for the source's 0.01 armature and mesh-node scale. Clip selection, looping, 0.2-second fades, and SkeletonUtils cloning are exposed for safe concurrent instances.",
+      "animations": ["Dead", "Skill_01", "Idle_03"]
     }
   ]
 }

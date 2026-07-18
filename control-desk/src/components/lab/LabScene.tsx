@@ -13,7 +13,6 @@ import {
   RenderPass,
   VignetteEffect,
 } from 'postprocessing'
-import { Perf } from 'r3f-perf'
 import { SCENE_LAYOUT_MANIFEST, type SceneAssetPlacement } from '../../config/sceneManifest'
 import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../../models/registry'
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
@@ -995,6 +994,54 @@ function SceneContactShadows() {
   )
 }
 
+function LightweightPerf() {
+  const gl = useThree((state) => state.gl)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const sampleRef = useRef({ elapsed: 0, frames: 0, frameTotal: 0 })
+
+  useFrame((_, delta) => {
+    const sample = sampleRef.current
+    sample.elapsed += delta
+    sample.frames += 1
+    sample.frameTotal += delta
+    if (sample.elapsed < 0.5 || !panelRef.current) return
+
+    const averageFrameMs = (sample.frameTotal / sample.frames) * 1000
+    const fps = sample.frames / sample.elapsed
+    const render = gl.info.render
+    const memory = gl.info.memory
+    panelRef.current.textContent = [
+      `${fps.toFixed(0)} fps  ${averageFrameMs.toFixed(1)} ms`,
+      `${render.calls} calls  ${render.triangles.toLocaleString()} tris`,
+      `${memory.geometries} geo  ${memory.textures} tex`,
+    ].join('\n')
+    sample.elapsed = 0
+    sample.frames = 0
+    sample.frameTotal = 0
+  })
+
+  return (
+    <Html fullscreen style={{ pointerEvents: 'none' }} zIndexRange={[100, 100]}>
+      <div
+        ref={panelRef}
+        style={{
+          background: 'rgba(11, 19, 17, .88)',
+          border: '1px solid rgba(118, 224, 169, .32)',
+          color: '#bce8cf',
+          font: '500 10px/1.55 "IBM Plex Mono", monospace',
+          padding: '8px 10px',
+          position: 'absolute',
+          right: 10,
+          top: 10,
+          whiteSpace: 'pre',
+        }}
+      >
+        Sampling renderer…
+      </div>
+    </Html>
+  )
+}
+
 export function LabScene() {
   const effectPreset = useLabStore((state) => state.effectPreset)
   const gridVisible = useLabStore((state) => state.gridVisible)
@@ -1008,7 +1055,7 @@ export function LabScene() {
     <>
       <Lighting preset={lightingPreset} />
       <CameraRig />
-      {performanceVisible && <Perf position="top-right" />}
+      {performanceVisible && <LightweightPerf />}
 
       <ImpactRig>
         {mode === 'animation' ? <AnimationFloor /> : mode === 'scene' ? <DeskEnvironment /> : <AssetFloor />}

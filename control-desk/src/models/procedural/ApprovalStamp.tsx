@@ -36,6 +36,16 @@ const easeOutBack = (value: number) => {
   return 1 + (overshoot + 1) * t * t * t + overshoot * t * t;
 };
 
+const APPROVED_BITMAPS = [
+  ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  ["11110", "10001", "10001", "11110", "10000", "10000", "10000"],
+  ["11110", "10001", "10001", "11110", "10100", "10010", "10001"],
+  ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+  ["10001", "10001", "10001", "10001", "10001", "01010", "00100"],
+  ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  ["11110", "10001", "10001", "10001", "10001", "10001", "11110"],
+] as const;
+
 function resolveStampEffect(
   preset: ProceduralAssetProps["effectPreset"],
 ): StampEffect {
@@ -68,44 +78,35 @@ export function ApprovalStamp({
   const effectRef = useRef<StampEffect>("approve");
   const reducedMotion = useLabStore((state) => state.reducedMotion);
 
-  const gripShape = useMemo(() => {
-    const shape = new THREE.Shape();
+  const approvedGlyphShapes = useMemo(() => {
+    const cell = 0.0012;
+    const pitch = 0.00145;
+    const letterPitch = 0.00845;
+    const totalWidth = APPROVED_BITMAPS.length * letterPitch - 0.0012;
+    const totalHeight = 7 * pitch - (pitch - cell);
+    const shapes: THREE.Shape[] = [];
 
-    // A flattened, broad T silhouette: narrow at the ferrule, shouldered below
-    // the palm, and nearly horizontal across the cap. The silhouette is
-    // deliberately non-axisymmetric so it reads as an office tool, not a knob.
-    shape.moveTo(-0.015, 0.08);
-    shape.lineTo(-0.016, 0.096);
-    shape.quadraticCurveTo(-0.0165, 0.1, -0.023, 0.103);
-    shape.lineTo(-0.033, 0.107);
-    shape.quadraticCurveTo(-0.039, 0.109, -0.039, 0.116);
-    shape.lineTo(-0.039, 0.123);
-    shape.quadraticCurveTo(-0.039, 0.131, -0.03, 0.132);
-    shape.lineTo(0.03, 0.132);
-    shape.quadraticCurveTo(0.039, 0.131, 0.039, 0.123);
-    shape.lineTo(0.039, 0.116);
-    shape.quadraticCurveTo(0.039, 0.109, 0.033, 0.107);
-    shape.lineTo(0.023, 0.103);
-    shape.quadraticCurveTo(0.0165, 0.1, 0.016, 0.096);
-    shape.lineTo(0.015, 0.08);
-    shape.closePath();
+    APPROVED_BITMAPS.forEach((bitmap, letterIndex) => {
+      bitmap.forEach((row, rowIndex) => {
+        [...row].forEach((pixel, columnIndex) => {
+          if (pixel !== "1") return;
 
-    return shape;
+          const x =
+            -totalWidth / 2 + letterIndex * letterPitch + columnIndex * pitch;
+          const y = totalHeight / 2 - (rowIndex + 1) * pitch + (pitch - cell);
+          const shape = new THREE.Shape();
+          shape.moveTo(x, y);
+          shape.lineTo(x + cell, y);
+          shape.lineTo(x + cell, y + cell);
+          shape.lineTo(x, y + cell);
+          shape.closePath();
+          shapes.push(shape);
+        });
+      });
+    });
+
+    return shapes;
   }, []);
-
-  const gripExtrusion = useMemo<THREE.ExtrudeGeometryOptions>(
-    () => ({
-      bevelEnabled: true,
-      bevelOffset: 0,
-      bevelSegments: 5,
-      bevelSize: 0.0025,
-      bevelThickness: 0.0022,
-      curveSegments: 12,
-      depth: 0.038,
-      steps: 1,
-    }),
-    [],
-  );
 
   const effectColors = useMemo(
     () => ({
@@ -578,9 +579,9 @@ export function ApprovalStamp({
         <group>
           <group ref={rubberPadRef}>
             <RoundedBox
-              args={[0.116, 0.009, 0.078]}
-              position={[0, 0.0045, 0]}
-              radius={0.004}
+              args={[0.112, 0.006, 0.066]}
+              position={[0, 0.003, 0]}
+              radius={0.003}
               smoothness={5}
               castShadow
               receiveShadow
@@ -595,206 +596,308 @@ export function ApprovalStamp({
           </group>
 
           <RoundedBox
-            args={[0.112, 0.018, 0.074]}
-            position={[0, 0.0165, 0]}
-            radius={0.006}
+            args={[0.108, 0.012, 0.07]}
+            position={[0, 0.01, 0]}
+            radius={0.004}
             smoothness={6}
             castShadow
             receiveShadow
           >
             <meshPhysicalMaterial
-              color="#aeb2ac"
-              roughness={0.29}
-              metalness={0.86}
-              clearcoat={0.45}
-              clearcoatRoughness={0.2}
+              color="#9fa8a3"
+              roughness={0.27}
+              metalness={0.9}
+              clearcoat={0.28}
+              clearcoatRoughness={0.24}
             />
           </RoundedBox>
 
           <RoundedBox
-            args={[0.096, 0.005, 0.005]}
-            position={[0, 0.016, 0.0372]}
-            radius={0.002}
-            smoothness={4}
+            args={[0.103, 0.027, 0.067]}
+            position={[0, 0.024, 0]}
+            radius={0.007}
+            smoothness={6}
             castShadow
             receiveShadow
           >
             <meshPhysicalMaterial
+              color="#26302d"
+              roughness={0.34}
+              metalness={0.38}
+              clearcoat={0.48}
+              clearcoatRoughness={0.25}
+            />
+          </RoundedBox>
+
+          <RoundedBox
+            args={[0.084, 0.018, 0.0028]}
+            position={[0, 0.024, 0.03485]}
+            radius={0.0035}
+            smoothness={5}
+            castShadow
+          >
+            <meshPhysicalMaterial
               ref={accentMaterialRef}
               color="#426c53"
-              roughness={0.4}
-              metalness={0.18}
-              clearcoat={0.3}
+              roughness={0.27}
+              metalness={0.24}
+              clearcoat={0.58}
+              clearcoatRoughness={0.18}
               emissive="#183522"
               emissiveIntensity={selected ? 0.55 : 0.08}
             />
           </RoundedBox>
 
-          {[-0.043, 0.043].map((x) => (
-            <group key={x} position={[x, 0.021, 0.0372]}>
-              <mesh rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
-                <cylinderGeometry args={[0.0041, 0.0041, 0.0024, 32]} />
+          <mesh position={[0, 0.024, 0.03632]} castShadow>
+            <shapeGeometry args={[approvedGlyphShapes]} />
+            <meshStandardMaterial
+              color="#e8ede4"
+              roughness={0.39}
+              metalness={0.08}
+            />
+          </mesh>
+
+          <RoundedBox
+            args={[0.058, 0.014, 0.0026]}
+            position={[0, 0.0245, -0.03478]}
+            radius={0.0025}
+            smoothness={4}
+            castShadow
+          >
+            <meshPhysicalMaterial
+              color="#59635f"
+              roughness={0.31}
+              metalness={0.72}
+              clearcoat={0.24}
+              clearcoatRoughness={0.24}
+            />
+          </RoundedBox>
+
+          <RoundedBox
+            args={[0.028, 0.0022, 0.0012]}
+            position={[0, 0.0245, -0.0367]}
+            radius={0.0008}
+            smoothness={3}
+          >
+            <meshStandardMaterial
+              color="#1a211f"
+              roughness={0.58}
+              metalness={0.28}
+            />
+          </RoundedBox>
+
+          {[-0.049, 0.049].map((x) => (
+            <group key={x}>
+              <RoundedBox
+                args={[0.007, 0.052, 0.01]}
+                position={[x, 0.052, 0]}
+                radius={0.003}
+                smoothness={5}
+                castShadow
+                receiveShadow
+              >
+                <meshPhysicalMaterial
+                  color="#8f9994"
+                  roughness={0.25}
+                  metalness={0.91}
+                  clearcoat={0.22}
+                  clearcoatRoughness={0.2}
+                />
+              </RoundedBox>
+
+              <mesh
+                position={[x, 0.028, 0]}
+                rotation={[0, 0, Math.PI / 2]}
+                castShadow
+                receiveShadow
+              >
+                <cylinderGeometry args={[0.007, 0.007, 0.004, 40]} />
                 <meshStandardMaterial
-                  color="#7d827d"
-                  roughness={0.34}
-                  metalness={0.88}
+                  color="#aeb5b1"
+                  roughness={0.25}
+                  metalness={0.92}
                 />
               </mesh>
-              <mesh position={[0, 0, 0.00135]} castShadow>
-                <boxGeometry args={[0.0051, 0.0008, 0.0007]} />
+
+              <mesh
+                position={[x + Math.sign(x) * 0.00215, 0.028, 0]}
+                rotation={[0, Math.PI / 2, 0]}
+                castShadow
+              >
+                <torusGeometry args={[0.0043, 0.0008, 10, 36]} />
                 <meshStandardMaterial
-                  color="#363b3a"
-                  roughness={0.48}
-                  metalness={0.8}
+                  color="#35403c"
+                  roughness={0.41}
+                  metalness={0.74}
                 />
               </mesh>
             </group>
           ))}
 
           <RoundedBox
-            args={[0.032, 0.016, 0.003]}
-            position={[0, 0.019, 0.0394]}
+            args={[0.102, 0.012, 0.014]}
+            position={[0, 0.078, 0]}
             radius={0.004}
             smoothness={5}
             castShadow
             receiveShadow
           >
             <meshPhysicalMaterial
-              color="#365e47"
-              roughness={0.3}
-              metalness={0.34}
-              clearcoat={0.55}
-              clearcoatRoughness={0.18}
+              color="#87928d"
+              roughness={0.25}
+              metalness={0.9}
+              clearcoat={0.24}
+              clearcoatRoughness={0.2}
             />
           </RoundedBox>
 
-          <group position={[0, 0.019, 0.0411]}>
-            <RoundedBox
-              args={[0.004, 0.009, 0.0015]}
-              position={[-0.005, -0.001, 0]}
-              rotation={[0, 0, -0.67]}
-              radius={0.0012}
-              smoothness={4}
-              castShadow
-            >
-              <meshStandardMaterial
-                color="#d6d7c7"
-                roughness={0.53}
-                metalness={0.08}
-              />
-            </RoundedBox>
-            <RoundedBox
-              args={[0.004, 0.017, 0.0015]}
-              position={[0.004, 0.0017, 0]}
-              rotation={[0, 0, 0.72]}
-              radius={0.0012}
-              smoothness={4}
-              castShadow
-            >
-              <meshStandardMaterial
-                color="#d6d7c7"
-                roughness={0.53}
-                metalness={0.08}
-              />
-            </RoundedBox>
-          </group>
+          <RoundedBox
+            args={[0.029, 0.017, 0.018]}
+            position={[0, 0.082, 0]}
+            radius={0.005}
+            smoothness={5}
+            castShadow
+            receiveShadow
+          >
+            <meshPhysicalMaterial
+              color="#303a36"
+              roughness={0.34}
+              metalness={0.44}
+              clearcoat={0.38}
+              clearcoatRoughness={0.24}
+            />
+          </RoundedBox>
         </group>
 
         <group ref={handleRef} position={[0, 0.0255, 0]}>
           <group position={[0, -0.0255, 0]}>
-            <mesh position={[0, 0.064, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[0.0105, 0.013, 0.079, 48]} />
+            <mesh position={[0, 0.068, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[0.0095, 0.0115, 0.056, 48]} />
               <meshPhysicalMaterial
-                color="#9ba19e"
-                roughness={0.25}
-                metalness={0.92}
-                clearcoat={0.38}
-                clearcoatRoughness={0.16}
+                color="#a6afaa"
+                roughness={0.22}
+                metalness={0.93}
+                clearcoat={0.26}
+                clearcoatRoughness={0.18}
               />
             </mesh>
 
-            <mesh position={[0, 0.039, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[0.021, 0.023, 0.015, 64]} />
+            <mesh position={[0, 0.044, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[0.015, 0.018, 0.014, 64]} />
               <meshPhysicalMaterial
-                color="#7f8581"
-                roughness={0.31}
-                metalness={0.88}
-                clearcoat={0.35}
+                color="#68726d"
+                roughness={0.3}
+                metalness={0.84}
+                clearcoat={0.28}
                 clearcoatRoughness={0.22}
               />
             </mesh>
 
-            <mesh
-              position={[0, 0.0472, 0]}
-              rotation={[Math.PI / 2, 0, 0]}
-              castShadow
-              receiveShadow
-            >
-              <torusGeometry args={[0.0184, 0.0016, 12, 64]} />
-              <meshStandardMaterial
-                color="#494d4a"
-                roughness={0.42}
-                metalness={0.76}
-              />
-            </mesh>
-
-            <mesh position={[0, 0, -0.019]} castShadow receiveShadow>
-              <extrudeGeometry args={[gripShape, gripExtrusion]} />
-              <meshPhysicalMaterial
-                color="#5f2d1c"
-                roughness={0.29}
-                metalness={0.03}
-                clearcoat={0.68}
-                clearcoatRoughness={0.25}
-              />
-            </mesh>
-
-            <RoundedBox
-              args={[0.032, 0.012, 0.0438]}
-              position={[0, 0.087, 0]}
-              radius={0.0045}
-              smoothness={5}
-              castShadow
-              receiveShadow
-            >
-              <meshPhysicalMaterial
-                color="#74442d"
-                roughness={0.34}
-                metalness={0.025}
-                clearcoat={0.58}
-                clearcoatRoughness={0.3}
-              />
-            </RoundedBox>
-
-            <RoundedBox
-              args={[0.037, 0.011, 0.0016]}
-              position={[0, 0.1185, 0.0215]}
-              radius={0.0038}
-              smoothness={5}
-              castShadow
-              receiveShadow
-            >
-              <meshPhysicalMaterial
-                color="#a47e45"
-                roughness={0.28}
-                metalness={0.72}
-                clearcoat={0.32}
-                clearcoatRoughness={0.22}
-              />
-            </RoundedBox>
-
-            {[-0.013, 0.013].map((x) => (
+            {[0.052, 0.0595, 0.067].map((y) => (
               <mesh
-                key={x}
-                position={[x, 0.1185, 0.02245]}
+                key={y}
+                position={[0, y, 0]}
                 rotation={[Math.PI / 2, 0, 0]}
                 castShadow
+                receiveShadow
               >
-                <cylinderGeometry args={[0.00165, 0.00165, 0.0011, 24]} />
+                <torusGeometry args={[0.0125, 0.00105, 10, 48]} />
                 <meshStandardMaterial
-                  color="#4a3927"
-                  roughness={0.38}
-                  metalness={0.82}
+                  color="#4f5955"
+                  roughness={0.36}
+                  metalness={0.81}
+                />
+              </mesh>
+            ))}
+
+            <mesh position={[0, 0.096, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[0.0125, 0.0105, 0.014, 56]} />
+              <meshPhysicalMaterial
+                color="#7d8782"
+                roughness={0.27}
+                metalness={0.88}
+                clearcoat={0.3}
+                clearcoatRoughness={0.2}
+              />
+            </mesh>
+
+            <RoundedBox
+              args={[0.038, 0.013, 0.032]}
+              position={[0, 0.1025, 0]}
+              radius={0.006}
+              smoothness={6}
+              castShadow
+              receiveShadow
+            >
+              <meshPhysicalMaterial
+                color="#343e3a"
+                roughness={0.33}
+                metalness={0.36}
+                clearcoat={0.46}
+                clearcoatRoughness={0.24}
+              />
+            </RoundedBox>
+
+            <RoundedBox
+              args={[0.078, 0.032, 0.044]}
+              position={[0, 0.117, 0]}
+              radius={0.0115}
+              smoothness={8}
+              castShadow
+              receiveShadow
+            >
+              <meshPhysicalMaterial
+                color="#1d2724"
+                roughness={0.31}
+                metalness={0.22}
+                clearcoat={0.52}
+                clearcoatRoughness={0.2}
+              />
+            </RoundedBox>
+
+            {[-1, 1].map((side) => (
+              <RoundedBox
+                key={side}
+                args={[0.055, 0.014, 0.0023]}
+                position={[0, 0.116, side * 0.0223]}
+                radius={0.0045}
+                smoothness={5}
+                castShadow
+              >
+                <meshPhysicalMaterial
+                  color="#2d7150"
+                  roughness={0.48}
+                  metalness={0.05}
+                  clearcoat={0.2}
+                  clearcoatRoughness={0.34}
+                />
+              </RoundedBox>
+            ))}
+
+            <RoundedBox
+              args={[0.047, 0.0032, 0.036]}
+              position={[0, 0.1331, 0]}
+              radius={0.0015}
+              smoothness={4}
+              castShadow
+              receiveShadow
+            >
+              <meshPhysicalMaterial
+                color="#9da7a2"
+                roughness={0.24}
+                metalness={0.9}
+                clearcoat={0.25}
+                clearcoatRoughness={0.18}
+              />
+            </RoundedBox>
+
+            {[-0.024, 0.024].map((x) => (
+              <mesh key={x} position={[x, 0.13325, 0.014]} castShadow>
+                <cylinderGeometry args={[0.00165, 0.00165, 0.001, 24]} />
+                <meshStandardMaterial
+                  color="#39433f"
+                  roughness={0.35}
+                  metalness={0.86}
                 />
               </mesh>
             ))}

@@ -126,6 +126,30 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .giraffe-focus-exit strong { font-size: 16px; letter-spacing: -.01em; text-transform: uppercase; }
 .giraffe-focus-exit small { color: #bac5be; }
 
+.giraffe-outro { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 30px; color: #f4f6f2; background: radial-gradient(circle at 50% 38%, rgba(38,65,53,.72), transparent 44%), #07100d; opacity: 0; animation: giraffe-outro-cover .9s cubic-bezier(.22,.61,.36,1) forwards; }
+.giraffe-outro::before { content: ''; position: absolute; inset: 18px; border: 1px solid rgba(211,233,220,.16); pointer-events: none; }
+.giraffe-outro__card { position: relative; width: min(680px, 100%); padding: clamp(34px, 6vw, 66px); border: 1px solid rgba(146,218,182,.42); border-radius: 22px; background: linear-gradient(145deg, rgba(18,39,31,.96), rgba(7,16,13,.98)); box-shadow: 0 42px 120px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.08); text-align: center; opacity: 0; transform: translateY(16px) scale(.985); animation: giraffe-outro-card .78s .52s cubic-bezier(.22,.61,.36,1) forwards; }
+.giraffe-outro__eyebrow { color: #95dcb9; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .18em; text-transform: uppercase; }
+.giraffe-outro h1 { margin: 18px 0 12px; color: #f4f1e8; font-size: clamp(46px, 7vw, 84px); font-weight: 650; line-height: .92; letter-spacing: -.055em; }
+.giraffe-outro p { margin: 0; color: #b3c3b9; font-size: clamp(14px, 2vw, 18px); letter-spacing: -.01em; }
+.giraffe-outro__rule { width: 54px; height: 1px; margin: 30px auto 24px; background: #77d8aa; box-shadow: 0 0 22px rgba(119,216,170,.48); }
+.giraffe-outro__ramp { display: flex; align-items: center; justify-content: center; gap: 13px; color: #82968a; font: 550 8px/1.3 'IBM Plex Mono', monospace; letter-spacing: .09em; text-transform: uppercase; }
+.giraffe-outro__ramp img { width: 76px; height: auto; }
+.giraffe-outro__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; margin-top: 28px; }
+.giraffe-outro__actions a, .giraffe-outro__actions button { min-height: 42px; padding: 0 17px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid #435c50; border-radius: 7px; color: #dce8e1; background: #14251e; cursor: pointer; font: 650 9px/1 'IBM Plex Mono', monospace; letter-spacing: .07em; text-decoration: none; text-transform: uppercase; transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease; }
+.giraffe-outro__actions a { color: #062117; border-color: #9be8c3; background: #81ddb0; }
+.giraffe-outro__actions a:hover, .giraffe-outro__actions a:focus-visible { color: #03130d; background: #a5edca; transform: translateY(-1px); }
+.giraffe-outro__actions button:hover, .giraffe-outro__actions button:focus-visible { color: #fff; border-color: #7fdcaf; background: #1c342a; transform: translateY(-1px); }
+
+@keyframes giraffe-outro-cover {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes giraffe-outro-card {
+  from { opacity: 0; transform: translateY(16px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .ramp-migration-controller { position: absolute; z-index: 42; left: 50%; bottom: 24px; width: min(480px, calc(100% - 48px)); display: grid; grid-template-columns: 1fr auto; gap: 5px 18px; padding: 15px 16px; color: var(--paper); border: 1px solid rgba(126,220,177,.5); border-radius: 10px; background: rgba(8,24,18,.94); box-shadow: 0 18px 70px rgba(0,0,0,.48); transform: translateX(-50%); }
 .ramp-migration-controller span, .ramp-migration-controller small { grid-column: 1; color: #8db8a4; font: 550 8px/1.25 'IBM Plex Mono', monospace; letter-spacing: .07em; text-transform: uppercase; }
 .ramp-migration-controller strong { grid-column: 1; font-size: 17px; letter-spacing: -.02em; }
@@ -146,6 +170,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 @keyframes low-cortisol-reduced {
   0%, 100% { opacity: 0; transform: none; }
   10%, 90% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .giraffe-outro { animation-duration: .18s; }
+  .giraffe-outro__card { transform: none; animation: giraffe-outro-card-reduced .18s .12s ease-out forwards; }
+}
+
+@keyframes giraffe-outro-card-reduced {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .screen-fixture { position: absolute; z-index: 6; right: 28px; bottom: 24px; width: 326px; height: 218px; overflow: hidden; border: 1px solid rgba(235,229,214,.34); background: #0e1514; box-shadow: 0 22px 60px rgba(0,0,0,.42); transform-origin: center; }
