@@ -1,6 +1,6 @@
-import { RoundedBox, Text } from '@react-three/drei'
+import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useLabStore, type EffectPreset } from '../../store/useLabStore'
 import type { ProceduralAssetProps } from '../types'
@@ -20,11 +20,16 @@ const LABEL_INSERT_HEIGHT = 0.024
 const LABEL_INSERT_DEPTH = 0.0016
 const LABEL_INSERT_Z = LABEL_CASSETTE_Z + LABEL_CASSETTE_DEPTH / 2 + LABEL_INSERT_DEPTH / 2
 const LABEL_TEXT_Z = LABEL_INSERT_Z + LABEL_INSERT_DEPTH / 2 + 0.00014
+const LABEL_PLANE_WIDTH = LABEL_INSERT_WIDTH - 0.01
+const LABEL_PLANE_HEIGHT = LABEL_INSERT_HEIGHT - 0.007
+const LABEL_ATLAS_WIDTH = 2048
+const LABEL_ATLAS_HEIGHT = 128
+const LABEL_ATLAS_CELL_WIDTH = 640
 
 const TRAYS = [
-  { label: 'APPROVE', accent: '#4c8b6d', paperAngle: -0.025, labelSize: 0.0122 },
-  { label: 'REJECT', accent: '#a14f4b', paperAngle: 0.018, labelSize: 0.0122 },
-  { label: 'INVESTIGATE', accent: '#b57f38', paperAngle: -0.014, labelSize: 0.0105 },
+  { label: 'APPROVE', accent: '#4c8b6d', paperAngle: -0.025, labelFontPixels: 58 },
+  { label: 'REJECT', accent: '#a14f4b', paperAngle: 0.018, labelFontPixels: 58 },
+  { label: 'INVESTIGATE', accent: '#b57f38', paperAngle: -0.014, labelFontPixels: 48 },
 ] as const
 
 const POWDER_COAT = '#606a70'
@@ -41,6 +46,11 @@ type AnimationState = {
   preset: EffectPreset
   target: number
   strength: number
+}
+
+type LabelResources = {
+  geometries: THREE.PlaneGeometry[]
+  material: THREE.MeshBasicMaterial
 }
 
 const RECEIPT_SETTLED_Y = 0.0269
@@ -62,6 +72,104 @@ function easeInOutCubic(value: number) {
 
 function easeOutCubic(value: number) {
   return 1 - Math.pow(1 - value, 3)
+}
+
+function drawSpacedLabel(
+  context: CanvasRenderingContext2D,
+  label: string,
+  centerX: number,
+  centerY: number,
+  letterSpacing: number,
+) {
+  const glyphWidths = [...label].map((glyph) => context.measureText(glyph).width)
+  const labelWidth =
+    glyphWidths.reduce((width, glyphWidth) => width + glyphWidth, 0) +
+    letterSpacing * Math.max(label.length - 1, 0)
+  let cursorX = centerX - labelWidth / 2
+
+  for (let index = 0; index < label.length; index += 1) {
+    const glyph = label[index]
+    const glyphCenterX = cursorX + glyphWidths[index] / 2
+    context.strokeText(glyph, glyphCenterX, centerY)
+    context.fillText(glyph, glyphCenterX, centerY)
+    cursorX += glyphWidths[index] + letterSpacing
+  }
+}
+
+function createLabelResources(): LabelResources {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_WIDTH
+  canvas.height = LABEL_ATLAS_HEIGHT
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('ReceiptTraySet could not create its label atlas canvas.')
+  }
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  context.lineJoin = 'round'
+  context.strokeStyle = '#293237'
+  context.fillStyle = '#f6f1e6'
+  context.lineWidth = 6
+
+  TRAYS.forEach((tray, index) => {
+    context.font = `700 ${tray.labelFontPixels}px Arial, sans-serif`
+    drawSpacedLabel(
+      context,
+      tray.label,
+      index * LABEL_ATLAS_CELL_WIDTH + LABEL_ATLAS_CELL_WIDTH / 2,
+      LABEL_ATLAS_HEIGHT / 2,
+      2.5,
+    )
+  })
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.name = 'receipt-tray-label-atlas'
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.ClampToEdgeWrapping
+  texture.wrapT = THREE.ClampToEdgeWrapping
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.anisotropy = 1
+  texture.needsUpdate = true
+
+  const material = new THREE.MeshBasicMaterial({
+    alphaTest: 0.12,
+    map: texture,
+    side: THREE.FrontSide,
+    toneMapped: false,
+    transparent: true,
+  })
+  material.name = 'receipt-tray-label-material'
+
+  const geometries = TRAYS.map((_, index) => {
+    const geometry = new THREE.PlaneGeometry(LABEL_PLANE_WIDTH, LABEL_PLANE_HEIGHT)
+    const uv = geometry.getAttribute('uv')
+    const uStart = (index * LABEL_ATLAS_CELL_WIDTH + 0.5) / LABEL_ATLAS_WIDTH
+    const uEnd =
+      ((index + 1) * LABEL_ATLAS_CELL_WIDTH - 0.5) / LABEL_ATLAS_WIDTH
+
+    for (let vertexIndex = 0; vertexIndex < uv.count; vertexIndex += 1) {
+      uv.setX(
+        vertexIndex,
+        uStart + uv.getX(vertexIndex) * (uEnd - uStart),
+      )
+    }
+    uv.needsUpdate = true
+    geometry.name = `receipt-tray-label-plane-${index}`
+    return geometry
+  })
+
+  return { geometries, material }
+}
+
+function disposeLabelResources(resources: LabelResources) {
+  resources.geometries.forEach((geometry) => geometry.dispose())
+  resources.material.map?.dispose()
+  resources.material.dispose()
 }
 
 function resetTrayRoot(tray: THREE.Group, index: number) {
@@ -243,9 +351,11 @@ function PaperSheet({
 
 function TrayBay({
   index,
+  labelResources,
   motionRef,
 }: {
   index: number
+  labelResources: LabelResources | null
   motionRef: (node: THREE.Group | null) => void
 }) {
   const tray = TRAYS[index]
@@ -395,20 +505,15 @@ function TrayBay({
           <meshStandardMaterial color={FOLDED_EDGE} metalness={0.5} roughness={0.37} />
         </RoundedBox>
       ))}
-      <Text
-        position={[0, LABEL_CASSETTE_Y, LABEL_TEXT_Z]}
-        fontSize={tray.labelSize}
-        letterSpacing={0.045}
-        maxWidth={LABEL_INSERT_WIDTH - 0.01}
-        color="#f6f1e6"
-        outlineColor="#293237"
-        outlineWidth={0.00016}
-        anchorX="center"
-        anchorY="middle"
-        renderOrder={2}
-      >
-        {tray.label}
-      </Text>
+      {labelResources && (
+        <mesh
+          dispose={null}
+          geometry={labelResources.geometries[index]}
+          material={labelResources.material}
+          position={[0, LABEL_CASSETTE_Y, LABEL_TEXT_Z]}
+          renderOrder={2}
+        />
+      )}
       {[-0.063, 0.063].map((x) => (
         <mesh
           key={x}
@@ -468,6 +573,7 @@ export function ReceiptTraySet({
   const trayRefs = useRef<Array<THREE.Group | null>>([null, null, null])
   const receiptRef = useRef<THREE.Group>(null)
   const receiptAccentRef = useRef<THREE.MeshStandardMaterial>(null)
+  const [labelResources, setLabelResources] = useState<LabelResources | null>(null)
   const animationRef = useRef<AnimationState>({
     active: false,
     startTime: -1,
@@ -476,6 +582,15 @@ export function ReceiptTraySet({
     strength: 0.004,
   })
   const reducedMotion = useLabStore((state) => state.reducedMotion)
+
+  useLayoutEffect(() => {
+    const resources = createLabelResources()
+    setLabelResources(resources)
+
+    return () => {
+      disposeLabelResources(resources)
+    }
+  }, [])
 
   useLayoutEffect(() => {
     let target = (Math.max(effectRun, 1) - 1) % 3
@@ -884,6 +999,7 @@ export function ReceiptTraySet({
         <TrayBay
           key={tray.label}
           index={index}
+          labelResources={labelResources}
           motionRef={(node) => {
             trayRefs.current[index] = node
           }}

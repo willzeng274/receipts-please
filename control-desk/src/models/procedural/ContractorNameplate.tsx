@@ -1,7 +1,7 @@
-import modelFontUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff?url'
-import { Instance, Instances, RoundedBox, Text } from '@react-three/drei'
+import { Instance, Instances, RoundedBox } from '@react-three/drei'
 import gsap from 'gsap'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
+import { CanvasTexture, LinearFilter, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from 'three'
 import type { Group, MeshPhysicalMaterial } from 'three'
 import { useLabStore } from '../../store/useLabStore'
 import type { ProceduralAssetProps } from '../types'
@@ -17,8 +17,147 @@ const PLAQUE_LABEL_LINE_HALF_GAP = 0.0155
 const PLAQUE_TOP_LINE_Y = PLAQUE_LABEL_CENTER_Y + PLAQUE_LABEL_LINE_HALF_GAP
 const PLAQUE_BOTTOM_LINE_Y = PLAQUE_LABEL_CENTER_Y - PLAQUE_LABEL_LINE_HALF_GAP
 
+const LABEL_ATLAS_WIDTH = 512
+const LABEL_ATLAS_HEIGHT = 256
+
+const LABEL_REGIONS = {
+  head: { x: 0, y: 0, width: 310, height: 60 },
+  finance: { x: 0, y: 64, width: 314, height: 60 },
+  fraud: { x: 0, y: 128, width: 214, height: 60 },
+} as const
+
+const GLYPHS: Record<string, readonly string[]> = {
+  A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  C: ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+  D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+  E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  F: ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+  H: ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+  I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+  N: ['10001', '11001', '11001', '10101', '10011', '10011', '10001'],
+  O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+}
+
+type LabelRegion = (typeof LABEL_REGIONS)[keyof typeof LABEL_REGIONS]
+
+function measureLabel(text: string) {
+  const letterGap = 2
+  const spaceWidth = 4
+
+  return [...text].reduce((width, character, index) => {
+    const characterWidth = character === ' ' ? spaceWidth : 5
+    return width + characterWidth + (index === text.length - 1 ? 0 : letterGap)
+  }, 0)
+}
+
+function drawLabel(
+  context: CanvasRenderingContext2D,
+  text: string,
+  region: LabelRegion,
+  color: string,
+) {
+  const letterGap = 2
+  const spaceWidth = 4
+  const labelWidth = measureLabel(text)
+  const cellSize = Math.max(
+    1,
+    Math.floor(Math.min((region.width - 20) / labelWidth, (region.height - 16) / 7)),
+  )
+  const renderedWidth = labelWidth * cellSize
+  const renderedHeight = 7 * cellSize
+  let cursorX = region.x + Math.floor((region.width - renderedWidth) / 2)
+  const originY = region.y + Math.floor((region.height - renderedHeight) / 2)
+
+  context.fillStyle = color
+
+  for (const character of text) {
+    if (character === ' ') {
+      cursorX += (spaceWidth + letterGap) * cellSize
+      continue
+    }
+
+    const glyph = GLYPHS[character]
+    if (!glyph) continue
+
+    glyph.forEach((row, rowIndex) => {
+      for (let columnIndex = 0; columnIndex < row.length; columnIndex += 1) {
+        if (row[columnIndex] === '1') {
+          context.fillRect(
+            cursorX + columnIndex * cellSize,
+            originY + rowIndex * cellSize,
+            cellSize,
+            cellSize,
+          )
+        }
+      }
+    })
+
+    cursorX += (5 + letterGap) * cellSize
+  }
+}
+
+function createLabelGeometry(width: number, height: number, region: LabelRegion) {
+  const geometry = new PlaneGeometry(width, height)
+  const uv = geometry.attributes.uv
+  const uMin = region.x / LABEL_ATLAS_WIDTH
+  const uMax = (region.x + region.width) / LABEL_ATLAS_WIDTH
+  const vMin = 1 - (region.y + region.height) / LABEL_ATLAS_HEIGHT
+  const vMax = 1 - region.y / LABEL_ATLAS_HEIGHT
+
+  for (let index = 0; index < uv.count; index += 1) {
+    const sourceU = uv.getX(index)
+    const sourceV = uv.getY(index)
+    uv.setXY(index, uMin + sourceU * (uMax - uMin), vMin + sourceV * (vMax - vMin))
+  }
+
+  uv.needsUpdate = true
+  return geometry
+}
+
+function createLabelResources() {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_WIDTH
+  canvas.height = LABEL_ATLAS_HEIGHT
+
+  const context = canvas.getContext('2d')
+  if (!context) {
+    throw new Error('ContractorNameplate label atlas requires a 2D canvas context.')
+  }
+
+  context.clearRect(0, 0, LABEL_ATLAS_WIDTH, LABEL_ATLAS_HEIGHT)
+  drawLabel(context, 'HEAD OF', LABEL_REGIONS.head, PLAQUE_LABEL_COLOR)
+  drawLabel(context, 'FINANCE', LABEL_REGIONS.finance, PLAQUE_LABEL_COLOR)
+  drawLabel(context, 'FRAUD', LABEL_REGIONS.fraud, '#f2d7b8')
+
+  const texture = new CanvasTexture(canvas)
+  texture.colorSpace = SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = LinearFilter
+  texture.magFilter = LinearFilter
+  texture.name = 'contractor-nameplate-label-atlas'
+
+  const material = new MeshBasicMaterial({
+    alphaTest: 0.18,
+    map: texture,
+    toneMapped: false,
+    transparent: true,
+  })
+  material.name = 'contractor-nameplate-label-material'
+
+  return {
+    texture,
+    material,
+    headGeometry: createLabelGeometry(0.126, 0.0245, LABEL_REGIONS.head),
+    financeGeometry: createLabelGeometry(0.136, 0.026, LABEL_REGIONS.finance),
+    fraudGeometry: createLabelGeometry(0.064, 0.018, LABEL_REGIONS.fraud),
+  }
+}
+
 export function ContractorNameplate({ effectPreset, effectRun = 0, selected = false, ...groupProps }: ProceduralAssetProps) {
   const reducedMotion = useLabStore((state) => state.reducedMotion)
+  const labelResources = useMemo(createLabelResources, [])
   const bodyRef = useRef<Group>(null)
   const plaqueRef = useRef<Group>(null)
   const memoRef = useRef<Group>(null)
@@ -30,6 +169,17 @@ export function ContractorNameplate({ effectPreset, effectRun = 0, selected = fa
   const leftLensMaterialRef = useRef<MeshPhysicalMaterial>(null)
   const rightLensMaterialRef = useRef<MeshPhysicalMaterial>(null)
   const migrationMaterialRef = useRef<MeshPhysicalMaterial>(null)
+
+  useEffect(
+    () => () => {
+      labelResources.headGeometry.dispose()
+      labelResources.financeGeometry.dispose()
+      labelResources.fraudGeometry.dispose()
+      labelResources.material.dispose()
+      labelResources.texture.dispose()
+    },
+    [labelResources],
+  )
 
   useEffect(() => {
     const body = bodyRef.current
@@ -248,32 +398,16 @@ export function ContractorNameplate({ effectPreset, effectRun = 0, selected = fa
             <meshPhysicalMaterial clearcoat={0.18} clearcoatRoughness={0.42} color="#d8caaa" metalness={0.08} roughness={0.34} />
           </RoundedBox>
 
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color={PLAQUE_LABEL_COLOR}
-            font={modelFontUrl}
-            fontSize={0.0245}
-            letterSpacing={0.14}
-            maxWidth={0.405}
+          <mesh
+            geometry={labelResources.headGeometry}
+            material={labelResources.material}
             position={[PLAQUE_LABEL_CENTER_X, PLAQUE_TOP_LINE_Y, PLAQUE_FACE_Z]}
-            textAlign="center"
-          >
-            HEAD OF
-          </Text>
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color={PLAQUE_LABEL_COLOR}
-            font={modelFontUrl}
-            fontSize={0.026}
-            letterSpacing={0.16}
-            maxWidth={0.405}
+          />
+          <mesh
+            geometry={labelResources.financeGeometry}
+            material={labelResources.material}
             position={[PLAQUE_LABEL_CENTER_X, PLAQUE_BOTTOM_LINE_Y, PLAQUE_FACE_Z]}
-            textAlign="center"
-          >
-            FINANCE
-          </Text>
+          />
 
           <Instances castShadow>
             <cylinderGeometry args={[0.0042, 0.0042, 0.003, 24]} />
@@ -324,19 +458,11 @@ export function ContractorNameplate({ effectPreset, effectRun = 0, selected = fa
           <RoundedBox args={[0.162, 0.035, 0.008]} castShadow position={[0, 0.0175, 0]} radius={0.004} smoothness={5}>
             <meshPhysicalMaterial clearcoat={0.48} clearcoatRoughness={0.16} color="#8e2b26" metalness={0.26} roughness={0.24} />
           </RoundedBox>
-          <Text
-            anchorX="center"
-            anchorY="middle"
-            color="#f2d7b8"
-            font={modelFontUrl}
-            fontSize={0.018}
-            letterSpacing={0.08}
-            maxWidth={0.14}
+          <mesh
+            geometry={labelResources.fraudGeometry}
+            material={labelResources.material}
             position={[0, 0.0175, 0.005]}
-            textAlign="center"
-          >
-            FRAUD
-          </Text>
+          />
         </group>
 
         <group ref={jamPacketRef} visible={false}>

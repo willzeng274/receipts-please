@@ -1,6 +1,5 @@
-import { Text, useCursor } from '@react-three/drei'
+import { useCursor } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import labelFontUrl from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { RefObject } from 'react'
 import * as THREE from 'three'
@@ -39,6 +38,7 @@ type CabinetMaterials = {
   folderPolicy: THREE.MeshStandardMaterial
   hardware: THREE.MeshStandardMaterial
   hitArea: THREE.MeshBasicMaterial
+  label: THREE.MeshBasicMaterial
   paper: THREE.MeshStandardMaterial
   powder: THREE.MeshPhysicalMaterial
   top: THREE.MeshPhysicalMaterial
@@ -63,6 +63,10 @@ const TOP_DRAWER_HEIGHT = 0.12
 const LARGE_DRAWER_HEIGHT = 0.2
 
 const DRAWER_IDS: readonly DrawerId[] = ['top', 'middle', 'bottom']
+const DRAWER_LABELS = ['PAYABLES', 'POLICY', 'ARCHIVE'] as const
+const DRAWER_LABEL_ATLAS_WIDTH = 1024
+const DRAWER_LABEL_ATLAS_HEIGHT = 128
+const DRAWER_LABEL_CELL_WIDTH = 320
 const MANUAL_DRAWER_TRAVEL: Readonly<DrawerTravel> = {
   top: 0.255,
   middle: 0.315,
@@ -90,6 +94,45 @@ const LOCK_IDLE_GLOW = new THREE.Color('#27332d')
 const LOCK_ALARM_GLOW = new THREE.Color('#f04435')
 const LOCK_JAM_GLOW = new THREE.Color('#c77a24')
 const LOCK_MIGRATION_GLOW = new THREE.Color('#49c77d')
+
+function createDrawerLabelAtlas() {
+  const canvas = document.createElement('canvas')
+  canvas.width = DRAWER_LABEL_ATLAS_WIDTH
+  canvas.height = DRAWER_LABEL_ATLAS_HEIGHT
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Unable to create FilingCabinet label atlas')
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  context.fillStyle = '#e5dcc7'
+  context.font = '600 52px "IBM Plex Mono", "SFMono-Regular", monospace'
+  context.textAlign = 'center'
+  context.textBaseline = 'middle'
+  DRAWER_LABELS.forEach((label, index) => {
+    context.fillText(label, index * DRAWER_LABEL_CELL_WIDTH + DRAWER_LABEL_CELL_WIDTH / 2, 64)
+  })
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = THREE.LinearFilter
+  texture.magFilter = THREE.LinearFilter
+  texture.anisotropy = 1
+  texture.needsUpdate = true
+  return texture
+}
+
+function createDrawerLabelGeometry(index: number) {
+  const geometry = new THREE.PlaneGeometry(0.18, 0.04)
+  const u0 = (index * DRAWER_LABEL_CELL_WIDTH) / DRAWER_LABEL_ATLAS_WIDTH
+  const u1 = ((index + 1) * DRAWER_LABEL_CELL_WIDTH) / DRAWER_LABEL_ATLAS_WIDTH
+  const uv = geometry.getAttribute('uv') as THREE.BufferAttribute
+  uv.setXY(0, u0, 1)
+  uv.setXY(1, u1, 1)
+  uv.setXY(2, u0, 0)
+  uv.setXY(3, u1, 0)
+  uv.needsUpdate = true
+  return geometry
+}
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 
@@ -368,7 +411,7 @@ function DrawerAssembly({
   geometry,
   groupY,
   handleY,
-  label,
+  labelGeometry,
   labelY,
   materials,
   onToggle,
@@ -386,7 +429,7 @@ function DrawerAssembly({
   geometry: DrawerGeometry
   groupY: number
   handleY: number
-  label: string
+  labelGeometry: THREE.BufferGeometry
   labelY: number
   materials: CabinetMaterials
   onToggle: (drawerId: DrawerId) => void
@@ -421,19 +464,12 @@ function DrawerAssembly({
         />
       </group>
 
-      {/* Troika text shares the drawer transform, so labels cannot drift during effects. */}
-      <Text
+      {/* The atlas plane shares the drawer transform, so labels cannot drift during effects. */}
+      <mesh
+        geometry={labelGeometry}
+        material={materials.label}
         position={[-0.35, labelY, 0.0142]}
-        font={labelFontUrl}
-        fontSize={0.018}
-        letterSpacing={0.075}
-        color="#e5dcc7"
-        anchorX="center"
-        anchorY="middle"
-        maxWidth={0.18}
-      >
-        {label}
-      </Text>
+      />
 
       {showLock && alarmGeometry && keywayGeometry ? (
         <>
@@ -502,6 +538,9 @@ export function FilingCabinet({
       ]),
       dark: createDarkGeometry(),
       keyway: createKeywayGeometry(),
+      labelArchive: createDrawerLabelGeometry(2),
+      labelPayables: createDrawerLabelGeometry(0),
+      labelPolicy: createDrawerLabelGeometry(1),
       middleDrawer: createDrawerGeometry(LARGE_DRAWER_HEIGHT, 0.044, -0.044),
       middleContents: createDrawerContentsGeometry(LARGE_DRAWER_HEIGHT, [
         -0.28, -0.04, 0.21, 0.34, -0.18,
@@ -520,7 +559,9 @@ export function FilingCabinet({
   )
 
   const materials = useMemo<CabinetMaterials>(
-    () => ({
+    () => {
+      const labelTexture = createDrawerLabelAtlas()
+      return {
       alarm: new THREE.MeshStandardMaterial({
         color: '#727d78',
         emissive: LOCK_IDLE_GLOW,
@@ -566,6 +607,13 @@ export function FilingCabinet({
         opacity: 0,
         transparent: true,
       }),
+      label: new THREE.MeshBasicMaterial({
+        alphaTest: 0.08,
+        depthWrite: false,
+        map: labelTexture,
+        toneMapped: false,
+        transparent: true,
+      }),
       paper: new THREE.MeshStandardMaterial({
         color: '#ded5bd',
         metalness: 0,
@@ -592,7 +640,8 @@ export function FilingCabinet({
         metalness: 0.17,
         roughness: 0.67,
       }),
-    }),
+      }
+    },
     [],
   )
 
@@ -606,6 +655,9 @@ export function FilingCabinet({
       geometry.bottomContents.papers.dispose()
       geometry.dark.dispose()
       geometry.keyway.dispose()
+      geometry.labelArchive.dispose()
+      geometry.labelPayables.dispose()
+      geometry.labelPolicy.dispose()
       geometry.middleDrawer.hardware.dispose()
       geometry.middleDrawer.labelCard.dispose()
       geometry.middleDrawer.powder.dispose()
@@ -621,6 +673,7 @@ export function FilingCabinet({
       geometry.topContents.folders.dispose()
       geometry.topContents.papers.dispose()
       geometry.wear.dispose()
+      materials.label.map?.dispose()
       Object.values(materials).forEach((material) => material.dispose())
     },
     [geometry, materials],
@@ -958,7 +1011,7 @@ export function FilingCabinet({
         geometry={geometry.topDrawer}
         groupY={TOP_DRAWER_Y}
         handleY={0}
-        label="PAYABLES"
+        labelGeometry={geometry.labelPayables}
         labelY={0}
         materials={materials}
         onToggle={toggleDrawer}
@@ -977,7 +1030,7 @@ export function FilingCabinet({
         geometry={geometry.middleDrawer}
         groupY={MIDDLE_DRAWER_Y}
         handleY={0.044}
-        label="POLICY"
+        labelGeometry={geometry.labelPolicy}
         labelY={-0.044}
         materials={materials}
         onToggle={toggleDrawer}
@@ -993,7 +1046,7 @@ export function FilingCabinet({
         geometry={geometry.bottomDrawer}
         groupY={BOTTOM_DRAWER_Y}
         handleY={0.044}
-        label="ARCHIVE"
+        labelGeometry={geometry.labelArchive}
         labelY={-0.044}
         materials={materials}
         onToggle={toggleDrawer}

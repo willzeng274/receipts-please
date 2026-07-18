@@ -1,11 +1,39 @@
-import { Instance, Instances, RoundedBox, Text } from "@react-three/drei";
+import { Instance, Instances, RoundedBox } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import type { ThreeElements } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useLabStore } from "../../store/useLabStore";
 import type { ProceduralAssetProps } from "../types";
 
 type FraudStampEffect = NonNullable<ProceduralAssetProps["effectPreset"]>;
+type LabelAtlasRegion = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+const LABEL_ATLAS_WIDTH = 512;
+const LABEL_ATLAS_HEIGHT = 160;
+const EVIDENCE_LABEL_REGION = {
+  x: 0,
+  y: 0,
+  width: 512,
+  height: 64,
+} satisfies LabelAtlasRegion;
+const CARRIAGE_LABEL_REGION = {
+  x: 0,
+  y: 64,
+  width: 256,
+  height: 96,
+} satisfies LabelAtlasRegion;
+const INK_LABEL_REGION = {
+  x: 256,
+  y: 64,
+  width: 256,
+  height: 96,
+} satisfies LabelAtlasRegion;
 
 const EFFECT_DURATIONS: Record<FraudStampEffect, number> = {
   "paper-drop": 0.62,
@@ -37,6 +65,99 @@ const easeOutBack = (value: number) => {
   const overshoot = 1.1;
   return 1 + (overshoot + 1) * t * t * t + overshoot * t * t;
 };
+
+function drawTrackedLabel(
+  context: CanvasRenderingContext2D,
+  copy: string,
+  centerX: number,
+  centerY: number,
+  tracking: number,
+) {
+  const glyphWidths = Array.from(copy, (glyph) =>
+    context.measureText(glyph).width,
+  );
+  const copyWidth =
+    glyphWidths.reduce((total, width) => total + width, 0) +
+    tracking * Math.max(0, copy.length - 1);
+  let cursor = centerX - copyWidth / 2;
+
+  Array.from(copy).forEach((glyph, index) => {
+    context.fillText(glyph, cursor, centerY);
+    cursor += glyphWidths[index] + tracking;
+  });
+}
+
+function createLabelAtlas() {
+  const canvas = document.createElement("canvas");
+  canvas.width = LABEL_ATLAS_WIDTH;
+  canvas.height = LABEL_ATLAS_HEIGHT;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    throw new Error("FraudStamp label atlas requires a 2D canvas context.");
+  }
+
+  context.clearRect(0, 0, LABEL_ATLAS_WIDTH, LABEL_ATLAS_HEIGHT);
+  context.textAlign = "left";
+  context.textBaseline = "middle";
+
+  context.fillStyle = "#382c22";
+  context.font = "700 27px Arial, Helvetica, sans-serif";
+  drawTrackedLabel(context, "EVIDENCE / F-03", 256, 32, 2.25);
+
+  context.fillStyle = "#64151c";
+  context.font = "800 60px Arial, Helvetica, sans-serif";
+  drawTrackedLabel(context, "FRAUD", 128, 112, 4);
+
+  context.fillStyle = "#95101a";
+  drawTrackedLabel(context, "FRAUD", 384, 112, 4);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.name = "FraudStampLabelAtlas";
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.generateMipmaps = false;
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.needsUpdate = true;
+  return texture;
+}
+
+function AtlasLabelPlane({
+  material,
+  region,
+  width,
+  height,
+  ...meshProps
+}: Omit<ThreeElements["mesh"], "geometry" | "material"> & {
+  material: THREE.MeshBasicMaterial;
+  region: LabelAtlasRegion;
+  width: number;
+  height: number;
+}) {
+  const geometry = useMemo(() => {
+    const plane = new THREE.PlaneGeometry(width, height);
+    const uv = plane.getAttribute("uv");
+    const uOffset = region.x / LABEL_ATLAS_WIDTH;
+    const vOffset =
+      1 - (region.y + region.height) / LABEL_ATLAS_HEIGHT;
+    const uScale = region.width / LABEL_ATLAS_WIDTH;
+    const vScale = region.height / LABEL_ATLAS_HEIGHT;
+
+    for (let index = 0; index < uv.count; index += 1) {
+      uv.setXY(
+        index,
+        uOffset + uv.getX(index) * uScale,
+        vOffset + uv.getY(index) * vScale,
+      );
+    }
+    uv.needsUpdate = true;
+    return plane;
+  }, [height, region, width]);
+
+  return <mesh {...meshProps} geometry={geometry} material={material} />;
+}
 
 function resolveFraudStampEffect(
   preset: ProceduralAssetProps["effectPreset"],
@@ -88,6 +209,18 @@ export function FraudStamp({
   );
   const alarmRestColor = useMemo(() => new THREE.Color("#57181c"), []);
   const inkRestColor = useMemo(() => new THREE.Color("#4c1017"), []);
+  const labelAtlas = useMemo(createLabelAtlas, []);
+  const labelMaterial = useMemo(
+    () =>
+      new THREE.MeshBasicMaterial({
+        map: labelAtlas,
+        transparent: true,
+        alphaTest: 0.22,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    [labelAtlas],
+  );
 
   useFrame(({ clock }) => {
     const frame = frameRef.current;
@@ -549,16 +682,13 @@ export function FraudStamp({
           roughness={0.34}
         />
       </RoundedBox>
-      <Text
+      <AtlasLabelPlane
         position={[0, 0.019, 0.0852]}
-        fontSize={0.0066}
-        letterSpacing={0.1}
-        color="#382c22"
-        anchorX="center"
-        anchorY="middle"
-      >
-        EVIDENCE / F-03
-      </Text>
+        material={labelMaterial}
+        region={EVIDENCE_LABEL_REGION}
+        width={0.082}
+        height={0.01025}
+      />
 
       <group ref={platenRef}>
         <RoundedBox
@@ -611,18 +741,14 @@ export function FraudStamp({
             opacity={0.26}
           />
         </mesh>
-        <Text
+        <AtlasLabelPlane
           position={[0, 0.0004, 0]}
           rotation={[-Math.PI / 2, 0, 0]}
-          fontSize={0.019}
-          fontWeight={800}
-          letterSpacing={0.05}
-          color="#95101a"
-          anchorX="center"
-          anchorY="middle"
-        >
-          FRAUD
-        </Text>
+          material={labelMaterial}
+          region={INK_LABEL_REGION}
+          width={0.078}
+          height={0.02925}
+        />
       </group>
 
       <group ref={frameRef}>
@@ -789,17 +915,13 @@ export function FraudStamp({
               roughness={0.38}
             />
           </RoundedBox>
-          <Text
+          <AtlasLabelPlane
             position={[0, 0.128, 0.046]}
-            fontSize={0.022}
-            fontWeight={800}
-            letterSpacing={0.05}
-            color="#64151c"
-            anchorX="center"
-            anchorY="middle"
-          >
-            FRAUD
-          </Text>
+            material={labelMaterial}
+            region={CARRIAGE_LABEL_REGION}
+            width={0.078}
+            height={0.02925}
+          />
 
           <group ref={cassetteRef}>
             <RoundedBox
