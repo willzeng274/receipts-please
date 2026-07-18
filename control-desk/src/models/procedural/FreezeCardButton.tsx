@@ -1,8 +1,14 @@
-import { Instance, Instances, RoundedBox, Text } from '@react-three/drei'
+import { Instance, Instances, RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import {
+  CanvasTexture,
+  LinearFilter,
+  MeshBasicMaterial,
+  PlaneGeometry,
+  SRGBColorSpace,
+} from 'three'
 import type { Group, Mesh, MeshStandardMaterial } from 'three'
-import modelFont from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff?url'
 import { useLabStore } from '../../store/useLabStore'
 import type { ProceduralAssetProps } from '../types'
 
@@ -22,6 +28,180 @@ const SERVICE_LABEL_FACE_Z = 0.1158
 const PANEL_INSTRUCTION_FACE_Y = 0.0246
 const PANEL_STATUS_FACE_Y = 0.0266
 const GUARD_LABEL_FACE_Z = 0.1553
+const LABEL_ATLAS_WIDTH = 1024
+const LABEL_ATLAS_HEIGHT = 512
+const LABEL_ATLAS_COLUMNS = 2
+const LABEL_ATLAS_ROWS = 3
+
+const LABEL_SLOTS = {
+  serviceTitle: { column: 0, row: 0 },
+  serviceCode: { column: 1, row: 0 },
+  instruction: { column: 0, row: 1 },
+  ready: { column: 1, row: 1 },
+  frozen: { column: 0, row: 2 },
+  guard: { column: 1, row: 2 },
+} as const
+
+type LabelSlot = keyof typeof LABEL_SLOTS
+
+const BITMAP_GLYPHS: Readonly<Record<string, readonly string[]>> = {
+  '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+  '4': ['00110', '01010', '10010', '11111', '00010', '00010', '00010'],
+  A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  C: ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+  D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+  E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  F: ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+  G: ['01111', '10000', '10000', '10111', '10001', '10001', '01111'],
+  I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+  L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+  M: ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+  N: ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+  O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+  P: ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+  T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+  U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+  Y: ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+  Z: ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+  '-': ['00000', '00000', '00000', '11111', '00000', '00000', '00000'],
+  '•': ['00000', '00000', '01110', '01110', '01110', '00000', '00000'],
+}
+
+const ATLAS_LABELS: ReadonlyArray<{
+  slot: LabelSlot
+  text: string
+  color: string
+}> = [
+  { slot: 'serviceTitle', text: 'CARD FREEZE', color: '#202426' },
+  { slot: 'serviceCode', text: 'CONTROL  FC-04', color: '#4b4b43' },
+  { slot: 'instruction', text: 'LIFT  •  ARM  •  PRESS', color: '#d1aa47' },
+  { slot: 'ready', text: 'READY', color: '#a9e8d2' },
+  { slot: 'frozen', text: 'FROZEN', color: '#ffb19d' },
+  { slot: 'guard', text: 'SAFETY GUARD', color: '#241d12' },
+]
+
+const drawBitmapLabel = (
+  context: CanvasRenderingContext2D,
+  text: string,
+  color: string,
+  column: number,
+  row: number,
+) => {
+  const cellWidth = LABEL_ATLAS_WIDTH / LABEL_ATLAS_COLUMNS
+  const cellHeight = LABEL_ATLAS_HEIGHT / LABEL_ATLAS_ROWS
+  const paddingX = 24
+  const paddingY = 28
+  const glyphAdvance = 6
+  const glyphWidth = 5
+  const glyphHeight = 7
+  const totalUnits = Math.max(1, text.length * glyphAdvance - 1)
+  const stepX = (cellWidth - paddingX * 2) / totalUnits
+  const stepY = (cellHeight - paddingY * 2) / glyphHeight
+  const inkWidth = Math.max(1, stepX * 0.82)
+  const inkHeight = Math.max(1, stepY * 0.82)
+  const textWidth = totalUnits * stepX
+  const textHeight = glyphHeight * stepY
+  const originX = column * cellWidth + (cellWidth - textWidth) / 2
+  const originY = row * cellHeight + (cellHeight - textHeight) / 2
+
+  context.fillStyle = color
+  for (let characterIndex = 0; characterIndex < text.length; characterIndex += 1) {
+    const glyph = BITMAP_GLYPHS[text[characterIndex]]
+    if (!glyph) continue
+
+    for (let glyphRow = 0; glyphRow < glyphHeight; glyphRow += 1) {
+      for (let glyphColumn = 0; glyphColumn < glyphWidth; glyphColumn += 1) {
+        if (glyph[glyphRow][glyphColumn] !== '1') continue
+        context.fillRect(
+          originX + (characterIndex * glyphAdvance + glyphColumn) * stepX,
+          originY + glyphRow * stepY,
+          inkWidth,
+          inkHeight,
+        )
+      }
+    }
+  }
+}
+
+const createLabelAtlas = () => {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_WIDTH
+  canvas.height = LABEL_ATLAS_HEIGHT
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Freeze card label atlas requires a 2D canvas context.')
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+  for (const label of ATLAS_LABELS) {
+    const slot = LABEL_SLOTS[label.slot]
+    drawBitmapLabel(context, label.text, label.color, slot.column, slot.row)
+  }
+
+  const texture = new CanvasTexture(canvas)
+  texture.name = 'freeze-card-label-atlas'
+  texture.colorSpace = SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = LinearFilter
+  texture.magFilter = LinearFilter
+  texture.needsUpdate = true
+  return texture
+}
+
+const applyLabelUv = (geometry: PlaneGeometry, slotName: LabelSlot) => {
+  const slot = LABEL_SLOTS[slotName]
+  const insetU = 1 / LABEL_ATLAS_WIDTH
+  const insetV = 1 / LABEL_ATLAS_HEIGHT
+  const uMin = slot.column / LABEL_ATLAS_COLUMNS + insetU
+  const uMax = (slot.column + 1) / LABEL_ATLAS_COLUMNS - insetU
+  const vMin = 1 - (slot.row + 1) / LABEL_ATLAS_ROWS + insetV
+  const vMax = 1 - slot.row / LABEL_ATLAS_ROWS - insetV
+  const uv = geometry.getAttribute('uv')
+  const corners = [
+    [uMin, vMax],
+    [uMax, vMax],
+    [uMin, vMin],
+    [uMax, vMin],
+  ] as const
+
+  for (let index = 0; index < corners.length; index += 1) {
+    uv.setXY(index, corners[index][0], corners[index][1])
+  }
+  uv.needsUpdate = true
+}
+
+function AtlasLabel({
+  material,
+  slot,
+  size,
+  position,
+  rotation,
+}: {
+  material: MeshBasicMaterial
+  slot: LabelSlot
+  size: [number, number]
+  position: [number, number, number]
+  rotation?: [number, number, number]
+}) {
+  const [width, height] = size
+  const geometry = useMemo(() => new PlaneGeometry(width, height), [height, width])
+
+  useLayoutEffect(() => {
+    applyLabelUv(geometry, slot)
+  }, [geometry, slot])
+
+  useEffect(() => () => geometry.dispose(), [geometry])
+
+  return (
+    <mesh
+      geometry={geometry}
+      material={material}
+      position={position}
+      rotation={rotation}
+      dispose={null}
+    />
+  )
+}
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value))
 const segment = (time: number, start: number, end: number) =>
@@ -80,7 +260,27 @@ export function FreezeCardButton({
   const [frozen, setFrozen] = useState(false)
   const [effectFrozen, setEffectFrozen] = useState(false)
   const reducedMotion = useLabStore((state) => state.reducedMotion)
+  const labelTexture = useMemo(createLabelAtlas, [])
+  const labelMaterial = useMemo(
+    () =>
+      new MeshBasicMaterial({
+        map: labelTexture,
+        transparent: true,
+        alphaTest: 0.08,
+        depthWrite: false,
+        toneMapped: false,
+      }),
+    [labelTexture],
+  )
   selectedRef.current = selected
+
+  useEffect(
+    () => () => {
+      labelMaterial.dispose()
+      labelTexture.dispose()
+    },
+    [labelMaterial, labelTexture],
+  )
 
   const restoreIdleMaterials = useCallback(() => {
     const isFrozen = frozenRef.current
@@ -439,28 +639,18 @@ export function FreezeCardButton({
           <boxGeometry args={[0.208, 0.003, 0.0012]} />
           <meshStandardMaterial color="#a91d16" roughness={0.38} metalness={0.42} />
         </mesh>
-        <Text
-          font={modelFont}
-          fontSize={0.016}
-          letterSpacing={0.085}
-          color="#202426"
-          anchorX="center"
-          anchorY="middle"
+        <AtlasLabel
+          material={labelMaterial}
+          slot="serviceTitle"
+          size={[0.14, 0.018]}
           position={[0, 0.052, SERVICE_LABEL_FACE_Z]}
-        >
-          CARD FREEZE
-        </Text>
-        <Text
-          font={modelFont}
-          fontSize={0.007}
-          letterSpacing={0.14}
-          color="#4b4b43"
-          anchorX="center"
-          anchorY="middle"
+        />
+        <AtlasLabel
+          material={labelMaterial}
+          slot="serviceCode"
+          size={[0.098, 0.008]}
           position={[0, 0.036, SERVICE_LABEL_FACE_Z]}
-        >
-          CONTROL  FC-04
-        </Text>
+        />
 
         <Instances limit={4} range={4} castShadow>
           <cylinderGeometry args={[0.0034, 0.0034, 0.0024, 16]} />
@@ -503,18 +693,13 @@ export function FreezeCardButton({
             <Instance position={[0.119, 0.0242, 0.068]} />
           </Instances>
 
-          <Text
-            font={modelFont}
-            fontSize={0.0072}
-            letterSpacing={0.1}
-            color="#d1aa47"
-            anchorX="center"
-            anchorY="middle"
+          <AtlasLabel
+            material={labelMaterial}
+            slot="instruction"
+            size={[0.164, 0.0084]}
             position={[0, PANEL_INSTRUCTION_FACE_Y, 0.078]}
             rotation={[-Math.PI / 2, 0, 0]}
-          >
-            LIFT  •  ARM  •  PRESS
-          </Text>
+          />
 
           {/* Bonded card pictogram and independent system-ready indicator. */}
           <RoundedBox
@@ -560,18 +745,13 @@ export function FreezeCardButton({
               metalness={0.58}
             />
           </RoundedBox>
-          <Text
-            font={modelFont}
-            fontSize={0.0084}
-            letterSpacing={0.1}
-            color={frozen || effectFrozen ? '#ffb19d' : '#a9e8d2'}
-            anchorX="center"
-            anchorY="middle"
+          <AtlasLabel
+            material={labelMaterial}
+            slot={frozen || effectFrozen ? 'frozen' : 'ready'}
+            size={[0.048, 0.0092]}
             position={[0.086, PANEL_STATUS_FACE_Y, 0.052]}
             rotation={[-Math.PI / 2, 0, 0]}
-          >
-            {frozen || effectFrozen ? 'FROZEN' : 'READY'}
-          </Text>
+          />
 
           {/* Recessed guard collar and illuminated latching mushroom actuator. */}
           <mesh position={[0, 0.027, 0.006]} castShadow receiveShadow>
@@ -753,17 +933,12 @@ export function FreezeCardButton({
             >
               <meshStandardMaterial color="#d68c1d" roughness={0.37} metalness={0.45} />
             </RoundedBox>
-            <Text
-              font={modelFont}
-              fontSize={0.008}
-              letterSpacing={0.13}
-              color="#241d12"
-              anchorX="center"
-              anchorY="middle"
+            <AtlasLabel
+              material={labelMaterial}
+              slot="guard"
+              size={[0.072, 0.009]}
               position={[0, 0.041, GUARD_LABEL_FACE_Z]}
-            >
-              SAFETY GUARD
-            </Text>
+            />
             <mesh position={[0, 0.049, 0.074]}>
               <boxGeometry args={[0.226, 0.098, 0.162]} />
               <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />

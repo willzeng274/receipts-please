@@ -1,5 +1,3 @@
-import modelFont from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff?url'
-import { Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
@@ -25,7 +23,7 @@ type PhoneKeyDescriptor = {
   instanceIndex: number
   position: readonly [number, number, number]
   labelY: number
-  fontSize: number
+  labelSize: readonly [number, number]
 }
 
 const NUMBER_KEYS = [
@@ -61,25 +59,26 @@ const KEY_DESCRIPTORS: readonly PhoneKeyDescriptor[] = [
     mesh: 'number' as const,
     instanceIndex,
     labelY: 0.012,
-    fontSize: 0.0115,
+    labelSize: [0.0115, 0.0115] as const,
   })),
   ...FUNCTION_KEYS.map((key, instanceIndex) => ({
     ...key,
     mesh: 'function' as const,
     instanceIndex,
     labelY: 0.0109,
-    fontSize: 0.0058,
+    labelSize: [0.022, 0.0068] as const,
   })),
   ...LINE_KEYS.map((key, instanceIndex) => ({
     ...key,
     mesh: instanceIndex === 0 ? ('line-one' as const) : ('other-line' as const),
     instanceIndex: Math.max(0, instanceIndex - 1),
     labelY: 0.0109,
-    fontSize: 0.0062,
+    labelSize: [0.0125, 0.0068] as const,
   })),
 ]
 
 const KEY_BY_ID = new Map(KEY_DESCRIPTORS.map((key) => [key.id, key]))
+const KEY_INDEX_BY_ID = new Map(KEY_DESCRIPTORS.map((key, index) => [key.id, index]))
 
 const NUMBER_KEY_POSITIONS = NUMBER_KEYS.map((key) => key.position)
 const FUNCTION_KEY_POSITIONS = FUNCTION_KEYS.map((key) => key.position)
@@ -170,6 +169,257 @@ const ALERT_EMISSIVE = new THREE.Color('#f04435')
 const LCD_COLOR = new THREE.Color('#365449')
 const LCD_EMISSIVE = new THREE.Color('#75d69b')
 const LCD_DARK = new THREE.Color('#21352f')
+const LABEL_ATLAS_SIZE = 1024
+
+type BitmapGlyph = readonly string[]
+
+const BITMAP_GLYPHS: Readonly<Record<string, BitmapGlyph>> = {
+  ' ': ['00000', '00000', '00000', '00000', '00000', '00000', '00000'],
+  '#': ['01010', '11111', '01010', '01010', '11111', '01010', '00000'],
+  '*': ['00000', '10101', '01110', '11111', '01110', '10101', '00000'],
+  '•': ['00000', '00000', '00100', '01110', '01110', '00100', '00000'],
+  '0': ['01110', '10001', '10011', '10101', '11001', '10001', '01110'],
+  '1': ['00100', '01100', '00100', '00100', '00100', '00100', '01110'],
+  '2': ['01110', '10001', '00001', '00010', '00100', '01000', '11111'],
+  '3': ['11110', '00001', '00001', '01110', '00001', '00001', '11110'],
+  '4': ['00010', '00110', '01010', '10010', '11111', '00010', '00010'],
+  '5': ['11111', '10000', '10000', '11110', '00001', '00001', '11110'],
+  '6': ['01110', '10000', '10000', '11110', '10001', '10001', '01110'],
+  '7': ['11111', '00001', '00010', '00100', '01000', '01000', '01000'],
+  '8': ['01110', '10001', '10001', '01110', '10001', '10001', '01110'],
+  '9': ['01110', '10001', '10001', '01111', '00001', '00001', '01110'],
+  A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+  B: ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+  C: ['01111', '10000', '10000', '10000', '10000', '10000', '01111'],
+  D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+  E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+  F: ['11111', '10000', '10000', '11110', '10000', '10000', '10000'],
+  G: ['01111', '10000', '10000', '10111', '10001', '10001', '01110'],
+  H: ['10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+  I: ['01110', '00100', '00100', '00100', '00100', '00100', '01110'],
+  J: ['00111', '00010', '00010', '00010', '10010', '10010', '01100'],
+  K: ['10001', '10010', '10100', '11000', '10100', '10010', '10001'],
+  L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+  M: ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+  N: ['10001', '11001', '10101', '10011', '10001', '10001', '10001'],
+  O: ['01110', '10001', '10001', '10001', '10001', '10001', '01110'],
+  P: ['11110', '10001', '10001', '11110', '10000', '10000', '10000'],
+  Q: ['01110', '10001', '10001', '10001', '10101', '10010', '01101'],
+  R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+  S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+  T: ['11111', '00100', '00100', '00100', '00100', '00100', '00100'],
+  U: ['10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+  V: ['10001', '10001', '10001', '10001', '10001', '01010', '00100'],
+  W: ['10001', '10001', '10001', '10101', '10101', '10101', '01010'],
+  X: ['10001', '10001', '01010', '00100', '01010', '10001', '10001'],
+  Y: ['10001', '10001', '01010', '00100', '00100', '00100', '00100'],
+  Z: ['11111', '00001', '00010', '00100', '01000', '10000', '11111'],
+}
+
+const UNKNOWN_GLYPH: BitmapGlyph = ['11111', '10001', '00110', '00100', '00000', '00100', '00100']
+
+type LabelSpec = {
+  id: string
+  text: string
+  color: string
+  width: number
+  height: number
+}
+
+type AtlasEntry = {
+  offset: readonly [number, number]
+  scale: readonly [number, number]
+}
+
+type LabelResources = {
+  texture: THREE.CanvasTexture
+  material: THREE.MeshBasicMaterial
+  keyPlane: THREE.PlaneGeometry
+  manualDisplay: THREE.PlaneGeometry
+  unifiedDisplay: THREE.PlaneGeometry
+  interactionDisplay: THREE.PlaneGeometry
+  interactionEntries: ReadonlyMap<string, AtlasEntry>
+  statusLabels: THREE.PlaneGeometry
+  contactLabel: THREE.PlaneGeometry
+}
+
+const KEY_LABEL_SPECS: readonly LabelSpec[] = KEY_DESCRIPTORS.map((key) => ({
+  id: `key:${key.id}`,
+  text: key.label,
+  color: key.mesh === 'number' ? '#292d2b' : '#e2dfcf',
+  width: key.mesh === 'number' ? 64 : key.mesh === 'function' ? 128 : 80,
+  height: 64,
+}))
+
+const DISPLAY_LABEL_SPECS: readonly LabelSpec[] = [
+  { id: 'display:manual', text: 'FINANCE OPS\nLINE 1 READY', color: '#b8f1c9', width: 384, height: 112 },
+  { id: 'display:unified', text: 'UNIFIED READY', color: '#c5f8d4', width: 320, height: 72 },
+  ...KEY_DESCRIPTORS.map((key) => ({
+    id: `display:${key.id}`,
+    text: key.display,
+    color: '#d2f7dd',
+    width: 320,
+    height: 72,
+  })),
+  { id: 'status', text: 'KEY               MSG', color: '#d5d1bf', width: 384, height: 56 },
+  { id: 'contact', text: 'ACCT • 3 LINE', color: '#d2cfbd', width: 320, height: 64 },
+]
+
+function drawBitmapText(context: CanvasRenderingContext2D, spec: LabelSpec, x: number, y: number) {
+  const lines = spec.text.split('\n')
+  const longestLine = Math.max(...lines.map((line) => line.length))
+  const contentUnitsWide = Math.max(1, longestLine * 6 - 1)
+  const contentUnitsHigh = Math.max(1, lines.length * 8 - 1)
+  const pixelSize = Math.max(
+    1,
+    Math.floor(Math.min((spec.width - 16) / contentUnitsWide, (spec.height - 16) / contentUnitsHigh)),
+  )
+  const contentWidth = contentUnitsWide * pixelSize
+  const contentHeight = contentUnitsHigh * pixelSize
+  const startX = x + Math.floor((spec.width - contentWidth) / 2)
+  const startY = y + Math.floor((spec.height - contentHeight) / 2)
+
+  context.fillStyle = spec.color
+  lines.forEach((line, lineIndex) => {
+    const lineWidth = Math.max(1, line.length * 6 - 1) * pixelSize
+    const lineX = startX + Math.floor((contentWidth - lineWidth) / 2)
+    const lineY = startY + lineIndex * 8 * pixelSize
+
+    Array.from(line).forEach((character, characterIndex) => {
+      const glyph = BITMAP_GLYPHS[character] ?? UNKNOWN_GLYPH
+      glyph.forEach((row, rowIndex) => {
+        Array.from(row).forEach((pixel, columnIndex) => {
+          if (pixel === '1') {
+            context.fillRect(
+              lineX + (characterIndex * 6 + columnIndex) * pixelSize,
+              lineY + rowIndex * pixelSize,
+              pixelSize,
+              pixelSize,
+            )
+          }
+        })
+      })
+    })
+  })
+}
+
+function remapPlaneUvs(geometry: THREE.PlaneGeometry, entry: AtlasEntry) {
+  const uv = geometry.getAttribute('uv')
+  const baseUv =
+    (geometry.userData.baseUv as Float32Array | undefined) ?? new Float32Array(uv.array as ArrayLike<number>)
+  geometry.userData.baseUv = baseUv
+  for (let index = 0; index < uv.count; index += 1) {
+    uv.setXY(
+      index,
+      entry.offset[0] + baseUv[index * 2] * entry.scale[0],
+      entry.offset[1] + baseUv[index * 2 + 1] * entry.scale[1],
+    )
+  }
+  uv.needsUpdate = true
+}
+
+function createLabelResources(): LabelResources {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_SIZE
+  canvas.height = LABEL_ATLAS_SIZE
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('DeskPhone label atlas requires a 2D canvas context')
+
+  const entries = new Map<string, AtlasEntry>()
+  const specs = [...KEY_LABEL_SPECS, ...DISPLAY_LABEL_SPECS]
+  let cursorX = 2
+  let cursorY = 2
+  let rowHeight = 0
+
+  specs.forEach((spec) => {
+    if (cursorX + spec.width + 2 > LABEL_ATLAS_SIZE) {
+      cursorX = 2
+      cursorY += rowHeight + 2
+      rowHeight = 0
+    }
+    if (cursorY + spec.height + 2 > LABEL_ATLAS_SIZE) {
+      throw new Error('DeskPhone label atlas overflow')
+    }
+
+    drawBitmapText(context, spec, cursorX, cursorY)
+    entries.set(spec.id, {
+      offset: [cursorX / LABEL_ATLAS_SIZE, 1 - (cursorY + spec.height) / LABEL_ATLAS_SIZE],
+      scale: [spec.width / LABEL_ATLAS_SIZE, spec.height / LABEL_ATLAS_SIZE],
+    })
+    cursorX += spec.width + 2
+    rowHeight = Math.max(rowHeight, spec.height)
+  })
+
+  const texture = new THREE.CanvasTexture(canvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.magFilter = THREE.NearestFilter
+  texture.minFilter = THREE.LinearMipmapLinearFilter
+  texture.generateMipmaps = true
+  texture.name = 'desk-phone-label-atlas'
+
+  const material = new THREE.MeshBasicMaterial({
+    map: texture,
+    transparent: true,
+    alphaTest: 0.08,
+    depthWrite: false,
+    toneMapped: false,
+  })
+  material.name = 'desk-phone-atlas-labels'
+  material.polygonOffset = true
+  material.polygonOffsetFactor = -1
+  material.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+#ifdef USE_INSTANCING
+attribute vec4 atlasUv;
+#endif`,
+      )
+      .replace(
+        '#include <uv_vertex>',
+        `#include <uv_vertex>
+#if defined( USE_INSTANCING ) && defined( USE_MAP )
+vMapUv = atlasUv.xy + uv * atlasUv.zw;
+#endif`,
+      )
+  }
+  material.customProgramCacheKey = () => 'desk-phone-instanced-atlas-v1'
+
+  const requireEntry = (id: string) => {
+    const entry = entries.get(id)
+    if (!entry) throw new Error(`Missing DeskPhone label atlas entry: ${id}`)
+    return entry
+  }
+
+  const keyPlane = new THREE.PlaneGeometry(1, 1)
+  const keyUv = new Float32Array(KEY_DESCRIPTORS.length * 4)
+  KEY_DESCRIPTORS.forEach((key, index) => {
+    const entry = requireEntry(`key:${key.id}`)
+    keyUv.set([...entry.offset, ...entry.scale], index * 4)
+  })
+  keyPlane.setAttribute('atlasUv', new THREE.InstancedBufferAttribute(keyUv, 4))
+
+  const makePlane = (id: string, width: number, height: number) => {
+    const geometry = new THREE.PlaneGeometry(width, height)
+    remapPlaneUvs(geometry, requireEntry(id))
+    return geometry
+  }
+
+  return {
+    texture,
+    material,
+    keyPlane,
+    manualDisplay: makePlane('display:manual', 0.106, 0.018),
+    unifiedDisplay: makePlane('display:unified', 0.106, 0.01),
+    interactionDisplay: makePlane('display:digit-1', 0.108, 0.01),
+    interactionEntries: new Map(
+      KEY_DESCRIPTORS.map((key) => [key.display, requireEntry(`display:${key.id}`)]),
+    ),
+    statusLabels: makePlane('status', 0.108, 0.006),
+    contactLabel: makePlane('contact', 0.084, 0.0072),
+  }
+}
 
 type MotionState = {
   active: boolean
@@ -332,7 +582,7 @@ export function DeskPhone({
   const otherLineKeysRef = useRef<THREE.InstancedMesh>(null)
   const otherLineLedsRef = useRef<THREE.InstancedMesh>(null)
   const keyHitTargetsRef = useRef<THREE.InstancedMesh>(null)
-  const keyLabelRefs = useRef<Record<string, THREE.Object3D | null>>({})
+  const keyLabelsRef = useRef<THREE.InstancedMesh>(null)
   const cradleRef = useRef<THREE.InstancedMesh>(null)
   const cradleGuardsRef = useRef<THREE.InstancedMesh>(null)
   const cradlePadsRef = useRef<THREE.InstancedMesh>(null)
@@ -349,6 +599,8 @@ export function DeskPhone({
   const keyInteractionRef = useRef<KeyInteractionState>({ active: false, elapsed: 0, keyId: null })
   const displayModeRef = useRef<'manual' | 'unified'>('manual')
   const keyMatrixHelperRef = useRef(new THREE.Object3D())
+
+  const labelResources = useMemo(() => createLabelResources(), [])
 
   const geometries = useMemo(
     () => ({
@@ -478,8 +730,16 @@ export function DeskPhone({
     () => () => {
       Object.values(geometries).forEach((geometry) => geometry.dispose())
       Object.values(materials).forEach((material) => material.dispose())
+      labelResources.texture.dispose()
+      labelResources.material.dispose()
+      labelResources.keyPlane.dispose()
+      labelResources.manualDisplay.dispose()
+      labelResources.unifiedDisplay.dispose()
+      labelResources.interactionDisplay.dispose()
+      labelResources.statusLabels.dispose()
+      labelResources.contactLabel.dispose()
     },
-    [geometries, materials],
+    [geometries, labelResources, materials],
   )
 
   useLayoutEffect(() => {
@@ -507,6 +767,15 @@ export function DeskPhone({
     setInstances(
       keyHitTargetsRef.current,
       KEY_DESCRIPTORS.map(({ position: [x, , z] }) => ({ position: [x, 0.017, z] as const })),
+      helper,
+    )
+    setInstances(
+      keyLabelsRef.current,
+      KEY_DESCRIPTORS.map((key) => ({
+        position: [key.position[0], key.labelY, key.position[2]] as const,
+        rotation: [-HALF_PI, 0, 0] as const,
+        scale: [key.labelSize[0], key.labelSize[1], 1] as const,
+      })),
       helper,
     )
     setInstances(
@@ -553,36 +822,49 @@ export function DeskPhone({
     )
   }, [])
 
+  useLayoutEffect(() => {
+    const entry = labelResources.interactionEntries.get(interactionDisplay)
+    if (entry) remapPlaneUvs(labelResources.interactionDisplay, entry)
+  }, [interactionDisplay, labelResources])
+
   const setKeyOffset = useCallback((key: PhoneKeyDescriptor, offsetY: number) => {
     if (key.mesh === 'line-one') {
       if (lineOneDirectRef.current) lineOneDirectRef.current.position.y = offsetY
-      return
+    } else {
+      const mesh =
+        key.mesh === 'number'
+          ? numberKeysRef.current
+          : key.mesh === 'function'
+            ? functionKeysRef.current
+            : otherLineKeysRef.current
+      if (!mesh) return
+
+      const helper = keyMatrixHelperRef.current
+      helper.position.set(key.position[0], key.position[1] + offsetY, key.position[2])
+      helper.rotation.set(0, 0, 0)
+      helper.scale.set(1, 1, 1)
+      helper.updateMatrix()
+      mesh.setMatrixAt(key.instanceIndex, helper.matrix)
+      mesh.instanceMatrix.needsUpdate = true
+
+      if (key.mesh === 'other-line' && otherLineLedsRef.current) {
+        helper.position.set(0.091, 0.012 + offsetY, key.position[2])
+        helper.updateMatrix()
+        otherLineLedsRef.current.setMatrixAt(key.instanceIndex, helper.matrix)
+        otherLineLedsRef.current.instanceMatrix.needsUpdate = true
+      }
     }
 
-    const mesh =
-      key.mesh === 'number'
-        ? numberKeysRef.current
-        : key.mesh === 'function'
-          ? functionKeysRef.current
-          : otherLineKeysRef.current
-    if (!mesh) return
-
-    const helper = keyMatrixHelperRef.current
-    helper.position.set(key.position[0], key.position[1] + offsetY, key.position[2])
-    helper.rotation.set(0, 0, 0)
-    helper.scale.set(1, 1, 1)
-    helper.updateMatrix()
-    mesh.setMatrixAt(key.instanceIndex, helper.matrix)
-    mesh.instanceMatrix.needsUpdate = true
-
-    const label = keyLabelRefs.current[key.id]
-    if (label) label.position.y = key.labelY + offsetY
-
-    if (key.mesh === 'other-line' && otherLineLedsRef.current) {
-      helper.position.set(0.091, 0.012 + offsetY, key.position[2])
+    const labelIndex = KEY_INDEX_BY_ID.get(key.id)
+    const labelMesh = keyLabelsRef.current
+    if (labelIndex !== undefined && labelMesh) {
+      const helper = keyMatrixHelperRef.current
+      helper.position.set(key.position[0], key.labelY + offsetY, key.position[2])
+      helper.rotation.set(-HALF_PI, 0, 0)
+      helper.scale.set(key.labelSize[0], key.labelSize[1], 1)
       helper.updateMatrix()
-      otherLineLedsRef.current.setMatrixAt(key.instanceIndex, helper.matrix)
-      otherLineLedsRef.current.instanceMatrix.needsUpdate = true
+      labelMesh.setMatrixAt(labelIndex, helper.matrix)
+      labelMesh.instanceMatrix.needsUpdate = true
     }
   }, [])
 
@@ -910,18 +1192,6 @@ export function DeskPhone({
                   roughness={0.34}
                 />
               </mesh>
-              <Text
-                font={modelFont}
-                fontSize={0.0062}
-                letterSpacing={0.025}
-                color="#e2dfcf"
-                anchorX="center"
-                anchorY="middle"
-                position={[LINE_KEYS[0].position[0], 0.0109, LINE_KEYS[0].position[2]]}
-                rotation={[-HALF_PI, 0, 0]}
-              >
-                {LINE_KEYS[0].label}
-              </Text>
             </group>
           </group>
           <instancedMesh
@@ -929,25 +1199,12 @@ export function DeskPhone({
             args={[geometries.indicator, materials.lensOff, OTHER_LINE_LED_POSITIONS.length]}
             castShadow
           />
-
-          {KEY_DESCRIPTORS.filter((key) => key.mesh !== 'line-one').map((key) => (
-            <Text
-              key={key.id}
-              ref={(node) => {
-                keyLabelRefs.current[key.id] = node
-              }}
-              font={modelFont}
-              fontSize={key.fontSize}
-              letterSpacing={key.mesh === 'number' ? 0.06 : 0.025}
-              color={key.mesh === 'number' ? '#292d2b' : '#e2dfcf'}
-              anchorX="center"
-              anchorY="middle"
-              position={[key.position[0], key.labelY, key.position[2]]}
-              rotation={[-HALF_PI, 0, 0]}
-            >
-              {key.label}
-            </Text>
-          ))}
+          <instancedMesh
+            ref={keyLabelsRef}
+            args={[labelResources.keyPlane, labelResources.material, KEY_DESCRIPTORS.length]}
+            frustumCulled={false}
+            renderOrder={2}
+          />
 
           <instancedMesh
             ref={keyHitTargetsRef}
@@ -986,41 +1243,17 @@ export function DeskPhone({
           </mesh>
           <mesh geometry={geometries.displayRail} material={materials.panelInset} position={[0, 0.018, 0.0112]} receiveShadow />
           <group ref={manualDisplayRef} position={[0, DISPLAY_TEXT_Y, DISPLAY_TEXT_Z]}>
-            <Text
-              font={modelFont}
-              fontSize={0.0068}
-              lineHeight={1.35}
-              letterSpacing={0.08}
-              color="#b8f1c9"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {'FINANCE OPS\nLINE 1 READY'}
-            </Text>
+            <mesh geometry={labelResources.manualDisplay} material={labelResources.material} renderOrder={2} />
           </group>
           <group ref={unifiedDisplayRef} position={[0, DISPLAY_TEXT_Y, DISPLAY_TEXT_Z]} visible={false}>
-            <Text
-              font={modelFont}
-              fontSize={0.0068}
-              letterSpacing={0.08}
-              color="#c5f8d4"
-              anchorX="center"
-              anchorY="middle"
-            >
-              UNIFIED READY
-            </Text>
+            <mesh geometry={labelResources.unifiedDisplay} material={labelResources.material} renderOrder={2} />
           </group>
           <group ref={interactionDisplayRef} position={[0, DISPLAY_TEXT_Y, DISPLAY_TEXT_Z + 0.0004]} visible={false}>
-            <Text
-              font={modelFont}
-              fontSize={0.0066}
-              letterSpacing={0.08}
-              color="#d2f7dd"
-              anchorX="center"
-              anchorY="middle"
-            >
-              {interactionDisplay}
-            </Text>
+            <mesh
+              geometry={labelResources.interactionDisplay}
+              material={labelResources.material}
+              renderOrder={2}
+            />
           </group>
           <mesh geometry={geometries.alertLens} position={[-0.057, 0.018, 0.0132]} castShadow>
             <meshStandardMaterial
@@ -1031,16 +1264,6 @@ export function DeskPhone({
               roughness={0.32}
             />
           </mesh>
-          <Text
-            font={modelFont}
-            fontSize={0.0042}
-            color="#d5d1bf"
-            anchorX="left"
-            anchorY="middle"
-            position={[-0.049, 0.018, 0.0154]}
-          >
-            KEY
-          </Text>
           <mesh geometry={geometries.alertLens} position={[0.057, 0.018, 0.0132]} castShadow>
             <meshStandardMaterial
               ref={alertLedRef}
@@ -1050,16 +1273,12 @@ export function DeskPhone({
               roughness={0.32}
             />
           </mesh>
-          <Text
-            font={modelFont}
-            fontSize={0.0042}
-            color="#d5d1bf"
-            anchorX="right"
-            anchorY="middle"
-            position={[0.049, 0.018, 0.0154]}
-          >
-            MSG
-          </Text>
+          <mesh
+            geometry={labelResources.statusLabels}
+            material={labelResources.material}
+            position={[0, 0.018, 0.0154]}
+            renderOrder={2}
+          />
         </group>
 
         <instancedMesh ref={cradleRef} args={[geometries.cradle, materials.bodyDark, CRADLE_POSITIONS.length]} castShadow receiveShadow />
@@ -1135,18 +1354,12 @@ export function DeskPhone({
           />
         </group>
 
-        <Text
-          font={modelFont}
-          fontSize={0.005}
-          letterSpacing={0.06}
-          color="#d2cfbd"
-          anchorX="center"
-          anchorY="middle"
+        <mesh
+          geometry={labelResources.contactLabel}
+          material={labelResources.material}
           position={[0, 0.044, 0.1125]}
-          rotation={[0, 0, 0]}
-        >
-          ACCT • 3 LINE
-        </Text>
+          renderOrder={2}
+        />
       </group>
     </group>
   )

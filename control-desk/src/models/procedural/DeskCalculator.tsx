@@ -1,19 +1,23 @@
-import { RoundedBox, Text } from '@react-three/drei'
+import { RoundedBox } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import modelFont from '@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-500-normal.woff?url'
 import {
   BufferGeometry,
+  CanvasTexture,
   DoubleSide,
+  DynamicDrawUsage,
   ExtrudeGeometry,
   Float32BufferAttribute,
   Group,
   InstancedMesh,
+  LinearFilter,
   MathUtils,
+  MeshBasicMaterial,
   MeshPhysicalMaterial,
   Object3D,
   Shape,
+  SRGBColorSpace,
 } from 'three'
 import type { EffectPreset } from '../../store/useLabStore'
 import { useLabStore } from '../../store/useLabStore'
@@ -29,9 +33,13 @@ const TAPE_BASE_Y = 0.165
 const TAPE_BASE_Z = -0.097
 const TEAR_BAR_BASE_Y = 0.164
 const TEAR_BAR_BASE_Z = -0.104
-const DISPLAY_TEXT_Z = 0.01755
+const DISPLAY_LABEL_Z = 0.01765
 const DISPLAY_EMISSIVE = 0x153b2b
 const KEY_TRAVEL = 0.0034
+const LABEL_ATLAS_SIZE = 1024
+const INITIAL_DISPLAY_VALUE = '4,495.00 %'
+const INITIAL_DISPLAY_STATUS = 'TIP ÷ SUBTOTAL'
+const INITIAL_TAPE_OUTPUT = 'TIP / SUBTOTAL\n4,495.00 %\nCONCERNING.'
 
 const EFFECT_DURATIONS: Record<EffectPreset, number> = {
   'paper-drop': 0.55,
@@ -44,6 +52,28 @@ const EFFECT_DURATIONS: Record<EffectPreset, number> = {
 
 const KEY_COLUMNS = [-0.072, -0.024, 0.024, 0.072] as const
 const KEY_ROWS = [-0.044, -0.004, 0.036, 0.076, 0.116] as const
+
+type AtlasCell = {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+const KEY_LABEL_CELLS = Array.from({ length: 20 }, (_, index): AtlasCell => ({
+  x: (index % 4) * 96,
+  y: Math.floor(index / 4) * 96,
+  width: 96,
+  height: 96,
+}))
+
+const LABEL_CELLS = {
+  displayValue: { x: 400, y: 0, width: 600, height: 120 },
+  displayStatus: { x: 400, y: 120, width: 600, height: 72 },
+  displayHeader: { x: 400, y: 192, width: 600, height: 72 },
+  sideBadge: { x: 400, y: 264, width: 300, height: 72 },
+  tape: { x: 400, y: 352, width: 600, height: 480 },
+} as const satisfies Record<string, AtlasCell>
 
 type KeyFamily = 'number' | 'memory' | 'operation' | 'total' | 'clear'
 
@@ -124,6 +154,160 @@ const WEAR_MARKS = [
   [0.068, 0.055, 0.155, -0.05],
   [0.087, 0.051, 0.155, 0.14],
 ] as const
+
+function drawAtlasLine(
+  context: CanvasRenderingContext2D,
+  cell: AtlasCell,
+  text: string,
+  color: string,
+  fontSize: number,
+  align: CanvasTextAlign = 'center',
+  yOffset = 0,
+) {
+  context.save()
+  context.beginPath()
+  context.rect(cell.x, cell.y, cell.width, cell.height)
+  context.clip()
+  context.fillStyle = color
+  context.font = `700 ${fontSize}px "Courier New", monospace`
+  context.textAlign = align
+  context.textBaseline = 'middle'
+
+  const padding = Math.max(8, cell.width * 0.045)
+  const x = align === 'right'
+    ? cell.x + cell.width - padding
+    : align === 'left'
+      ? cell.x + padding
+      : cell.x + cell.width / 2
+
+  context.fillText(text, x, cell.y + cell.height / 2 + yOffset, cell.width - padding * 2)
+  context.restore()
+}
+
+function renderLabelAtlas(
+  canvas: HTMLCanvasElement,
+  displayValue: string,
+  displayStatus: string,
+  tapeOutput: string,
+) {
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('DeskCalculator label atlas requires a 2D canvas context.')
+
+  context.clearRect(0, 0, canvas.width, canvas.height)
+
+  for (let index = 0; index < KEYS.length; index += 1) {
+    const key = KEYS[index]
+    drawAtlasLine(context, KEY_LABEL_CELLS[index], key.label, key.labelColor, key.fontSize >= 0.011 ? 54 : 46)
+  }
+
+  drawAtlasLine(context, LABEL_CELLS.displayValue, displayValue, '#b9e197', 62, 'right')
+  drawAtlasLine(context, LABEL_CELLS.displayStatus, displayStatus, '#86a989', 30, 'left')
+  drawAtlasLine(context, LABEL_CELLS.displayHeader, 'LEDGERMASTER 12 · PRINT', '#a7aa9d', 27, 'left')
+  drawAtlasLine(context, LABEL_CELLS.sideBadge, 'FINANCE', '#252824', 38)
+
+  const tapeLines = tapeOutput.split('\n')
+  const tapeLineHeight = 72
+  const tapeStartY = LABEL_CELLS.tape.y + LABEL_CELLS.tape.height / 2 - ((tapeLines.length - 1) * tapeLineHeight) / 2
+  for (let index = 0; index < tapeLines.length; index += 1) {
+    drawAtlasLine(
+      context,
+      LABEL_CELLS.tape,
+      tapeLines[index],
+      '#343631',
+      46,
+      'center',
+      tapeStartY + index * tapeLineHeight - (LABEL_CELLS.tape.y + LABEL_CELLS.tape.height / 2),
+    )
+  }
+}
+
+function makeLabelAtlas() {
+  const canvas = document.createElement('canvas')
+  canvas.width = LABEL_ATLAS_SIZE
+  canvas.height = LABEL_ATLAS_SIZE
+  renderLabelAtlas(canvas, INITIAL_DISPLAY_VALUE, INITIAL_DISPLAY_STATUS, INITIAL_TAPE_OUTPUT)
+
+  const texture = new CanvasTexture(canvas)
+  texture.colorSpace = SRGBColorSpace
+  texture.generateMipmaps = false
+  texture.minFilter = LinearFilter
+  texture.magFilter = LinearFilter
+  texture.needsUpdate = true
+  texture.name = 'desk-calculator-label-atlas'
+
+  return { canvas, texture }
+}
+
+function atlasUv(cell: AtlasCell) {
+  return {
+    u0: cell.x / LABEL_ATLAS_SIZE,
+    u1: (cell.x + cell.width) / LABEL_ATLAS_SIZE,
+    v0: 1 - (cell.y + cell.height) / LABEL_ATLAS_SIZE,
+    v1: 1 - cell.y / LABEL_ATLAS_SIZE,
+  }
+}
+
+function makeAtlasPlaneGeometry(width: number, height: number, cell: AtlasCell) {
+  const geometry = new BufferGeometry()
+  const { u0, u1, v0, v1 } = atlasUv(cell)
+
+  geometry.setAttribute('position', new Float32BufferAttribute([
+    -width / 2, -height / 2, 0,
+    width / 2, -height / 2, 0,
+    width / 2, height / 2, 0,
+    -width / 2, height / 2, 0,
+  ], 3))
+  geometry.setAttribute('uv', new Float32BufferAttribute([
+    u0, v0,
+    u1, v0,
+    u1, v1,
+    u0, v1,
+  ], 2))
+  geometry.setIndex([0, 1, 2, 0, 2, 3])
+  geometry.computeBoundingSphere()
+  return geometry
+}
+
+function makeKeyLabelGeometry() {
+  const positions: number[] = []
+  const uvs: number[] = []
+  const indices: number[] = []
+  const halfWidth = 0.013
+  const halfDepth = 0.009
+  const y = KEY_BASE_Y + KEY_LABEL_SURFACE_Y
+
+  for (let index = 0; index < KEYS.length; index += 1) {
+    const key = KEYS[index]
+    const x = KEY_COLUMNS[key.column]
+    const z = KEY_ROWS[key.row]
+    const { u0, u1, v0, v1 } = atlasUv(KEY_LABEL_CELLS[index])
+    const vertex = index * 4
+
+    // The label top points toward -z, matching the former Text rotation and +z player view.
+    positions.push(
+      x - halfWidth, y, z + halfDepth,
+      x + halfWidth, y, z + halfDepth,
+      x + halfWidth, y, z - halfDepth,
+      x - halfWidth, y, z - halfDepth,
+    )
+    uvs.push(
+      u0, v0,
+      u1, v0,
+      u1, v1,
+      u0, v1,
+    )
+    indices.push(vertex, vertex + 1, vertex + 2, vertex, vertex + 2, vertex + 3)
+  }
+
+  const geometry = new BufferGeometry()
+  const positionAttribute = new Float32BufferAttribute(positions, 3)
+  positionAttribute.setUsage(DynamicDrawUsage)
+  geometry.setAttribute('position', positionAttribute)
+  geometry.setAttribute('uv', new Float32BufferAttribute(uvs, 2))
+  geometry.setIndex(indices)
+  geometry.computeBoundingSphere()
+  return geometry
+}
 
 function roundedRectShape(width: number, depth: number, radius: number) {
   const shape = new Shape()
@@ -220,15 +404,28 @@ function motionPulse(time: number, attackAt: number, attackDuration: number, rel
 
 function setKeyTransforms(
   groups: Record<string, Group | null>,
+  labelGeometry: BufferGeometry,
   familyTravel: Record<KeyFamily, number>,
   activeKeyId: string | null,
   activeTravel: number,
 ) {
-  for (const key of KEYS) {
+  const labelPositions = labelGeometry.getAttribute('position')
+
+  for (let index = 0; index < KEYS.length; index += 1) {
+    const key = KEYS[index]
+    const travel = familyTravel[key.family] + (key.id === activeKeyId ? activeTravel : 0)
     const group = groups[key.id]
-    if (!group) continue
-    group.position.y = KEY_BASE_Y + familyTravel[key.family] + (key.id === activeKeyId ? activeTravel : 0)
+    if (group) group.position.y = KEY_BASE_Y + travel
+
+    const labelY = KEY_BASE_Y + KEY_LABEL_SURFACE_Y + travel
+    const firstVertex = index * 4
+    labelPositions.setY(firstVertex, labelY)
+    labelPositions.setY(firstVertex + 1, labelY)
+    labelPositions.setY(firstVertex + 2, labelY)
+    labelPositions.setY(firstVertex + 3, labelY)
   }
+
+  labelPositions.needsUpdate = true
 }
 
 export function DeskCalculator({
@@ -254,28 +451,83 @@ export function DeskCalculator({
   const selectedRef = useRef(selected)
   selectedRef.current = selected
 
-  const [displayValue, setDisplayValue] = useState('4,495.00 %')
-  const [displayStatus, setDisplayStatus] = useState('TIP ÷ SUBTOTAL')
-  const [tapeOutput, setTapeOutput] = useState('TIP / SUBTOTAL\n4,495.00 %\nCONCERNING.')
+  const [displayValue, setDisplayValue] = useState(INITIAL_DISPLAY_VALUE)
+  const [displayStatus, setDisplayStatus] = useState(INITIAL_DISPLAY_STATUS)
+  const [tapeOutput, setTapeOutput] = useState(INITIAL_TAPE_OUTPUT)
 
   const reducedMotion = useLabStore((state) => state.reducedMotion)
 
   const housingGeometry = useMemo(makeHousingGeometry, [])
   const keyGeometry = useMemo(makeKeyGeometry, [])
   const tapeGeometry = useMemo(makeTapeGeometry, [])
+  const keyLabelGeometry = useMemo(makeKeyLabelGeometry, [])
+  const labelAtlas = useMemo(makeLabelAtlas, [])
+  const labelMaterial = useMemo(() => new MeshBasicMaterial({
+    map: labelAtlas.texture,
+    transparent: true,
+    alphaTest: 0.08,
+    depthWrite: false,
+    side: DoubleSide,
+    toneMapped: false,
+  }), [labelAtlas])
+  const displayValueGeometry = useMemo(
+    () => makeAtlasPlaneGeometry(0.158, 0.022, LABEL_CELLS.displayValue),
+    [],
+  )
+  const displayStatusGeometry = useMemo(
+    () => makeAtlasPlaneGeometry(0.162, 0.0082, LABEL_CELLS.displayStatus),
+    [],
+  )
+  const displayHeaderGeometry = useMemo(
+    () => makeAtlasPlaneGeometry(0.162, 0.0074, LABEL_CELLS.displayHeader),
+    [],
+  )
+  const tapeLabelGeometry = useMemo(
+    () => makeAtlasPlaneGeometry(0.078, 0.052, LABEL_CELLS.tape),
+    [],
+  )
+  const sideBadgeGeometry = useMemo(
+    () => makeAtlasPlaneGeometry(0.075, 0.015, LABEL_CELLS.sideBadge),
+    [],
+  )
+
+  useLayoutEffect(() => {
+    renderLabelAtlas(labelAtlas.canvas, displayValue, displayStatus, tapeOutput)
+    labelAtlas.texture.needsUpdate = true
+  }, [displayStatus, displayValue, labelAtlas, tapeOutput])
 
   useEffect(
     () => () => {
       housingGeometry.dispose()
       keyGeometry.dispose()
       tapeGeometry.dispose()
+      keyLabelGeometry.dispose()
+      displayValueGeometry.dispose()
+      displayStatusGeometry.dispose()
+      displayHeaderGeometry.dispose()
+      tapeLabelGeometry.dispose()
+      sideBadgeGeometry.dispose()
+      labelMaterial.dispose()
+      labelAtlas.texture.dispose()
     },
-    [housingGeometry, keyGeometry, tapeGeometry],
+    [
+      displayHeaderGeometry,
+      displayStatusGeometry,
+      displayValueGeometry,
+      housingGeometry,
+      keyGeometry,
+      keyLabelGeometry,
+      labelAtlas,
+      labelMaterial,
+      sideBadgeGeometry,
+      tapeGeometry,
+      tapeLabelGeometry,
+    ],
   )
 
   useLayoutEffect(() => {
     const helper = new Object3D()
-    setKeyTransforms(keyGroupsRef.current, EMPTY_KEY_TRAVEL, null, 0)
+    setKeyTransforms(keyGroupsRef.current, keyLabelGeometry, EMPTY_KEY_TRAVEL, null, 0)
 
     const feet = feetRef.current
     if (feet) {
@@ -331,7 +583,7 @@ export function DeskCalculator({
       wear.instanceMatrix.needsUpdate = true
       wear.computeBoundingSphere()
     }
-  }, [])
+  }, [keyLabelGeometry])
 
   const setKeyGroupRef = useCallback((id: string, group: Group | null) => {
     keyGroupsRef.current[id] = group
@@ -589,6 +841,7 @@ export function DeskCalculator({
 
     setKeyTransforms(
       keyGroupsRef.current,
+      keyLabelGeometry,
       keyTravel,
       activeKeyId,
       -KEY_TRAVEL * activeKeyAmount * mechanicalScale,
@@ -636,17 +889,6 @@ export function DeskCalculator({
               <mesh geometry={keyGeometry} castShadow receiveShadow>
                 <meshStandardMaterial {...KEY_MATERIALS[key.family]} />
               </mesh>
-              <Text
-                font={modelFont}
-                position={[0, KEY_LABEL_SURFACE_Y, 0]}
-                rotation={[-HALF_PI, 0, 0]}
-                fontSize={key.fontSize}
-                color={key.labelColor}
-                anchorX="center"
-                anchorY="middle"
-              >
-                {key.label}
-              </Text>
               <mesh
                 position={[0, 0.009, 0]}
                 onPointerDown={(event) => beginKeyPress(key, event)}
@@ -663,6 +905,9 @@ export function DeskCalculator({
             </group>
           </group>
         ))}
+
+        {/* One synchronous atlas draw replaces twenty asynchronous SDF text meshes. */}
+        <mesh geometry={keyLabelGeometry} material={labelMaterial} renderOrder={2} />
 
         <instancedMesh ref={screwsRef} args={[undefined, undefined, PANEL_SCREWS.length]} castShadow>
           <cylinderGeometry args={[0.0031, 0.0031, 0.0018, 16]} />
@@ -687,40 +932,24 @@ export function DeskCalculator({
             emissiveIntensity={selected ? 0.58 : 0.24}
           />
         </RoundedBox>
-        <Text
-          font={modelFont}
-          position={[0.079, 0.0095, DISPLAY_TEXT_Z]}
-          fontSize={0.0136}
-          color="#b9e197"
-          anchorX="right"
-          anchorY="middle"
-          textAlign="right"
-          whiteSpace="nowrap"
-        >
-          {displayValue}
-        </Text>
-        <Text
-          font={modelFont}
-          position={[-0.081, -0.006, DISPLAY_TEXT_Z]}
-          fontSize={0.00465}
-          color="#86a989"
-          anchorX="left"
-          anchorY="middle"
-          whiteSpace="nowrap"
-        >
-          {displayStatus}
-        </Text>
-        <Text
-          font={modelFont}
-          position={[-0.081, -0.0131, DISPLAY_TEXT_Z]}
-          fontSize={0.0042}
-          color="#a7aa9d"
-          anchorX="left"
-          anchorY="middle"
-          whiteSpace="nowrap"
-        >
-          LEDGERMASTER 12 · PRINT
-        </Text>
+        <mesh
+          geometry={displayValueGeometry}
+          material={labelMaterial}
+          position={[0, 0.0095, DISPLAY_LABEL_Z]}
+          renderOrder={2}
+        />
+        <mesh
+          geometry={displayStatusGeometry}
+          material={labelMaterial}
+          position={[0, -0.006, DISPLAY_LABEL_Z]}
+          renderOrder={2}
+        />
+        <mesh
+          geometry={displayHeaderGeometry}
+          material={labelMaterial}
+          position={[0, -0.0131, DISPLAY_LABEL_Z]}
+          renderOrder={2}
+        />
       </group>
 
       {/* Rear tape-printer mechanism, including the roll, guide and cutter. */}
@@ -784,19 +1013,13 @@ export function DeskCalculator({
         <mesh geometry={tapeGeometry} castShadow receiveShadow>
           <meshStandardMaterial color="#f0eddf" roughness={0.9} metalness={0} side={DoubleSide} />
         </mesh>
-        <Text
-          font={modelFont}
+        <mesh
+          geometry={tapeLabelGeometry}
+          material={labelMaterial}
           position={[0, 0.066, 0.044]}
           rotation={[0.36, 0, 0]}
-          fontSize={0.0072}
-          lineHeight={1.24}
-          color="#343631"
-          anchorX="center"
-          anchorY="middle"
-          textAlign="center"
-        >
-          {tapeOutput}
-        </Text>
+          renderOrder={2}
+        />
       </group>
 
       {/* Side badge and exposed fasteners help the prop hold up in profile. */}
@@ -807,9 +1030,13 @@ export function DeskCalculator({
         <planeGeometry args={[0.075, 0.015]} />
         <meshStandardMaterial color="#9a8350" roughness={0.46} metalness={0.56} />
       </mesh>
-      <Text font={modelFont} position={[-0.13045, 0.086, 0.03]} rotation={[0, -HALF_PI, 0]} fontSize={0.007} color="#252824" anchorX="center" anchorY="middle">
-        FINANCE
-      </Text>
+      <mesh
+        geometry={sideBadgeGeometry}
+        material={labelMaterial}
+        position={[-0.13045, 0.086, 0.03]}
+        rotation={[0, -HALF_PI, 0]}
+        renderOrder={2}
+      />
     </group>
   )
 }
