@@ -40,12 +40,12 @@
     "fire"
   ],
   "coverage": {
-    "primaryManualCases": 10,
+    "primaryManualCases": 11,
     "optionalManualCases": 5,
     "rampEraCases": 7,
     "endingCases": 1,
-    "totalCases": 23,
-    "generatedReceiptArtifacts": 26
+    "totalCases": 24,
+    "generatedReceiptArtifacts": 27
   },
   "templates": {
     "thermal-restaurant": {
@@ -976,6 +976,103 @@
         "explanation": "The amount matches the transaction, but the document cannot establish a legitimate merchant, payment, or inventory trail."
       },
       "generationNotes": "The words must remain decipherable after blur so the joke lands. The photo can be bad, but the player should never have to guess what it says."
+    },
+    {
+      "caseId": "manual-fire-self-approved-vendor",
+      "sequence": 7,
+      "title": "Totally separate consultant",
+      "difficulty": "easy",
+      "variantId": "employee-owned-self-approved-vendor",
+      "seed": "receipt-cases-v1:manual-fire-self-approved-vendor:employee-owned-self-approved-vendor",
+      "receipt": {
+        "receiptId": "receipt-totally-separate-20260701-0670",
+        "templateId": "corporate-invoice",
+        "visualTreatmentId": "clean",
+        "locale": "en-US",
+        "currency": "USD",
+        "merchant": {
+          "name": "TOTALLY SEPARATE CONSULTING LLC",
+          "addressLines": [
+            "44 LEDGER LANE",
+            "NEW YORK, NY 10004"
+          ],
+          "phone": "212-555-0167"
+        },
+        "issuedAt": "2026-07-01T09:06:00-04:00",
+        "lineItems": [
+          {
+            "description": "EXPENSE POLICY CONSULTING",
+            "quantity": 40,
+            "unitPriceCents": 30000,
+            "lineTotalCents": 1200000
+          }
+        ],
+        "amounts": {
+          "subtotalCents": 1200000,
+          "taxCents": 0,
+          "tipCents": 0,
+          "feesCents": 0,
+          "discountCents": 0,
+          "calculatedTotalCents": 1200000,
+          "printedTotalCents": 1200000
+        },
+        "payment": {
+          "method": "ACH",
+          "cardLast4": "0670",
+          "authorizationCode": "SELF67"
+        },
+        "copy": {
+          "invoiceNumber": "TS-0067",
+          "memo": "INDEPENDENT EXPENSE POLICY CONSULTING",
+          "employeeName": "Jordan Blake",
+          "footer": "THANK YOU FOR NOT CHECKING THE W-9"
+        },
+        "anomalies": []
+      },
+      "comparisonRecords": {
+        "transaction": {
+          "merchant": "Totally Separate Consulting LLC",
+          "amountCents": 1200000,
+          "occurredAt": "2026-07-01T09:06:00-04:00",
+          "paymentMethod": "ACH",
+          "employeeId": "employee-jordan-blake",
+          "category": "Professional Services"
+        },
+        "vendorProfile": {
+          "legalName": "Totally Separate Consulting LLC",
+          "beneficialOwner": "Jordan Blake",
+          "registeredAddress": "44 Ledger Lane, New York, NY 10004",
+          "payoutBankBeneficiary": "Jordan Blake",
+          "payoutAccountLast4": "0670"
+        },
+        "employee": {
+          "employeeId": "employee-jordan-blake",
+          "name": "Jordan Blake",
+          "role": "Finance Operations Manager",
+          "homeAddress": "44 Ledger Lane, New York, NY 10004",
+          "startDate": "2022-08-15"
+        },
+        "approval": {
+          "submittedBy": "Jordan Blake",
+          "approvedBy": "Jordan Blake",
+          "note": "Looks independent to me"
+        }
+      },
+      "truth": {
+        "acceptedDecisions": [
+          "fire"
+        ],
+        "expectedDecision": "fire",
+        "primaryClue": "The employee, vendor beneficial owner, invoice approver, and payout-bank beneficiary are all Jordan Blake.",
+        "primaryEvidenceTargets": [
+          "comparisonRecords.employee",
+          "comparisonRecords.vendorProfile",
+          "comparisonRecords.approval"
+        ],
+        "secondaryClue": "The vendor and employee records also share the same home address and bank-account ending.",
+        "explanation": "Jordan created a vendor, approved its invoice, and routed the company payment to Jordan's own bank account. The documented self-dealing makes Fire the required response; rejecting only this invoice leaves the person who stole from the company in control of approvals."
+      },
+      "generationNotes": "Keep the invoice visually legitimate. The fair joke is the exact identity match across the employee, vendor, approval, and payout records, not a hidden image defect."
     },
     {
       "caseId": "manual-07-duplicate-receipt-ring",

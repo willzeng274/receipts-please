@@ -14,6 +14,7 @@ import {
   VignetteEffect,
 } from 'postprocessing'
 import { SCENE_LAYOUT_MANIFEST, type SceneAssetPlacement } from '../../config/sceneManifest'
+import { isGamePath } from '../../config/labRoutes'
 import { ASSET_DEFINITIONS, findAssetDefinition, getAssetDefinition } from '../../models/registry'
 import { DESK_COMPUTER_SCREEN } from '../../models/procedural/DeskComputer'
 import { useLabStore, type EffectPreset, type LabMode, type LightingPreset } from '../../store/useLabStore'
@@ -31,6 +32,13 @@ const WORKSTATION_SCREEN_WORLD = [
   DESK_COMPUTER_POSITION[1] + DESK_COMPUTER_SCREEN.position[1],
   DESK_COMPUTER_POSITION[2] + DESK_COMPUTER_SCREEN.position[2],
 ] as const
+
+const WORKSTATION_HTML_STYLE = {
+  height: 650,
+  width: 1040,
+} as const
+
+const WORKSTATION_HTML_Z_INDEX: number[] = [30, 30]
 
 const WORKSTATION_EFFECTS: Record<WorkstationSceneEventId, EffectPreset> = {
   'card.freeze': 'fraud',
@@ -680,7 +688,7 @@ function WorkstationScreen() {
   const resetExpenseExperience = useLabStore((state) => state.resetExpenseExperience)
   const runGiraffeReveal = useLabStore((state) => state.runGiraffeReveal)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
-  const gameActive = window.location.pathname === '/game'
+  const gameActive = isGamePath(window.location.pathname)
   const completeGameManualQueue = useGameStore((state) => state.completeManualQueue)
   const gameAutomationActive = useGameStore((state) => state.automationActive)
   const gamePhase = useGameStore((state) => state.phase)
@@ -707,33 +715,38 @@ function WorkstationScreen() {
 
   return (
     <Html
+      className="workstation-html-surface"
       center={false}
+      pointerEvents="auto"
       scale={0.0208}
-      style={{ height: 650, pointerEvents: 'auto', width: 1040 }}
+      style={WORKSTATION_HTML_STYLE}
       transform
-      zIndexRange={[30, 0]}
+      wrapperClass="workstation-html-layer"
+      zIndexRange={WORKSTATION_HTML_Z_INDEX}
     >
-      {gameActive && !gameAutomationActive ? <GameWorkstation /> : (
-        <WorkstationOS
-          effect={effectPreset}
-          effectRun={effectRun}
-          focused={focused}
-          migrationLocked={migrationLocked}
-          migrationStep={migrationStep}
-          onAdvanceMigration={advanceRampMigration}
-          onExit={() => setFocused(false)}
-          onFocus={() => setFocused(true)}
-          onGameComplete={gameActive ? undefined : runGiraffeReveal}
-          onManualQueueComplete={gameActive ? completeGameManualQueue : queueRampIntroduction}
-          onRestart={resetExpenseExperience}
-          onTryRamp={beginRampTransition}
-          phase={gameActive
-            ? gamePhase === 'migrating' ? 'migrating' : gamePhase === 'ramp' ? 'ramp' : 'manual'
-            : phase}
-          rampPromptVisible={gameActive ? false : rampPromptVisible}
-          readOnly={gameActive && (gameAutomationActive || !['manual', 'ramp'].includes(gamePhase))}
-        />
-      )}
+      <div className="workstation-html-content">
+        {gameActive && !gameAutomationActive ? <GameWorkstation /> : (
+          <WorkstationOS
+            effect={effectPreset}
+            effectRun={effectRun}
+            focused={focused}
+            migrationLocked={migrationLocked}
+            migrationStep={migrationStep}
+            onAdvanceMigration={advanceRampMigration}
+            onExit={() => setFocused(false)}
+            onFocus={() => setFocused(true)}
+            onGameComplete={gameActive ? undefined : runGiraffeReveal}
+            onManualQueueComplete={gameActive ? completeGameManualQueue : queueRampIntroduction}
+            onRestart={resetExpenseExperience}
+            onTryRamp={beginRampTransition}
+            phase={gameActive
+              ? gamePhase === 'migrating' ? 'migrating' : gamePhase === 'ramp' ? 'ramp' : 'manual'
+              : phase}
+            rampPromptVisible={gameActive ? false : rampPromptVisible}
+            readOnly={gameActive && (gameAutomationActive || !['manual', 'ramp'].includes(gamePhase))}
+          />
+        )}
+      </div>
     </Html>
   )
 }
@@ -854,7 +867,7 @@ function AnimationFloor() {
     return (
       <group scale={0.65} position={[0, 0.01, 0.85]}>
         <RegisteredAsset id="office-service-window" />
-        <RegisteredAsset id="giraffe-reveal" position={[0.76, 0, -2.22]} visible={fullRevealActive} />
+        {fullRevealActive ? <RegisteredAsset id="giraffe-reveal" position={[0.76, 0, -2.22]} /> : null}
       </group>
     )
   }
@@ -902,6 +915,7 @@ function DeskEnvironment() {
       <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
       {DESK_ASSET_PLACEMENTS.map((placement, index) => {
         const key = `${placement.id}-${index}`
+        if (placement.id === 'giraffe-reveal' && !giraffeFocused) return null
         if (!gameActive && placement.id in DESK_STAMP_DECISIONS) {
           return <DeskDecisionStamp key={key} placement={placement as SceneAssetPlacement & { id: keyof typeof DESK_STAMP_HIT_AREAS }} />
         }
@@ -912,9 +926,7 @@ function DeskEnvironment() {
             onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
               ? () => activateAsset(placement.id)
               : undefined}
-            visible={placement.id === 'giraffe-reveal'
-              ? giraffeFocused
-              : placement.id !== 'freeze-card-button' || !gameActive || automationActive}
+            visible={placement.id !== 'freeze-card-button' || !gameActive || automationActive}
           >
             {placement.id === 'desk-computer' ? <WorkstationScreen /> : null}
           </RegisteredAsset>

@@ -227,6 +227,19 @@ The receipt includes:
 - Lorem ipsum under Payment Method
 - A subtotal that does not add up
 
+### Required demo case, self-approved vendor
+
+An employee submits a $12,000 invoice from Totally Separate Consulting LLC for expense-policy consulting.
+
+The fragmented records show:
+
+- The employee is Jordan Blake
+- The vendor's beneficial owner and payout-bank beneficiary are Jordan Blake
+- Jordan submitted and approved the invoice
+- The employee and vendor records share the same address and bank-account ending
+
+Player action: Fire. Reject is not sufficient because the evidence documents deliberate self-dealing by a finance employee who controls approvals.
+
 ### Optional manual cases
 
 Use these only if the pacing allows:
@@ -1155,7 +1168,7 @@ Use scripted animation for:
 - Character reactions
 - Evidence card movement
 
-The game should preload all critical assets before starting. A five minute demo cannot pause for asset streaming.
+Preload only the critical opening assets before starting: the manual adaptive music loop and first paper-pickup cue. Fetch later audio when first played, and do not globally preload or invisibly mount authored GLBs. The giraffe may load on demand during the gated CEO dialogue before the service-window reveal. This keeps the deployment's cold transfer small without stuttering the opening interaction.
 
 ## 20. Production assignments
 
@@ -1217,8 +1230,8 @@ The game should preload all critical assets before starting. A five minute demo 
 The final demo must include:
 
 - One polished desk environment
-- Six manual cases
-- Five Ramp cases
+- Seven manual cases
+- Six Ramp cases
 - Three decision trays
 - Three stamps
 - Hardcoded policy

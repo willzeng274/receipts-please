@@ -96,6 +96,11 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 
 .lab-viewport { min-width: 0; position: relative; background: radial-gradient(circle at 50% 42%, #2d3832 0, #18211f 42%, #0c1211 100%); overflow: hidden; }
 .lab-viewport canvas { display: block; }
+.workstation-html-layer { contain: layout paint style; isolation: isolate; }
+.workstation-html-layer > div,
+.workstation-html-layer > div > div { backface-visibility: hidden; will-change: transform; }
+.workstation-html-surface,
+.workstation-html-content { width: 1040px; height: 650px; backface-visibility: hidden; transform: translate3d(0, 0, 0); }
 .webgl-fallback { height: 100%; display: grid; place-items: center; padding: 30px; color: var(--orange); font: 500 11px/1.6 'IBM Plex Mono', monospace; text-align: center; }
 .webgl-fallback strong { display: block; margin-bottom: 8px; color: var(--paper); font-size: 15px; text-transform: uppercase; }
 .webgl-fallback p { max-width: 620px; margin: 0 0 15px; overflow-wrap: anywhere; }

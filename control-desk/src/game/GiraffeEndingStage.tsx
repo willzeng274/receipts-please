@@ -14,7 +14,7 @@ export function GiraffeEndingStage({ onSkip }: GiraffeEndingStageProps) {
           <ambientLight color="#d8e8df" intensity={1.15} />
           <directionalLight castShadow color="#fff1ce" intensity={2.3} position={[3.2, 5.5, 4.8]} />
           <pointLight color="#e97645" intensity={4.2} position={[-2.4, 1.8, 2.5]} />
-          <GiraffeReveal effectPreset="migration" effectRun={1} position={[0, -0.65, 0]} />
+          <GiraffeReveal effectPreset="migration" effectRun={1} position={[0, -1.78, 0]} />
         </Canvas>
         <div className="game-giraffe-window-frame" />
         <div className="game-giraffe-glass" />

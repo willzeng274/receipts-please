@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { getLabMode, isAudioLabPath } from './config/labRoutes'
+import { getLabMode, isAudioLabPath, isGamePath } from './config/labRoutes'
 
 const AudioLab = lazy(() => import('./components/lab/AudioLab').then((module) => ({ default: module.AudioLab })))
 const GameShell = lazy(() => import('./game/GameShell').then((module) => ({ default: module.GameShell })))
@@ -7,7 +7,7 @@ const LabShell = lazy(() => import('./components/lab/LabShell').then((module) =>
 
 function App() {
   const path = window.location.pathname
-  const route = path === '/game'
+  const route = isGamePath(path)
     ? <GameShell />
     : isAudioLabPath(path)
       ? <AudioLab />

@@ -6,6 +6,7 @@ export const GAME_DURATION_SECONDS = 5 * 60
 export type GamePhase = 'briefing' | 'complete' | 'ending' | 'manual' | 'migrating' | 'migration-prompt' | 'overload' | 'ramp'
 
 export type DecisionResult = {
+  acceptedDecisions: GameDecision[]
   correct: boolean
   decision: GameDecision
   expectedDecision: GameDecision
@@ -113,14 +114,16 @@ export const useGameStore = create<GameState>((set, get) => ({
     const missingEvidence = currentCase.era === 'manual'
       ? currentCase.evidence.map((_, index) => index).filter((index) => !state.reviewedEvidence.includes(index))
       : []
-    const correct = decision === currentCase.truth.expectedDecision
-      || (currentCase.truth.expectedDecision === 'fire' && decision === 'reject')
+    const acceptedDecisions = currentCase.truth.acceptedDecisions
+      ?? (currentCase.truth.expectedDecision === 'fire' ? ['fire', 'reject'] : [currentCase.truth.expectedDecision])
+    const correct = acceptedDecisions.includes(decision)
     const points = correct
       ? decision === 'fire' ? 200 : 100
       : decision === 'fire' && currentCase.truth.expectedDecision !== 'fire'
         ? -200
         : -75
     const result: DecisionResult = {
+      acceptedDecisions,
       correct,
       decision,
       expectedDecision: currentCase.truth.expectedDecision,

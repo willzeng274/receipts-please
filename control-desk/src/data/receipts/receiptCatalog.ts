@@ -42,6 +42,7 @@ export type ReceiptCatalogCase = {
   sequence: number
   title: string
   truth: {
+    acceptedDecisions?: ReceiptDecision[]
     calculatorOperation?: { resultDisplay: string }
     expectedDecision: ReceiptDecision
     explanation: string
@@ -104,6 +105,11 @@ function validateCatalog() {
     caseIds.add(receiptCase.caseId)
     assertCatalog(receiptCase.seed === `${catalog.catalogId}:${receiptCase.caseId}:${receiptCase.variantId}`, `seed does not match the deterministic strategy for ${receiptCase.caseId}`)
     assertCatalog(VALID_DECISIONS.has(receiptCase.truth.expectedDecision), `unknown decision on ${receiptCase.caseId}`)
+    if (receiptCase.truth.acceptedDecisions) {
+      assertCatalog(receiptCase.truth.acceptedDecisions.length > 0, `acceptedDecisions is empty on ${receiptCase.caseId}`)
+      assertCatalog(receiptCase.truth.acceptedDecisions.every((decision) => VALID_DECISIONS.has(decision)), `unknown accepted decision on ${receiptCase.caseId}`)
+      assertCatalog(receiptCase.truth.acceptedDecisions.includes(receiptCase.truth.expectedDecision), `expected decision is not accepted on ${receiptCase.caseId}`)
+    }
     validateReceipt(receiptCase.receipt, receiptIds)
     artifactCount += 1
     for (const relatedReceipt of receiptCase.relatedReceipts ?? []) {
@@ -131,8 +137,22 @@ export function getReceiptArtifacts(caseId: string) {
   return [receiptCase.receipt, ...(receiptCase.relatedReceipts ?? [])] as const
 }
 
+const PLAYABLE_RECEIPT_CASE_IDS = [
+  'manual-01-amount-mismatch',
+  'manual-02-impossible-date',
+  'manual-03-omakase-intern',
+  'manual-04-infinite-tip',
+  'manual-05-frankenstein-receipt',
+  'manual-06-garbage-receipt',
+  'manual-fire-self-approved-vendor',
+  'ramp-09-it-inventory-theft',
+  'ramp-10-influencer-marketing-deal',
+  'ramp-11-travel-impossibility',
+  'ramp-12-ai-expense-paradox',
+  'ramp-13-procurement-mismatch',
+  'ramp-14-intern-card-catastrophe',
+] as const
+
 export function getPlayableReceiptCases() {
-  return RECEIPT_CASES
-    .filter((receiptCase) => (receiptCase.caseId.startsWith('manual-') && receiptCase.sequence <= 6) || receiptCase.caseId.startsWith('ramp-'))
-    .toSorted((left, right) => left.sequence - right.sequence)
+  return PLAYABLE_RECEIPT_CASE_IDS.map(getReceiptCatalogCase)
 }

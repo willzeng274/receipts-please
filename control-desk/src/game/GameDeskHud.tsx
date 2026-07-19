@@ -62,9 +62,12 @@ export function GameDeskHud() {
   const fired = feedback.decision === 'fire'
   const firedName = currentCase.employee.split(' · ')[0]
   const chosenLabel = titleCase(feedback.decision)
-  const rejectAcceptedForFire = feedback.correct && feedback.expectedDecision === 'fire' && feedback.decision === 'reject'
-  const expectedLabel = feedback.expectedDecision === 'fire' ? 'Fire or Reject' : titleCase(feedback.expectedDecision)
-  const answerLabel = feedback.expectedDecision === 'fire' ? 'Accepted answers' : 'Correct answer'
+  const rejectAcceptedForFire = feedback.correct
+    && feedback.expectedDecision === 'fire'
+    && feedback.decision === 'reject'
+    && feedback.acceptedDecisions.includes('reject')
+  const expectedLabel = feedback.acceptedDecisions.map(titleCase).join(' or ')
+  const answerLabel = feedback.acceptedDecisions.length > 1 ? 'Accepted answers' : 'Correct answer'
   const feedbackTitle = rejectAcceptedForFire
     ? 'Correct — Reject is an accepted conservative call.'
     : feedback.correct

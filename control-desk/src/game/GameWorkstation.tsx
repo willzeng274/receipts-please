@@ -133,7 +133,7 @@ function RampWorkspace({ currentCase }: { currentCase: GameCase }) {
       </section>
 
       <header>
-        <div><span>EXCEPTION {String(currentCase.sequence - MANUAL_CASE_COUNT).padStart(2, '0')} · {currentCase.employee}</span><h1>{currentCase.title}</h1></div>
+        <div><span>EXCEPTION {String(GAME_CASES.indexOf(currentCase) - MANUAL_CASE_COUNT + 1).padStart(2, '0')} · {currentCase.employee}</span><h1>{currentCase.title}</h1></div>
         <em>RAMP SURFACED</em>
       </header>
 

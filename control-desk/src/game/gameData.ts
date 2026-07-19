@@ -126,6 +126,21 @@ const CASE_PRESENTATION: Record<string, {
       { source: 'Transactions', label: 'Payment record', value: 'No match found', detail: 'Search: Dave · $14,000 · last 30 days', tone: 'neutral' },
     ],
   },
+  'manual-fire-self-approved-vendor': {
+    employee: 'Jordan Blake · Finance Operations',
+    queueLabel: 'Independent consultant invoice',
+    workflow: {
+      automation: 'Vendor ownership review',
+      connectedSystems: ['Vendor W-9', 'People directory', 'Approval history'],
+      exceptionReason: 'The employee approved a company payment to a vendor and bank account they own.',
+      policyCitation: 'Employees may not approve payments to themselves or undisclosed related parties.',
+    },
+    evidence: [
+      { source: 'Vendor W-9', label: 'Beneficial owner', value: 'Jordan Blake', detail: 'Totally Separate Consulting LLC · payout beneficiary: Jordan Blake · account •••• 0670.', tone: 'risk' },
+      { source: 'People directory', label: 'Employee record', value: 'Jordan Blake', detail: 'Finance Operations Manager · home address: 44 Ledger Lane.', tone: 'risk' },
+      { source: 'Approval history', label: 'Submitted + approved by', value: 'Jordan Blake', detail: 'Approval note: “Looks independent to me.”', tone: 'risk' },
+    ],
+  },
   'ramp-09-it-inventory-theft': {
     employee: 'William Zeng · IT Director',
     queueLabel: 'Technology supply invoice',

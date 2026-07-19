@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ACESFilmicToneMapping, SRGBColorSpace, type WebGLRenderer } from 'three'
+import { isGamePath } from '../../config/labRoutes'
 import { getAssetDefinition } from '../../models/registry'
 import { RAMP_MIGRATION_STEPS, useLabStore } from '../../store/useLabStore'
 import { LabScene } from './LabScene'
@@ -8,7 +9,7 @@ import { ScreenEffectPreview } from './ScreenEffectPreview'
 import { CanvasErrorBoundary } from './CanvasErrorBoundary'
 
 export function LabViewport() {
-  const gameActive = window.location.pathname === '/game'
+  const gameActive = isGamePath(window.location.pathname)
   const advanceRampMigration = useLabStore((state) => state.advanceRampMigration)
   const assetId = useLabStore((state) => state.assetId)
   const cameraPreset = useLabStore((state) => state.cameraPreset)

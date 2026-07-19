@@ -79,8 +79,9 @@ export function useWorkstationAudio(enabled: boolean) {
         for (const [sound, assetId] of Object.entries(SOUND_ASSET_IDS) as [WorkstationSound, string][]) {
           const asset = assetsById.get(assetId)
           if (!asset) continue
-          const audio = new Audio(asset.path)
-          audio.preload = 'auto'
+          const audio = document.createElement('audio')
+          audio.preload = 'none'
+          audio.src = asset.path
           templateMap.set(sound, audio)
         }
       })

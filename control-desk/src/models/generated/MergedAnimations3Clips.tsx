@@ -72,5 +72,3 @@ export function MergedAnimations3Clips({
     </group>
   )
 }
-
-useGLTF.preload('/models/source/merged_animations_3_clips.glb')

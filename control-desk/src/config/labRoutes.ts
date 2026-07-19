@@ -7,8 +7,8 @@ export type LabRoute = {
 }
 
 export const LAB_ROUTES: readonly LabRoute[] = [
-  { label: 'Play game', path: '/game' },
-  { label: 'Model floor', mode: 'models', path: '/model-lab' },
+  { label: 'Play game', path: '/' },
+  { label: 'Model floor', mode: 'models', path: '/control' },
   { label: 'Animation stage', mode: 'animation', path: '/animation-lab' },
   { label: 'Desk scene', mode: 'scene', path: '/scene-lab' },
   { label: 'System FX', mode: 'effects', path: '/effects-lab' },
@@ -16,6 +16,7 @@ export const LAB_ROUTES: readonly LabRoute[] = [
 ]
 
 export function getLabMode(pathname: string): LabMode {
+  if (pathname === '/model-lab') return 'models'
   return LAB_ROUTES.find((route) => route.path === pathname)?.mode ?? 'models'
 }
 
@@ -25,4 +26,8 @@ export function getLabPath(mode: LabMode): string {
 
 export function isAudioLabPath(pathname: string): boolean {
   return pathname === '/audio-lab'
+}
+
+export function isGamePath(pathname: string): boolean {
+  return pathname === '/' || pathname === '/game'
 }

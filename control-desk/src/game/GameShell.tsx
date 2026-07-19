@@ -14,14 +14,22 @@ import './game.css'
 type AudioCue = { id: string; loop: boolean; path: string }
 type AudioCatalog = { assets: AudioCue[] }
 
+// Keep the cold-open interaction seamless without downloading the entire
+// prototype catalog. Later cues are fetched by the browser when first played.
+const INITIAL_AUDIO_PRELOAD_IDS = new Set([
+  'manual-adaptive-music-loop',
+  'paper-pickup',
+])
+
+const POST_RAMP_SPEED_MULTIPLIER = 0.8
+const postRampDelay = (baseDelayMs: number) => Math.round(baseDelayMs / POST_RAMP_SPEED_MULTIPLIER)
 const POST_RAMP_SPEED = {
-  decision: 130,
-  ending: 180,
-  evidence: 90,
-  migration: 40,
-  reveal: 220,
-  selectCase: 70,
-  action: 110,
+  decision: postRampDelay(130),
+  ending: postRampDelay(180),
+  evidence: postRampDelay(90),
+  migration: postRampDelay(40),
+  selectCase: postRampDelay(70),
+  action: postRampDelay(110),
 } as const
 
 function formatElapsed(seconds: number) {
@@ -138,11 +146,13 @@ export function GameShell() {
       .then((nextCatalog) => {
         if (!active) return
         catalog.current = new Map(nextCatalog.assets.map((cue) => [cue.id, cue]))
-        preloadedAudio.current = nextCatalog.assets.map((cue) => {
-          const audio = new Audio(cue.path)
-          audio.preload = 'auto'
-          return audio
-        })
+        preloadedAudio.current = nextCatalog.assets
+          .filter((cue) => INITIAL_AUDIO_PRELOAD_IDS.has(cue.id))
+          .map((cue) => {
+            const audio = new Audio(cue.path)
+            audio.preload = 'auto'
+            return audio
+          })
         setAudioReady(true)
       })
       .catch(() => { /* The game remains playable when prototype audio is absent. */ })
@@ -321,16 +331,6 @@ export function GameShell() {
   }, [phase, setWorkstationFocused, stopAllAudio])
 
   useEffect(() => {
-    if (!automationActive || phase !== 'ending' || endingStep !== 0) return
-    const revealTimer = window.setTimeout(() => {
-      setEndingStep(1)
-      playCue('slack-ping', 0.6)
-      playCue('card-decline', 0.62)
-    }, POST_RAMP_SPEED.reveal)
-    return () => window.clearTimeout(revealTimer)
-  }, [automationActive, endingStep, phase, playCue])
-
-  useEffect(() => {
     if (phase !== 'ending' || endingStep !== 1) return
     const chewTimer = window.setTimeout(() => playCue('giraffe-chew', 0.54), 2500)
     const badgeTimer = window.setTimeout(() => playCue('badge-jingle', 0.62), 3200)
@@ -475,7 +475,7 @@ export function GameShell() {
           <h2>CEO: urgent</h2>
           <p>CEO: why did my card decline{`\n`}CEO: can you make a one time exception{`\n`}CEO: he already started monday</p>
           <article><span>{endingTransaction.merchant}</span><strong>{new Intl.NumberFormat('en-US', { currency: 'USD', style: 'currency' }).format(endingTransaction.amountCents / 100)}</strong><small>{endingTransaction.category} · {endingTransaction.memo} · {endingTransaction.result}</small></article>
-          <button onClick={handleReveal} type="button">Preserve automatic decline</button>
+          <button onClick={handleReveal} type="button">Continue to the service window</button>
         </section>
       )}
 

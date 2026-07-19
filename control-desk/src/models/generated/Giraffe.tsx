@@ -29,5 +29,3 @@ export function Model(props: ThreeElements['group']) {
     </group>
   )
 }
-
-useGLTF.preload('/models/source/Giraffe.glb')
