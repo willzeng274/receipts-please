@@ -84,6 +84,12 @@ For this hackathon proof of concept, audio exploration may use `yt-dlp` to acqui
 - Never hand-edit `control-desk/package.json`. From `control-desk/`, use `bun create`, `bun add`, `bun remove`, and existing `bun run` scripts.
 - Do not add Rapier or another physics engine unless a demonstrated interaction cannot be delivered with constrained scripted motion.
 
+## Vercel deployment
+
+- The Vercel project is `nastypigzs-projects/ramp`, linked to this Git repository with `control-desk` as its Root Directory.
+- `control-desk/vercel.json` is the durable deployment contract: Vite framework, Bun install/build commands, `dist` output, immutable caching for content-hashed music/SFX, and an SPA rewrite to `index.html` so `/`, `/control`, and the compatibility lab/game URLs work on direct navigation.
+- Run Vercel CLI commands from `control-desk/` or from a directory beneath the root `.vercel/repo.json` link. Never change the project back to the Next.js preset.
+
 ## R3F transform and React safety
 
 - Model at real-world meter scale with the asset root at a documented origin. Apply display zoom only in the registry/stage wrapper.

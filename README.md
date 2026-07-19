@@ -2,7 +2,7 @@
 
 An internal production lab for **Receipts, Please**, a Ramp Builders Cup browser-game prototype about surviving a chaotic finance desk before the workflow transforms.
 
-The current milestone includes the desk environment, procedural 3D asset library, animation/effects sandbox, interactive Expense OS, and a playable five-minute `/game` vertical slice.
+The current milestone includes the desk environment, procedural 3D asset library, animation/effects sandbox, interactive Expense OS, and a playable five-minute `/` vertical slice.
 
 ## Repository layout
 
@@ -30,7 +30,7 @@ bun install
 bun run dev
 ```
 
-Vite prints the local URL when the server starts. Open `/model-lab` for the default asset inspector.
+Vite prints the local URL when the server starts. Open `/` for the game or `/control` for the default asset inspector.
 
 ## App scripts
 
@@ -53,13 +53,25 @@ python3 ../.agents/skills/create-game-model/scripts/validate_asset_manifest.py p
 
 | Route | Purpose |
 | --- | --- |
-| `/model-lab` | Inspect every registered model in isolation from saved camera and lighting presets |
+| `/` | Play the user-facing vertical slice |
+| `/control` | Inspect every registered model in isolation from saved camera and lighting presets |
 | `/animation-lab` | Replay solo and multi-model animation compositions |
 | `/scene-lab` | Review the assembled office, horseshoe desk, seated POV, lighting, and story sequences |
 | `/effects-lab` | Test coupled object, screen, camera, and environment responses |
 | `/audio-lab` | Review sourced music/SFX metadata and playback |
 
 The 3D labs expose OrbitControls, saved cameras, lighting controls, grid visibility, reduced motion, and the performance profiler. The seated first-person camera in Desk Scene uses a constrained forward-facing look arc so the open rear of the review environment is never exposed.
+
+## Vercel deployment
+
+The Vercel project uses `control-desk` as its Root Directory. Its checked-in `vercel.json` selects Vite, installs and builds with Bun, publishes `dist`, gives content-hashed music/SFX immutable browser caching, and rewrites client-side routes to `index.html`.
+
+```bash
+cd control-desk
+bunx vercel pull --yes
+bunx vercel build --prod
+bunx vercel deploy --prebuilt --prod
+```
 
 ## Working with Codex
 
