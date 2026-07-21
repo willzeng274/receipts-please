@@ -12,6 +12,7 @@ export const LAB_ROUTES: readonly LabRoute[] = [
   { label: 'Animation stage', mode: 'animation', path: '/animation-lab' },
   { label: 'Desk scene', mode: 'scene', path: '/scene-lab' },
   { label: 'System FX', mode: 'effects', path: '/effects-lab' },
+  { label: 'Expense OS', path: '/os-lab' },
   { label: 'Audio intake', path: '/audio-lab' },
 ]
 
@@ -26,6 +27,10 @@ export function getLabPath(mode: LabMode): string {
 
 export function isAudioLabPath(pathname: string): boolean {
   return pathname === '/audio-lab'
+}
+
+export function isOsLabPath(pathname: string): boolean {
+  return pathname === '/os-lab' || pathname === '/expense-os-lab'
 }
 
 export function isGamePath(pathname: string): boolean {

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Design Operating Systems"
+  short_description: "Design convincing embedded desktop app ecosystems"
+  default_prompt: "Use $design-operating-system to design or rebuild the embedded Expense OS and its app workflows."

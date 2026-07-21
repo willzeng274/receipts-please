@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { LabViewport } from '../components/lab/LabViewport'
 import { WORKSTATION_CASES_BY_ID, WORKSTATION_CASE_IDS_BY_PHASE } from '../components/workstation/caseFixtures'
 import { useWorkstationStore } from '../components/workstation/useWorkstationStore'
-import { RAMP_MIGRATION_STEPS, useLabStore } from '../store/useLabStore'
-import { ENDING_CASE } from './gameData'
+import { useLabStore } from '../store/useLabStore'
 import { GameDeskHud } from './GameDeskHud'
 import { GiraffeEndingStage } from './GiraffeEndingStage'
 import { GAME_AUDIO_EVENT, type GameAudioRequest } from './gameAudio'
@@ -21,15 +20,15 @@ const INITIAL_AUDIO_PRELOAD_IDS = new Set([
   'paper-pickup',
 ])
 
-const POST_RAMP_SPEED_MULTIPLIER = 0.8
+const POST_RAMP_SPEED_MULTIPLIER = 0.75
 const postRampDelay = (baseDelayMs: number) => Math.round(baseDelayMs / POST_RAMP_SPEED_MULTIPLIER)
 const POST_RAMP_SPEED = {
-  decision: postRampDelay(130),
-  ending: postRampDelay(180),
-  evidence: postRampDelay(90),
-  migration: postRampDelay(40),
-  selectCase: postRampDelay(70),
-  action: postRampDelay(110),
+  decision: postRampDelay(760),
+  ending: postRampDelay(1050),
+  evidence: postRampDelay(520),
+  migration: postRampDelay(700),
+  selectCase: postRampDelay(400),
+  action: postRampDelay(620),
 } as const
 
 function formatElapsed(seconds: number) {
@@ -41,14 +40,15 @@ export function GameShell() {
   const completeAutomatedQueue = useGameStore((state) => state.completeAutomatedQueue)
   const completeGame = useGameStore((state) => state.completeGame)
   const elapsedSeconds = useGameStore((state) => state.elapsedSeconds)
+  const endingContinueRun = useGameStore((state) => state.endingContinueRun)
   const feedback = useGameStore((state) => state.feedback)
   const finishMigration = useGameStore((state) => state.finishMigration)
-  const installRamp = useGameStore((state) => state.installRamp)
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
+  const openDesktopApp = useGameStore((state) => state.openDesktopApp)
   const resetGame = useGameStore((state) => state.resetGame)
   const soundEnabled = useGameStore((state) => state.soundEnabled)
-  const startGame = useGameStore((state) => state.startGame)
+  const setSlackView = useGameStore((state) => state.setSlackView)
   const tick = useGameStore((state) => state.tick)
   const timedOut = useGameStore((state) => state.timedOut)
   const workstationActiveCaseId = useWorkstationStore((state) => state.activeCaseId)
@@ -65,10 +65,11 @@ export function GameShell() {
   const toggleWorkstationEvidence = useWorkstationStore((state) => state.togglePinnedEvidence)
   const advanceRampMigration = useLabStore((state) => state.advanceRampMigration)
   const experiencePhase = useLabStore((state) => state.experiencePhase)
-  const beginRampTransition = useLabStore((state) => state.beginRampTransition)
+  const exitGiraffeFocus = useLabStore((state) => state.exitGiraffeFocus)
   const resetExperience = useLabStore((state) => state.resetExperience)
   const rampMigrationStep = useLabStore((state) => state.rampMigrationStep)
   const rampMigrationLocked = useLabStore((state) => state.rampMigrationLocked)
+  const runGiraffeReveal = useLabStore((state) => state.runGiraffeReveal)
   const setCameraPreset = useLabStore((state) => state.setCameraPreset)
   const setGridVisible = useLabStore((state) => state.setGridVisible)
   const setMode = useLabStore((state) => state.setMode)
@@ -87,6 +88,7 @@ export function GameShell() {
   const previousCase = useRef(-1)
   const previousFeedback = useRef<typeof feedback>(null)
   const previousMigrationStep = useRef(0)
+  const giraffeRevealRequested = useRef(false)
 
   const playCue = useCallback((id: string, volume = 0.68) => {
     if (!useGameStore.getState().soundEnabled) return
@@ -170,14 +172,13 @@ export function GameShell() {
   useEffect(() => {
     resetGame()
     resetExperience()
-    resetWorkstation()
     setMode('scene')
     setCameraPreset('player')
     setGridVisible(false)
     setPerformanceVisible(false)
     setRenderQuality('capture')
     setWorkstationFocused(false)
-  }, [resetExperience, resetGame, resetWorkstation, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
+  }, [resetExperience, resetGame, setCameraPreset, setGridVisible, setMode, setPerformanceVisible, setRenderQuality, setWorkstationFocused])
 
   useEffect(() => {
     const timer = window.setInterval(tick, 1000)
@@ -296,7 +297,7 @@ export function GameShell() {
   }, [calmBeat])
 
   useEffect(() => {
-    if (phase === 'overload') {
+    if (phase === 'migration-prompt') {
       playCue('printer-jam', 0.68)
       playCue('slack-ping', 0.55)
       const phoneTimer = window.setTimeout(() => playCue('phone-ring', 0.5), 520)
@@ -320,18 +321,38 @@ export function GameShell() {
   }, [phase, playCue, rampMigrationStep])
 
   useEffect(() => {
+    if (phase === 'migration-prompt') {
+      setSlackView('ceo')
+      openDesktopApp('slack')
+      setWorkstationFocused(true)
+      playCue('slack-ping', 0.6)
+    }
     if (phase === 'ending') {
-      setWorkstationFocused(false)
+      setSlackView('ceo')
+      openDesktopApp('slack')
+      setWorkstationFocused(true)
       ambience.current?.pause()
+      playCue('slack-ping', 0.6)
+      playCue('card-decline', 0.62)
     }
     if (phase === 'complete') {
+      exitGiraffeFocus()
       setWorkstationFocused(false)
       stopAllAudio()
     }
-  }, [phase, setWorkstationFocused, stopAllAudio])
+  }, [exitGiraffeFocus, openDesktopApp, phase, playCue, setSlackView, setWorkstationFocused, stopAllAudio])
+
+  useEffect(() => {
+    if (phase !== 'ending' || endingStep !== 0 || endingContinueRun < 1) return
+    setEndingStep(1)
+  }, [endingContinueRun, endingStep, phase])
 
   useEffect(() => {
     if (phase !== 'ending' || endingStep !== 1) return
+    if (!giraffeRevealRequested.current) {
+      giraffeRevealRequested.current = true
+      runGiraffeReveal()
+    }
     const chewTimer = window.setTimeout(() => playCue('giraffe-chew', 0.54), 2500)
     const badgeTimer = window.setTimeout(() => playCue('badge-jingle', 0.62), 3200)
     const titleTimer = window.setTimeout(completeGame, 5100)
@@ -340,26 +361,18 @@ export function GameShell() {
       window.clearTimeout(badgeTimer)
       window.clearTimeout(titleTimer)
     }
-  }, [completeGame, endingStep, phase, playCue])
+  }, [completeGame, endingStep, phase, playCue, runGiraffeReveal])
 
-  const handleStart = () => {
-    setRenderQuality('capture')
-    startGame()
-    setWorkstationFocused(false)
-    switchAmbience('manual-adaptive-music-loop')
-    playCue('paper-pickup', 0.52)
-  }
-
-  const handleReveal = () => {
-    setEndingStep(1)
-    playCue('slack-ping', 0.6)
-    playCue('card-decline', 0.62)
-  }
+  useEffect(() => {
+    if (phase === 'ending') return
+    giraffeRevealRequested.current = false
+  }, [phase])
 
   const handleRestart = () => {
     stopAllAudio()
     setCalmBeat(false)
     setEndingStep(0)
+    exitGiraffeFocus()
     previousCase.current = -1
     previousFeedback.current = null
     resetGame()
@@ -368,122 +381,23 @@ export function GameShell() {
     setMode('scene')
     setCameraPreset('player')
     setRenderQuality('capture')
-  }
-
-  const postRampEnabled = experiencePhase !== 'manual'
-    || ['migrating', 'ramp', 'ending', 'complete'].includes(phase)
-
-  const handlePostRampToggle = (enabled: boolean) => {
-    stopAllAudio()
-    setCalmBeat(false)
-    setEndingStep(0)
-    previousCase.current = -1
-    previousFeedback.current = null
-    resetGame()
-    resetExperience()
-    resetWorkstation()
-    setMode('scene')
-    setCameraPreset('player')
-    setGridVisible(false)
-    setPerformanceVisible(false)
-
-    if (enabled) {
-      setRenderQuality('capture')
-      installRamp()
-      beginRampTransition()
-      return
-    }
-
-    setRenderQuality('capture')
-    setWorkstationFocused(false)
   }
 
   const correct = workstationSession.correctCount
   const score = workstationSession.score
   const rating = score >= 1800 ? 'Audit legend' : score >= 1300 ? 'Controller material' : score >= 800 ? 'Still employed' : 'Please see HR'
-  const endingTransaction = ENDING_CASE.comparisonRecords.transaction as { amountCents: number; category: string; memo: string; merchant: string; result: string }
   const rampCaseCount = WORKSTATION_CASE_IDS_BY_PHASE.ramp.length
-  const automatedCasesComplete = WORKSTATION_CASE_IDS_BY_PHASE.ramp
-    .filter((caseId) => workstationClosedCaseIds.includes(caseId)).length
-  const automatedCase = WORKSTATION_CASES_BY_ID[workstationActiveCaseId]
-  const automatedCaseDetail = `Reviewing ${automatedCase.title}`
-  const automationStatus = phase === 'migrating'
-    ? {
-        current: Math.min(rampMigrationStep, RAMP_MIGRATION_STEPS.length),
-        detail: rampMigrationStep < RAMP_MIGRATION_STEPS.length
-          ? RAMP_MIGRATION_STEPS[rampMigrationStep]
-          : 'Starting exception queue',
-        label: 'Installing Ramp',
-        max: RAMP_MIGRATION_STEPS.length,
-      }
-    : phase === 'ramp'
-      ? {
-          current: automatedCasesComplete,
-          detail: automatedCaseDetail,
-          label: 'Handling exceptions',
-          max: rampCaseCount,
-        }
-      : {
-          current: Number(endingStep > 0),
-          detail: endingStep > 0 ? 'Automatic decline preserved' : 'Preparing the final automatic decline',
-          label: 'Queue complete',
-          max: 1,
-        }
 
   return (
     <main className="game-shell">
       <LabViewport />
-      <label className="game-post-ramp-toggle">
-        <span>Manual</span>
-        <input
-          aria-label="Toggle Post-Ramp mode"
-          checked={postRampEnabled}
-          onChange={(event) => handlePostRampToggle(event.target.checked)}
-          type="checkbox"
-        />
-        <i aria-hidden="true"><b /></i>
-        <strong>Post-Ramp</strong>
-      </label>
       <GameDeskHud />
-
-      {automationActive && ['migrating', 'ramp', 'ending'].includes(phase) && (
-        <section aria-live="polite" className="game-ramp-run-status">
-          <header>
-            <img alt="Ramp" src="/brand/ramp-lockup-white.svg" />
-            <span><i aria-hidden="true" /> RUNNING</span>
-          </header>
-          <strong>{automationStatus.label}</strong>
-          <p>{automationStatus.detail}</p>
-          <progress max={automationStatus.max} value={automationStatus.current} />
-          <small>{automationStatus.current} / {automationStatus.max}</small>
-        </section>
-      )}
-
-      {phase === 'briefing' && (
-        <section className="game-cold-open">
-          <span>0:00–0:20 · FINANCE OPS · 11:54 AM</span>
-          <h2>Need these cleared before lunch.</h2>
-          <p>The first receipt is waiting on the desk and its transaction is already open. Pick it up to begin the shift.</p>
-          <button onClick={handleStart} type="button">Pick up receipt</button>
-          <small>Shift clock {formatElapsed(elapsedSeconds)} · mouse only</small>
-        </section>
-      )}
-
-      {phase === 'ending' && endingStep === 0 && (
-        <section className="game-ending-panel">
-          <span>4:40–5:00 · INBOX ZERO · LOW CORTISOL 100%</span>
-          <h2>CEO: urgent</h2>
-          <p>CEO: why did my card decline{`\n`}CEO: can you make a one time exception{`\n`}CEO: he already started monday</p>
-          <article><span>{endingTransaction.merchant}</span><strong>{new Intl.NumberFormat('en-US', { currency: 'USD', style: 'currency' }).format(endingTransaction.amountCents / 100)}</strong><small>{endingTransaction.category} · {endingTransaction.memo} · {endingTransaction.result}</small></article>
-          <button onClick={handleReveal} type="button">Continue to the service window</button>
-        </section>
-      )}
 
       {phase === 'ending' && endingStep === 1 && <GiraffeEndingStage onSkip={completeGame} />}
 
       {phase === 'complete' && (
         <section className="game-title-card">
-          <span>{timedOut ? 'SHIFT CLOSED · FIVE-MINUTE LIMIT REACHED' : 'THE NEW CHIEF GROWTH OFFICER HAS ARRIVED'}</span>
+          <span>{timedOut ? 'SHIFT CLOSED · FIVE-MINUTE LIMIT REACHED' : 'CFO ROLE ELIMINATED · GROWTH BUDGET REALLOCATED'}</span>
           <h1>{timedOut ? <>Time's<br />Up</> : <>Receipts,<br />Please</>}</h1>
           <dl><div><dt>Cases reviewed</dt><dd>{workstationClosedCaseIds.length}/{WORKSTATION_CASE_IDS_BY_PHASE.manual.length + rampCaseCount}</dd></div><div><dt>Correct judgments</dt><dd>{correct}</dd></div><div><dt>Score</dt><dd>{score}</dd></div><div><dt>Rating</dt><dd>{rating}</dd></div><div><dt>Shift time</dt><dd>{formatElapsed(elapsedSeconds)}</dd></div></dl>
           <button onClick={handleRestart} type="button">Review another shift</button>

@@ -3,7 +3,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import gsap from 'gsap'
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AmbientLight, DirectionalLight, Group, PerspectiveCamera, PointLight, SpotLight } from 'three'
-import { Color, Vector3 } from 'three'
+import { Color, Shape, ShapeGeometry, Vector3 } from 'three'
 import {
   BlendFunction,
   BloomEffect,
@@ -33,12 +33,10 @@ const WORKSTATION_SCREEN_WORLD = [
   DESK_COMPUTER_POSITION[2] + DESK_COMPUTER_SCREEN.position[2],
 ] as const
 
-const WORKSTATION_HTML_STYLE = {
-  height: 650,
-  width: 1040,
-} as const
-
-const WORKSTATION_HTML_Z_INDEX: number[] = [30, 30]
+const WORKSTATION_SURFACE_WIDTH = 1040
+const WORKSTATION_SURFACE_HEIGHT = 585
+const HOMOGRAPHY_EPSILON = 1e-7
+const FOCUS_CAMERA_DURATION_SECONDS = 0.62
 
 const WORKSTATION_EFFECTS: Record<WorkstationSceneEventId, EffectPreset> = {
   'card.freeze': 'fraud',
@@ -333,41 +331,33 @@ function CameraRig() {
     gsap.killTweensOf(camera.position)
     gsap.killTweensOf(activeTarget)
     gsap.killTweensOf(perspectiveCamera)
+    const startPosition = camera.position.clone()
+    const startTarget = activeTarget.clone()
+    const startFov = perspectiveCamera.fov
+    const destinationPosition = new Vector3(...destination.position)
+    const destinationTarget = new Vector3(...destination.target)
+    const tweenState = { progress: 0 }
     const updateFocusCamera = () => {
+      const progress = tweenState.progress
+      camera.position.lerpVectors(startPosition, destinationPosition, progress)
+      activeTarget.lerpVectors(startTarget, destinationTarget, progress)
+      perspectiveCamera.fov = startFov + (destination.fov - startFov) * progress
+      perspectiveCamera.updateProjectionMatrix()
       if (orbit) orbit.update()
       else camera.lookAt(activeTarget)
     }
-    const positionTween = gsap.to(camera.position, {
-      duration: 0.62,
+    const focusTween = gsap.to(tweenState, {
+      duration: FOCUS_CAMERA_DURATION_SECONDS,
       ease: 'power3.inOut',
       overwrite: true,
-      x: destination.position[0],
-      y: destination.position[1],
-      z: destination.position[2],
+      progress: 1,
       onUpdate: updateFocusCamera,
-    })
-    const targetTween = gsap.to(activeTarget, {
-      duration: 0.62,
-      ease: 'power3.inOut',
-      overwrite: true,
-      x: destination.target[0],
-      y: destination.target[1],
-      z: destination.target[2],
-      onUpdate: updateFocusCamera,
-    })
-    const fovTween = gsap.to(perspectiveCamera, {
-      duration: 0.62,
-      ease: 'power3.inOut',
-      fov: destination.fov,
-      overwrite: true,
-      onUpdate: () => perspectiveCamera.updateProjectionMatrix(),
+      onComplete: updateFocusCamera,
     })
 
     if (!focusMode) restoredView.current = null
     return () => {
-      positionTween.kill()
-      targetTween.kill()
-      fovTween.kill()
+      focusTween.kill()
     }
   }, [camera, cameraPreset, focusMode])
 
@@ -656,9 +646,77 @@ function DeskDecisionStamp({ placement }: { placement: SceneAssetPlacement & { i
   )
 }
 
-function ReceiptPaper({ position = [0, 0.005, 0], rotation = [0, 0, 0] }: Omit<RegisteredAssetProps, 'id' | 'scale'>) {
+function GameStampHighlight({ size }: { size: readonly [number, number, number] }) {
+  const brackets = useRef<Group>(null)
+  const bracketGeometry = useMemo(() => {
+    const x = size[0] * 0.57
+    const z = size[2] * 0.57
+    const long = Math.min(size[0], size[2]) * 0.26
+    const short = Math.max(0.005, Math.min(size[0], size[2]) * 0.03)
+    const segments = [
+      { position: [-x + long / 2, 0, -z] as const, size: [long, 0.0025, short] as const },
+      { position: [-x, 0, -z + long / 2] as const, size: [short, 0.0025, long] as const },
+      { position: [x - long / 2, 0, -z] as const, size: [long, 0.0025, short] as const },
+      { position: [x, 0, -z + long / 2] as const, size: [short, 0.0025, long] as const },
+      { position: [-x + long / 2, 0, z] as const, size: [long, 0.0025, short] as const },
+      { position: [-x, 0, z - long / 2] as const, size: [short, 0.0025, long] as const },
+      { position: [x - long / 2, 0, z] as const, size: [long, 0.0025, short] as const },
+      { position: [x, 0, z - long / 2] as const, size: [short, 0.0025, long] as const },
+    ]
+    const shapes = segments.map((segment) => {
+      const [segmentX, , segmentZ] = segment.position
+      const [segmentWidth, , segmentDepth] = segment.size
+      const shape = new Shape()
+      shape.moveTo(segmentX - segmentWidth / 2, segmentZ - segmentDepth / 2)
+      shape.lineTo(segmentX + segmentWidth / 2, segmentZ - segmentDepth / 2)
+      shape.lineTo(segmentX + segmentWidth / 2, segmentZ + segmentDepth / 2)
+      shape.lineTo(segmentX - segmentWidth / 2, segmentZ + segmentDepth / 2)
+      shape.closePath()
+      return shape
+    })
+    return new ShapeGeometry(shapes)
+  }, [size])
+
+  useEffect(() => () => bracketGeometry.dispose(), [bracketGeometry])
+
+  useFrame(({ clock }) => {
+    if (!brackets.current) return
+    const pulse = (Math.sin(clock.elapsedTime * 3.1) + 1) * 0.5
+    brackets.current.scale.setScalar(1 + pulse * 0.025)
+  })
+
   return (
-    <group position={position} rotation={rotation}>
+    <group ref={brackets} position={[0, 0.012, 0]}>
+      <mesh geometry={bracketGeometry} rotation={[-Math.PI / 2, 0, 0]}>
+        <meshBasicMaterial color="#efbd4d" depthTest={false} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
+  )
+}
+
+function ReceiptPaper({ onActivate, position = [0, 0.005, 0], rotation = [0, 0, 0] }: Omit<RegisteredAssetProps, 'id' | 'scale'>) {
+  return (
+    <group
+      onClick={onActivate ? (event) => {
+        event.stopPropagation()
+        document.body.style.cursor = ''
+        onActivate()
+      } : undefined}
+      onPointerOut={onActivate ? () => { document.body.style.cursor = '' } : undefined}
+      onPointerOver={onActivate ? (event) => {
+        event.stopPropagation()
+        document.body.style.cursor = 'pointer'
+      } : undefined}
+      position={position}
+      rotation={rotation}
+      userData={{ role: onActivate ? 'game-receipt-pickup' : 'receipt-paper' }}
+    >
+      {onActivate && (
+        <mesh position={[0, -0.0008, 0]}>
+          <boxGeometry args={[0.247, 0.002, 0.162]} />
+          <meshBasicMaterial color="#efbd4d" transparent opacity={0.72} />
+        </mesh>
+      )}
       <mesh castShadow receiveShadow>
         <boxGeometry args={[0.23, 0.003, 0.145]} />
         <meshStandardMaterial color="#e6dec8" metalness={0.01} roughness={0.82} />
@@ -690,13 +748,112 @@ function WorkstationScreen() {
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const gameActive = isGamePath(window.location.pathname)
   const completeGameManualQueue = useGameStore((state) => state.completeManualQueue)
-  const gameAutomationActive = useGameStore((state) => state.automationActive)
   const gamePhase = useGameStore((state) => state.phase)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
   const sceneEvent = useWorkstationStore((state) => state.sceneEvent)
   const markRampUnlocked = useWorkstationStore((state) => state.markRampUnlocked)
   const rampUnlocked = useWorkstationStore((state) => state.rampUnlocked)
   const handledSceneEventRun = useRef(sceneEvent?.run ?? 0)
+  const screenAnchor = useRef<Group>(null)
+  const focusSurface = useRef<HTMLDivElement>(null)
+  const localScreenCorners = useMemo(() => [
+    new Vector3(-DESK_COMPUTER_SCREEN.glassWidth / 2, DESK_COMPUTER_SCREEN.glassHeight / 2, 0),
+    new Vector3(DESK_COMPUTER_SCREEN.glassWidth / 2, DESK_COMPUTER_SCREEN.glassHeight / 2, 0),
+    new Vector3(DESK_COMPUTER_SCREEN.glassWidth / 2, -DESK_COMPUTER_SCREEN.glassHeight / 2, 0),
+    new Vector3(-DESK_COMPUTER_SCREEN.glassWidth / 2, -DESK_COMPUTER_SCREEN.glassHeight / 2, 0),
+  ], [])
+  const projectedScreenCorners = useMemo(() => localScreenCorners.map(() => new Vector3()), [localScreenCorners])
+  const projectedScreenOrigin = useMemo(() => new Vector3(), [])
+
+  useFrame(({ camera, size }) => {
+    if (!screenAnchor.current || !focusSurface.current) return
+    screenAnchor.current.updateWorldMatrix(true, false)
+    projectedScreenCorners.forEach((corner, index) => {
+      corner.copy(localScreenCorners[index])
+      screenAnchor.current!.localToWorld(corner)
+      corner.project(camera)
+    })
+    projectedScreenOrigin.set(0, 0, 0)
+    screenAnchor.current.localToWorld(projectedScreenOrigin)
+    projectedScreenOrigin.project(camera)
+
+    const surface = focusSurface.current
+    if (projectedScreenCorners.some((corner) => !Number.isFinite(corner.x)
+      || !Number.isFinite(corner.y)
+      || !Number.isFinite(corner.z)
+      || corner.z < -1
+      || corner.z > 1)) {
+      surface.style.opacity = '0'
+      surface.style.pointerEvents = 'none'
+      return
+    }
+
+    const [topLeft, topRight, bottomRight, bottomLeft] = projectedScreenCorners
+    // Drei centers a fullscreen Html child on its own projected 3D anchor. The
+    // homography is therefore authored in that inner wrapper's local pixels,
+    // not viewport pixels. Removing the wrapper origin prevents the camera
+    // transform from being applied twice when the monitor is viewed obliquely.
+    const wrapperLeft = projectedScreenOrigin.x * size.width * 0.5
+    const wrapperTop = -projectedScreenOrigin.y * size.height * 0.5
+    const x0 = (topLeft.x * 0.5 + 0.5) * size.width - wrapperLeft
+    const y0 = (-topLeft.y * 0.5 + 0.5) * size.height - wrapperTop
+    const x1 = (topRight.x * 0.5 + 0.5) * size.width - wrapperLeft
+    const y1 = (-topRight.y * 0.5 + 0.5) * size.height - wrapperTop
+    const x2 = (bottomRight.x * 0.5 + 0.5) * size.width - wrapperLeft
+    const y2 = (-bottomRight.y * 0.5 + 0.5) * size.height - wrapperTop
+    const x3 = (bottomLeft.x * 0.5 + 0.5) * size.width - wrapperLeft
+    const y3 = (-bottomLeft.y * 0.5 + 0.5) * size.height - wrapperTop
+    const dx1 = x1 - x2
+    const dx2 = x3 - x2
+    const dx3 = x0 - x1 + x2 - x3
+    const dy1 = y1 - y2
+    const dy2 = y3 - y2
+    const dy3 = y0 - y1 + y2 - y3
+    const denominator = dx1 * dy2 - dx2 * dy1
+
+    let perspectiveX = 0
+    let perspectiveY = 0
+    if (Math.abs(dx3) > HOMOGRAPHY_EPSILON || Math.abs(dy3) > HOMOGRAPHY_EPSILON) {
+      if (Math.abs(denominator) <= HOMOGRAPHY_EPSILON) {
+        surface.style.opacity = '0'
+        surface.style.pointerEvents = 'none'
+        return
+      }
+      perspectiveX = (dx3 * dy2 - dx2 * dy3) / denominator
+      perspectiveY = (dx1 * dy3 - dx3 * dy1) / denominator
+    }
+
+    const scaleX = x1 - x0 + perspectiveX * x1
+    const skewX = x3 - x0 + perspectiveY * x3
+    const scaleY = y1 - y0 + perspectiveX * y1
+    const skewY = y3 - y0 + perspectiveY * y3
+    const matrixValues = [
+      scaleX / WORKSTATION_SURFACE_WIDTH,
+      scaleY / WORKSTATION_SURFACE_WIDTH,
+      0,
+      perspectiveX / WORKSTATION_SURFACE_WIDTH,
+      skewX / WORKSTATION_SURFACE_HEIGHT,
+      skewY / WORKSTATION_SURFACE_HEIGHT,
+      0,
+      perspectiveY / WORKSTATION_SURFACE_HEIGHT,
+      0,
+      0,
+      1,
+      0,
+      x0,
+      y0,
+      0,
+      1,
+    ]
+
+    surface.style.opacity = '1'
+    surface.style.pointerEvents = 'auto'
+    surface.style.transform = `matrix3d(${matrixValues.join(',')})`
+  })
+
+  useEffect(() => {
+    if (gameActive && gamePhase === 'briefing' && focused) setFocused(false)
+  }, [focused, gameActive, gamePhase, setFocused])
 
   useEffect(() => {
     if (!sceneEvent || sceneEvent.run <= handledSceneEventRun.current) return
@@ -713,101 +870,34 @@ function WorkstationScreen() {
     if (phase === 'manual' && rampUnlocked && !rampPromptVisible) completeRampTransition()
   }, [completeRampTransition, gameActive, markRampUnlocked, phase, rampPromptVisible, rampUnlocked])
 
-  return (
-    <Html
-      className="workstation-html-surface"
-      center={false}
-      pointerEvents="auto"
-      scale={0.0208}
-      style={WORKSTATION_HTML_STYLE}
-      transform
-      wrapperClass="workstation-html-layer"
-      zIndexRange={WORKSTATION_HTML_Z_INDEX}
-    >
-      <div className="workstation-html-content">
-        {gameActive && !gameAutomationActive ? <GameWorkstation /> : (
-          <WorkstationOS
-            effect={effectPreset}
-            effectRun={effectRun}
-            focused={focused}
-            migrationLocked={migrationLocked}
-            migrationStep={migrationStep}
-            onAdvanceMigration={advanceRampMigration}
-            onExit={() => setFocused(false)}
-            onFocus={() => setFocused(true)}
-            onGameComplete={gameActive ? undefined : runGiraffeReveal}
-            onManualQueueComplete={gameActive ? completeGameManualQueue : queueRampIntroduction}
-            onRestart={resetExpenseExperience}
-            onTryRamp={beginRampTransition}
-            phase={gameActive
-              ? gamePhase === 'migrating' ? 'migrating' : gamePhase === 'ramp' ? 'ramp' : 'manual'
-              : phase}
-            rampPromptVisible={gameActive ? false : rampPromptVisible}
-            readOnly={gameActive && (gameAutomationActive || !['manual', 'ramp'].includes(gamePhase))}
-          />
-        )}
-      </div>
-    </Html>
+  const screen = gameActive ? <GameWorkstation /> : (
+    <WorkstationOS
+      effect={effectPreset}
+      effectRun={effectRun}
+      focused={focused}
+      migrationLocked={migrationLocked}
+      migrationStep={migrationStep}
+      onAdvanceMigration={advanceRampMigration}
+      onExit={() => setFocused(false)}
+      onFocus={() => setFocused(true)}
+      onGameComplete={gameActive ? undefined : runGiraffeReveal}
+      onManualQueueComplete={gameActive ? completeGameManualQueue : queueRampIntroduction}
+      onRestart={resetExpenseExperience}
+      onTryRamp={beginRampTransition}
+      phase={gameActive
+        ? gamePhase === 'migrating' ? 'migrating' : gamePhase === 'ramp' ? 'ramp' : 'manual'
+        : phase}
+      rampPromptVisible={gameActive ? false : rampPromptVisible}
+      readOnly={false}
+    />
   )
-}
-
-const DESK_DECISION_POSITIONS = Object.fromEntries(
-  DESK_ASSET_PLACEMENTS
-    .filter((placement) => ['approval-stamp', 'fraud-stamp', 'reject-stamp'].includes(placement.id) && placement.position)
-    .map((placement) => [placement.id, placement.position]),
-) as Record<string, [number, number, number]>
-function DeskDecisionLabel({ hint, id, label, onActivate, tone }: {
-  hint: string
-  id: 'approval-stamp' | 'fraud-stamp' | 'reject-stamp'
-  label: string
-  onActivate: () => void
-  tone: 'approve' | 'fire' | 'reject'
-}) {
-  const position = DESK_DECISION_POSITIONS[id]
-  if (!position) return null
-  return (
-    <Html center position={[position[0], position[1] + 0.24, position[2]]} zIndexRange={[24, 1]}>
-      <button
-        aria-label={`${label}: ${hint}`}
-        className={`game-decision-label is-${tone}`}
-        onClick={(event) => {
-          event.stopPropagation()
-          onActivate()
-        }}
-        type="button"
-      >
-        <strong>{label}</strong>
-        <small>{hint}</small>
-      </button>
-    </Html>
-  )
-}
-
-function DeskGameControls() {
-  const automationActive = useGameStore((state) => state.automationActive)
-  const feedback = useGameStore((state) => state.feedback)
-  const paused = useGameStore((state) => state.paused)
-  const phase = useGameStore((state) => state.phase)
-  const submitDecision = useGameStore((state) => state.submitDecision)
-  const focused = useLabStore((state) => state.workstationFocused)
-  const triggerEffect = useLabStore((state) => state.triggerEffect)
-  const gameActive = window.location.pathname === '/game'
-  const active = gameActive && !automationActive && !focused && !paused && !feedback && phase === 'manual'
-
-  if (!active) return null
-
-  const decide = (decision: GameDecision) => {
-    requestGameAudioCue('stamp-pickup', 0.46)
-    submitDecision(decision)
-    triggerEffect(decision === 'approve' ? 'approve' : decision === 'fire' ? 'fraud' : 'reject')
-  }
 
   return (
-    <>
-      <DeskDecisionLabel hint="Pay this expense" id="approval-stamp" label="APPROVE" onActivate={() => decide('approve')} tone="approve" />
-      <DeskDecisionLabel hint="Send it back" id="reject-stamp" label="REJECT" onActivate={() => decide('reject')} tone="reject" />
-      <DeskDecisionLabel hint="Terminate employee" id="fraud-stamp" label="FIRE" onActivate={() => decide('fire')} tone="fire" />
-    </>
+    <group ref={screenAnchor}>
+      <Html fullscreen pointerEvents="none" wrapperClass="workstation-focus-layer" zIndexRange={[40, 40]}>
+        <div className="workstation-focus-surface" ref={focusSurface}>{screen}</div>
+      </Html>
+    </group>
   )
 }
 
@@ -862,6 +952,34 @@ function AnimationFloor() {
     )
   }
 
+  if (compositionId === 'freeze-card-control') {
+    return (
+      <group scale={3.05}>
+        <RegisteredAsset id="freeze-card-button" position={[0.12, 0.012, 0.02]} rotation={[0, -0.18, 0]} />
+        <ReceiptPaper position={[-0.12, 0.008, 0.1]} rotation={[0, 0.08, 0]} />
+      </group>
+    )
+  }
+
+  if (compositionId === 'travel-review') {
+    return (
+      <group scale={2.45}>
+        <RegisteredAsset id="desk-computer" position={[-0.22, 0.012, -0.12]} scale={0.68} />
+        <RegisteredAsset id="receipt-printer" position={[0.26, 0.012, 0.04]} rotation={[0, -0.18, 0]} />
+        <ReceiptPaper position={[0.02, 0.008, 0.23]} rotation={[0, -0.06, 0]} />
+      </group>
+    )
+  }
+
+  if (compositionId === 'phone-dial') {
+    return (
+      <group scale={3.25}>
+        <RegisteredAsset id="desk-phone" position={[0.02, 0.012, -0.01]} rotation={[0, -0.12, 0]} />
+        <ReceiptPaper position={[-0.06, 0.008, 0.2]} rotation={[0, 0.05, 0]} />
+      </group>
+    )
+  }
+
   if (compositionId === 'giraffe-window') {
     const fullRevealActive = effectPreset === 'migration' && effectRun > 0
     return (
@@ -887,16 +1005,38 @@ function DeskEnvironment() {
   const focused = useLabStore((state) => state.workstationFocused)
   const paused = useGameStore((state) => state.paused)
   const phase = useGameStore((state) => state.phase)
+  const startGame = useGameStore((state) => state.startGame)
   const submitDecision = useGameStore((state) => state.submitDecision)
+  const setRenderQuality = useLabStore((state) => state.setRenderQuality)
   const setFocused = useLabStore((state) => state.setWorkstationFocused)
   const triggerEffect = useLabStore((state) => state.triggerEffect)
-  const gameActive = window.location.pathname === '/game'
+  const gameActive = isGamePath(window.location.pathname)
+  const decisionAvailable = gameActive && phase === 'manual' && !automationActive && !focused && !paused && !feedback
+
+  const pickUpReceipt = () => {
+    if (!gameActive || phase !== 'briefing') return
+    setRenderQuality('default')
+    startGame()
+    setFocused(false)
+    triggerEffect('paper-drop')
+    requestGameAudioCue('paper-pickup', 0.52)
+  }
 
   const activateAsset = (id: string) => {
     if (!gameActive || automationActive || focused || paused || feedback || phase !== 'manual') return
     if (id === 'desk-computer') {
       setFocused(true)
       requestGameAudioCue('paper-slide', 0.32)
+      return
+    }
+    if (id === 'desk-phone') {
+      triggerEffect('approve')
+      requestGameAudioCue('phone-ring', 0.5)
+      return
+    }
+    if (id === 'receipt-printer') {
+      triggerEffect('printer-jam')
+      requestGameAudioCue('printer-jam', 0.58)
       return
     }
     const decisions: Partial<Record<string, GameDecision>> = {
@@ -912,19 +1052,60 @@ function DeskEnvironment() {
   }
   return (
     <group>
-      <ReceiptPaper position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition} rotation={[0, -0.08, 0]} />
+      <ReceiptPaper
+        onActivate={gameActive && phase === 'briefing' ? pickUpReceipt : undefined}
+        position={SCENE_LAYOUT_MANIFEST.desk.receiptPosition}
+        rotation={[0, -0.08, 0]}
+      />
+      {gameActive && phase === 'briefing' && (
+        <Html
+          center
+          position={[
+            SCENE_LAYOUT_MANIFEST.desk.receiptPosition[0],
+            SCENE_LAYOUT_MANIFEST.desk.receiptPosition[1] + 0.075,
+            SCENE_LAYOUT_MANIFEST.desk.receiptPosition[2],
+          ]}
+          zIndexRange={[32, 1]}
+        >
+          <button
+            aria-label="Pick up receipt and begin the shift"
+            className="game-receipt-pickup-hotspot"
+            onClick={(event) => {
+              event.stopPropagation()
+              pickUpReceipt()
+            }}
+            type="button"
+          >
+            <span>Finance Ops · 11:54</span>
+            <strong>Pick up receipt</strong>
+          </button>
+        </Html>
+      )}
       {DESK_ASSET_PLACEMENTS.map((placement, index) => {
         const key = `${placement.id}-${index}`
         if (placement.id === 'giraffe-reveal' && !giraffeFocused) return null
         if (!gameActive && placement.id in DESK_STAMP_DECISIONS) {
           return <DeskDecisionStamp key={key} placement={placement as SceneAssetPlacement & { id: keyof typeof DESK_STAMP_HIT_AREAS }} />
         }
+        if (gameActive && placement.id in DESK_STAMP_DECISIONS) {
+          const stampId = placement.id as keyof typeof DESK_STAMP_HIT_AREAS
+          return (
+            <group key={key} position={placement.position} rotation={placement.rotation} scale={placement.scale}>
+              {decisionAvailable && <GameStampHighlight size={DESK_STAMP_HIT_AREAS[stampId].size} />}
+              <RegisteredAsset id={stampId} onActivate={() => activateAsset(stampId)} />
+            </group>
+          )
+        }
         return (
           <RegisteredAsset
             key={key}
             {...placement}
-            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'fraud-stamp', 'reject-stamp'].includes(placement.id)
+            onActivate={gameActive && ['approval-stamp', 'desk-computer', 'desk-phone', 'fraud-stamp', 'receipt-printer', 'reject-stamp'].includes(placement.id)
               ? () => activateAsset(placement.id)
+              : !gameActive && placement.id === 'desk-phone'
+                ? () => triggerEffect('approve')
+                : !gameActive && placement.id === 'receipt-printer'
+                  ? () => triggerEffect('printer-jam')
               : undefined}
             visible={placement.id !== 'freeze-card-button' || !gameActive || automationActive}
           >
@@ -932,7 +1113,6 @@ function DeskEnvironment() {
           </RegisteredAsset>
         )
       })}
-      <DeskGameControls />
     </group>
   )
 }

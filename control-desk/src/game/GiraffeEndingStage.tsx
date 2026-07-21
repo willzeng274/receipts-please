@@ -1,6 +1,3 @@
-import { Canvas } from '@react-three/fiber'
-import { GiraffeReveal } from '../models/procedural/GiraffeReveal'
-
 type GiraffeEndingStageProps = {
   onSkip: () => void
 }
@@ -8,22 +5,17 @@ type GiraffeEndingStageProps = {
 export function GiraffeEndingStage({ onSkip }: GiraffeEndingStageProps) {
   return (
     <section aria-label="Chief Growth Officer reveal" className="game-giraffe-stage">
-      <div className="game-giraffe-window" aria-hidden="true">
-        <div className="game-giraffe-skyline" />
-        <Canvas camera={{ fov: 25, position: [0, 1.25, 5.8] }} dpr={[1, 1.5]} shadows>
-          <ambientLight color="#d8e8df" intensity={1.15} />
-          <directionalLight castShadow color="#fff1ce" intensity={2.3} position={[3.2, 5.5, 4.8]} />
-          <pointLight color="#e97645" intensity={4.2} position={[-2.4, 1.8, 2.5]} />
-          <GiraffeReveal effectPreset="migration" effectRun={1} position={[0, -1.78, 0]} />
-        </Canvas>
-        <div className="game-giraffe-window-frame" />
-        <div className="game-giraffe-glass" />
+      <div className="game-giraffe-org-update">
+        <span>Organization update</span>
+        <strong>CFO role eliminated</strong>
+        <p>Ramp cleared the finance backlog, so the board reallocated your headcount and operating budget to growth.</p>
+        <b>Budget transfer → Chief Growth Officer</b>
       </div>
 
       <div className="game-giraffe-caption">
-        <span>EMPLOYEE SERVICE WINDOW</span>
+        <span>NEW EXECUTIVE · BUDGET FULLY FUNDED</span>
         <strong>Chief Growth Officer</strong>
-        <small>Badge verified · start date: Monday</small>
+        <small>Start date: Monday · predecessor: you</small>
       </div>
 
       <button className="game-giraffe-skip" onClick={onSkip} type="button">

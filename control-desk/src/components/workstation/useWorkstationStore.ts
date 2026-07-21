@@ -26,6 +26,7 @@ import type { AppId } from './workstationData'
 
 const SESSION_DURATION_MS = 5 * 60 * 1_000
 const STORAGE_VERSION = 7
+export const RECEIPT_REVIEW_HISTORY_LIMIT = 10
 
 const APP_IDS: readonly AppId[] = [
   'expenses',
@@ -278,7 +279,7 @@ function sanitizePersistedState(value: unknown): Partial<WorkstationDataState> {
 
   const receiptNotifications: WorkstationReceiptNotification[] = []
   if (Array.isArray(value.receiptNotifications)) {
-    for (const candidate of value.receiptNotifications.slice(-8)) {
+    for (const candidate of value.receiptNotifications.slice(-RECEIPT_REVIEW_HISTORY_LIMIT)) {
       if (!isRecord(candidate) || !isCaseId(candidate.caseId)) continue
       const expenseCase = WORKSTATION_CASES_BY_ID[candidate.caseId]
       receiptNotifications.push(Object.freeze({
@@ -594,7 +595,7 @@ export const useWorkstationStore = create<WorkstationState>()(
           return {
             activeApp: currentCaseClosed ? 'expenses' : state.activeApp,
             activeCaseId: currentCaseClosed ? caseId : state.activeCaseId,
-            receiptNotifications: [...state.receiptNotifications, createdNotification].slice(-8),
+            receiptNotifications: [...state.receiptNotifications, createdNotification].slice(-RECEIPT_REVIEW_HISTORY_LIMIT),
             receiptNotificationRun: state.receiptNotificationRun + 1,
             sceneEvent: { id: 'receipt.submitted', run: (state.sceneEvent?.run ?? 0) + 1 },
             submittedCaseIds: [...state.submittedCaseIds, caseId],

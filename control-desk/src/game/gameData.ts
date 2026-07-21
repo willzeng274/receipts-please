@@ -126,6 +126,50 @@ const CASE_PRESENTATION: Record<string, {
       { source: 'Transactions', label: 'Payment record', value: 'No match found', detail: 'Search: Dave · $14,000 · last 30 days', tone: 'neutral' },
     ],
   },
+  'manual-07-duplicate-receipt-ring': {
+    employee: 'Rowan Kim · Operations Intern',
+    queueLabel: 'Duplicate receipt ring',
+    workflow: {
+      automation: 'Duplicate detection',
+      connectedSystems: ['Receipt viewer', 'Transactions', 'Slack'],
+      exceptionReason: 'Three submissions reuse one receipt fingerprint with different crops and memos.',
+      policyCitation: 'Duplicate receipts are prohibited.',
+    },
+    evidence: [
+      { source: 'Receipt viewer', label: 'Receipt fingerprint', value: '3 exact matches', detail: 'Merchant, time, item lines, tax, and authorization code are identical.', tone: 'risk' },
+      { source: 'Transactions', label: 'Submitted by', value: '3 cardholders', detail: 'Each copy uses a different crop, rotation, and memo.', tone: 'neutral' },
+      { source: 'Slack', label: 'Finance thread', value: '“same offsite?”', detail: 'The three submitters describe different events.', tone: 'neutral' },
+    ],
+  },
+  'manual-08-ai-generated-receipt': {
+    employee: 'Alex Morgan · Sales',
+    queueLabel: 'Synthetic receipt',
+    workflow: {
+      automation: 'Document analysis',
+      connectedSystems: ['Receipt viewer', 'Transactions', 'Policy PDF'],
+      exceptionReason: 'The receipt combines an impossible date, location, currency, and arithmetic.',
+      policyCitation: 'Receipts must be authentic and match the transaction amount, merchant, and date.',
+    },
+    evidence: [
+      { source: 'Receipt viewer', label: 'Printed date', value: 'Feb 31', detail: 'The date cannot exist.', tone: 'risk' },
+      { source: 'Receipt viewer', label: 'Merchant address', value: 'Atlantic Ocean', detail: 'Payment copy also contains filler text and two currencies.', tone: 'risk' },
+      { source: 'Transactions', label: 'Arithmetic check', value: '$5.00 mismatch', detail: 'The printed total does not equal subtotal plus tax.', tone: 'risk' },
+    ],
+  },
+  'optional-01-taxi-location-mismatch': {
+    employee: 'Devon Lee · Partnerships',
+    queueLabel: 'Taxi during London trip',
+    workflow: {
+      automation: 'Travel matching',
+      connectedSystems: ['Receipt viewer', 'Travel'],
+      exceptionReason: 'The New York taxi charge conflicts with the employee’s approved London itinerary.',
+      policyCitation: 'Travel expenses must match an approved trip.',
+    },
+    evidence: [
+      { source: 'Receipt viewer', label: 'Taxi receipt', value: 'New York, NY', detail: 'Charged during the approved travel window.', tone: 'neutral' },
+      { source: 'Travel', label: 'Approved itinerary', value: 'London, UK', detail: 'The employee was scheduled in London at the receipt time.', tone: 'risk' },
+    ],
+  },
   'manual-fire-self-approved-vendor': {
     employee: 'Jordan Blake · Finance Operations',
     queueLabel: 'Independent consultant invoice',
@@ -241,9 +285,9 @@ const CASE_PRESENTATION: Record<string, {
       policyCitation: 'Client meals are allowed with named attendees, business purpose, and approval.',
     },
     evidence: [
-      { label: 'Card match', value: '$319.61', detail: 'Merchant, amount, and card digits match.', tone: 'good' },
-      { label: 'Attendees', value: '4 named', detail: '$79.90 per person · below the $100 limit.', tone: 'good' },
-      { label: 'Approval', value: 'VP Sales approved', detail: 'Purpose: Acme renewal dinner.', tone: 'good' },
+      { source: 'Transactions', label: 'Card match', value: '$319.61', detail: 'Merchant, amount, and card digits match.', tone: 'good' },
+      { source: 'Transactions', label: 'Attendees', value: '4 named', detail: '$79.90 per person · below the $100 limit.', tone: 'good' },
+      { source: 'Transactions', label: 'Approval', value: 'VP Sales approved', detail: 'Purpose: Acme renewal dinner.', tone: 'good' },
     ],
   },
   'manual-04-laptop-three-way-match': {
@@ -284,7 +328,7 @@ export const GAME_CASES: readonly GameCase[] = getPlayableReceiptCases().map((so
   return {
     ...source,
     ...presentation,
-    era: source.caseId.startsWith('manual-') ? 'manual' : 'ramp',
+    era: source.caseId.startsWith('ramp-') ? 'ramp' : 'manual',
     workflow: presentation.workflow,
   }
 })

@@ -9,6 +9,7 @@ import type {
   WorkstationRequiredAction,
 } from './types'
 import { getCasePresentation, POLICY_RULES, type AppId } from './workstationData'
+import { WorkstationAppIcon } from './WorkstationAppIcon'
 
 function StatusPill({ children, tone = 'neutral' }: { children: ReactNode; tone?: 'good' | 'neutral' | 'risk' }) {
   return <span className={`wsos-status wsos-status--${tone}`}>{children}</span>
@@ -172,20 +173,16 @@ export function ExpenseWorkspace({
         </section>
 
         <section className="wsos-pane wsos-pane--manual-checks">
-          <header><span>Manual checks</span><b>{activeCase.primaryApps.length} apps needed</b></header>
-          <p className="wsos-case-hint">{presentation.queueHint}</p>
+          <header><span>Open source systems</span><b>{activeCase.primaryApps.length} separate apps</b></header>
+          <p className="wsos-case-hint">The inbox does not connect the evidence. Open each source and compare it to the paper receipt.</p>
           {activeCase.primaryApps.map((app) => (
             <button key={app} onClick={() => onOpenApp(app)} type="button">
-              <span>{app === 'people' ? 'Employee' : app}</span>
-              <strong>{presentation.appSummaries[app] ?? 'Open source record'}</strong><b>Open</b>
+              <WorkstationAppIcon app={app} />
+              <span>{app === 'people' ? 'PeopleDB' : app}</span>
+              <strong>Open separate system</strong><b>Launch</b>
             </button>
           ))}
-          <div className="wsos-decision-strip">
-            <button disabled={activeCaseClosed} onClick={() => onDecision('approve')} type="button">Approve</button>
-            <button disabled={activeCaseClosed} onClick={() => onDecision('reject')} type="button">Reject</button>
-            <button disabled={activeCaseClosed} onClick={() => onDecision('investigate')} type="button">Investigate</button>
-            <button disabled={activeCaseClosed} onClick={() => onDecision('request-receipt')} type="button">Request receipt</button>
-          </div>
+          <div className="wsos-desk-decision-note"><span>Decision happens on the desk</span><strong>Press Escape, then use a physical stamp.</strong></div>
           <p>Case state: <strong>{decisionLabel(decision)}{activeCaseClosed ? ' · read only' : ''}</strong></p>
         </section>
       </div>

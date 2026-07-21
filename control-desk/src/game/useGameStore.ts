@@ -4,6 +4,18 @@ import { GAME_CASES, MANUAL_CASE_COUNT, type GameDecision } from './gameData'
 export const GAME_DURATION_SECONDS = 5 * 60
 
 export type GamePhase = 'briefing' | 'complete' | 'ending' | 'manual' | 'migrating' | 'migration-prompt' | 'overload' | 'ramp'
+export type GameSlackView = 'ceo' | 'finance' | 'travel'
+
+export type GameDesktopWindow = {
+  appId: string
+  height: number
+  maximized: boolean
+  minimized: boolean
+  width: number
+  x: number
+  y: number
+  z: number
+}
 
 export type DecisionResult = {
   acceptedDecisions: GameDecision[]
@@ -24,11 +36,15 @@ type GameState = {
   caseIndex: number
   decisions: DecisionRecord[]
   elapsedSeconds: number
+  endingContinueRun: number
   feedback: DecisionResult | null
+  desktopWindows: GameDesktopWindow[]
+  notificationVisible: boolean
   paused: boolean
   phase: GamePhase
   reviewedEvidence: number[]
   score: number
+  slackView: GameSlackView
   soundEnabled: boolean
   timedOut: boolean
   acknowledgeOverload: () => void
@@ -38,14 +54,24 @@ type GameState = {
   completeGame: () => void
   completeManualQueue: () => void
   finishMigration: () => void
+  closeDesktopApp: (appId: string) => void
+  dismissNotification: () => void
+  focusDesktopApp: (appId: string) => void
   inspectEvidence: (index: number) => void
   installRamp: () => void
+  minimizeDesktopApp: (appId: string) => void
+  moveDesktopApp: (appId: string, x: number, y: number) => void
+  openDesktopApp: (appId: string) => void
+  resizeDesktopApp: (appId: string, width: number, height: number) => void
   resetGame: () => void
+  requestEndingContinue: () => void
+  setSlackView: (view: GameSlackView) => void
   startGame: () => void
   submitDecision: (decision: GameDecision) => void
   tick: () => void
   togglePause: () => void
   toggleSound: () => void
+  toggleMaximizeDesktopApp: (appId: string) => void
 }
 
 const initialState = {
@@ -53,13 +79,24 @@ const initialState = {
   caseIndex: 0,
   decisions: [] as DecisionRecord[],
   elapsedSeconds: 0,
+  endingContinueRun: 0,
   feedback: null as DecisionResult | null,
+  desktopWindows: [] as GameDesktopWindow[],
+  notificationVisible: true,
   paused: false,
   phase: 'briefing' as GamePhase,
   reviewedEvidence: [] as number[],
   score: 0,
+  slackView: 'finance' as GameSlackView,
   soundEnabled: true,
   timedOut: false,
+}
+
+function initialDesktopWindow(appId: string, z = 21): GameDesktopWindow {
+  if (appId === 'expenses') return { appId, height: 472, maximized: false, minimized: false, width: 984, x: 28, y: 12, z }
+  if (appId === 'ramp') return { appId, height: 472, maximized: false, minimized: false, width: 984, x: 28, y: 12, z }
+  if (appId === 'calculator') return { appId, height: 420, maximized: false, minimized: false, width: 560, x: 246, y: 24, z }
+  return { appId, height: 430, maximized: false, minimized: false, width: 760, x: 240, y: 22, z }
 }
 
 export const useGameStore = create<GameState>((set, get) => ({
@@ -71,7 +108,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     if (nextIndex === MANUAL_CASE_COUNT) {
       return {
         feedback: null,
-        phase: 'overload',
+        phase: 'migration-prompt',
         reviewedEvidence: [],
       }
     }
@@ -86,27 +123,102 @@ export const useGameStore = create<GameState>((set, get) => ({
   completeManualQueue: () => set({
     caseIndex: MANUAL_CASE_COUNT - 1,
     feedback: null,
-    phase: 'overload',
+    phase: 'migration-prompt',
     reviewedEvidence: [],
   }),
-  finishMigration: () => set({
-    caseIndex: MANUAL_CASE_COUNT,
-    feedback: null,
-    phase: 'ramp',
-    reviewedEvidence: [],
+  finishMigration: () => set((state) => {
+    const topZ = Math.max(20, ...state.desktopWindows.map((window) => window.z)) + 1
+    const rampWindow = state.desktopWindows.find((window) => window.appId === 'ramp')
+    return {
+      caseIndex: MANUAL_CASE_COUNT,
+      desktopWindows: rampWindow
+        ? state.desktopWindows.map((window) => window.appId === 'ramp'
+          ? { ...window, minimized: false, z: topZ }
+          : { ...window, minimized: true })
+        : [
+            ...state.desktopWindows.map((window) => ({ ...window, minimized: true })),
+            initialDesktopWindow('ramp', topZ),
+          ],
+      feedback: null,
+      phase: 'ramp',
+      reviewedEvidence: [],
+    }
+  }),
+  closeDesktopApp: (appId) => set((state) => ({
+    desktopWindows: state.desktopWindows.filter((window) => window.appId !== appId),
+  })),
+  dismissNotification: () => set({ notificationVisible: false }),
+  focusDesktopApp: (appId) => set((state) => {
+    const topZ = Math.max(20, ...state.desktopWindows.map((window) => window.z)) + 1
+    return {
+      desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+        ? { ...window, minimized: false, z: topZ }
+        : window),
+    }
   }),
   inspectEvidence: (index) => set((state) => state.reviewedEvidence.includes(index)
     ? state
     : { reviewedEvidence: [...state.reviewedEvidence, index] }),
-  installRamp: () => set({
-    automationActive: true,
-    feedback: null,
-    paused: false,
-    phase: 'migrating',
-    reviewedEvidence: [],
+  installRamp: () => set((state) => {
+    const topZ = Math.max(20, ...state.desktopWindows.map((window) => window.z)) + 1
+    const rampWindow = state.desktopWindows.find((window) => window.appId === 'ramp')
+    return {
+      automationActive: true,
+      desktopWindows: rampWindow
+        ? state.desktopWindows.map((window) => window.appId === 'ramp'
+          ? { ...window, minimized: false, z: topZ }
+          : { ...window, minimized: true })
+        : [
+            ...state.desktopWindows.map((window) => ({ ...window, minimized: true })),
+            initialDesktopWindow('ramp', topZ),
+          ],
+      feedback: null,
+      notificationVisible: false,
+      paused: false,
+      phase: 'migrating',
+      reviewedEvidence: [],
+      slackView: 'ceo',
+    }
   }),
+  minimizeDesktopApp: (appId) => set((state) => ({
+    desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+      ? { ...window, minimized: true }
+      : window),
+  })),
+  moveDesktopApp: (appId, x, y) => set((state) => ({
+    desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+      ? { ...window, maximized: false, x, y }
+      : window),
+  })),
+  openDesktopApp: (appId) => set((state) => {
+    const topZ = Math.max(20, ...state.desktopWindows.map((window) => window.z)) + 1
+    const existing = state.desktopWindows.find((window) => window.appId === appId)
+    if (existing) {
+      return {
+        desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+          ? { ...window, minimized: false, z: topZ }
+          : window),
+      }
+    }
+    const offset = state.desktopWindows.filter((window) => window.appId !== 'expenses').length % 5
+    const window = initialDesktopWindow(appId, topZ)
+    return {
+      desktopWindows: [...state.desktopWindows, {
+        ...window,
+        x: window.x + offset * 18,
+        y: window.y + offset * 16,
+      }],
+    }
+  }),
+  resizeDesktopApp: (appId, width, height) => set((state) => ({
+    desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+      ? { ...window, height, maximized: false, width }
+      : window),
+  })),
   resetGame: () => set(initialState),
-  startGame: () => set({ ...initialState, phase: 'manual' }),
+  requestEndingContinue: () => set((state) => ({ endingContinueRun: state.endingContinueRun + 1 })),
+  setSlackView: (slackView) => set({ slackView }),
+  startGame: () => set({ ...initialState, desktopWindows: [initialDesktopWindow('expenses')], phase: 'manual' }),
   submitDecision: (decision) => {
     const state = get()
     if (state.elapsedSeconds >= GAME_DURATION_SECONDS || state.feedback || state.paused || !['manual', 'ramp'].includes(state.phase)) return
@@ -154,4 +266,11 @@ export const useGameStore = create<GameState>((set, get) => ({
   }),
   togglePause: () => set((state) => ({ paused: !state.paused })),
   toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
+  toggleMaximizeDesktopApp: (appId) => set((state) => ({
+    desktopWindows: state.desktopWindows.map((window) => window.appId === appId
+      ? window.maximized
+        ? initialDesktopWindow(appId, window.z)
+        : { ...window, height: 482, maximized: true, minimized: false, width: 1024, x: 8, y: 8 }
+      : window),
+  })),
 }))

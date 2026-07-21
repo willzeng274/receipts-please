@@ -20,6 +20,7 @@ import {
   useWorkstationStore,
 } from './useWorkstationStore'
 import { ExpenseWorkspace, RecordsApp } from './WorkstationCaseViews'
+import { WorkstationAppIcon } from './WorkstationAppIcon'
 import {
   INITIAL_CALCULATOR,
   MANUAL_APPS,
@@ -191,7 +192,7 @@ export function WorkstationOS({
   const [pinnedCalculatorTapes, setPinnedCalculatorTapes] = useState<Partial<Record<keyof typeof WORKSTATION_CASES_BY_ID, CalculatorTape>>>({})
   const [dismissedNotices, setDismissedNotices] = useState<string[]>([])
   const [evidenceRailOpen, setEvidenceRailOpen] = useState(true)
-  const [manualCortisol, setManualCortisol] = useState(28)
+  const [manualCortisol, setManualCortisol] = useState(68)
   const [noticeRailOpen, setNoticeRailOpen] = useState(false)
   const [receiptAlert, setReceiptAlert] = useState<WorkstationReceiptNotification | null>(null)
   const [soundEnabled, setSoundEnabled] = useState(true)
@@ -220,6 +221,8 @@ export function WorkstationOS({
   const receiptNoticeCount = settledPhase === 'manual' ? unreadReceiptNotifications : 0
   const gameCompletionAvailable = rampQueueComplete && Boolean(onGameComplete)
   const completedActions = completedActionsByCase[activeCaseId] ?? EMPTY_REQUIRED_ACTIONS
+  const rampCortisol = Math.max(0, Math.round(22 * (1 - rampCounts.completed / Math.max(1, rampCounts.total))))
+  const displayedCortisol = settledPhase === 'ramp' ? rampCortisol : manualCortisol
 
   const raiseCortisol = useCallback((amount = 2) => {
     if (phase !== 'manual') return
@@ -460,7 +463,7 @@ export function WorkstationOS({
     setPinnedCalculatorTapes({})
     setDismissedNotices([])
     setEvidenceRailOpen(true)
-    setManualCortisol(28)
+    setManualCortisol(68)
     setNoticeRailOpen(false)
     setReceiptAlert(null)
     setToast('New five-minute session ready')
@@ -611,7 +614,7 @@ export function WorkstationOS({
           </div>
           <div className="wsos-menu-right">
             <span className="wsos-case-number">CASE {phaseCaseNumber} / {phaseCounts.total} · INBOX {phaseInboxCount}</span>
-            <label className="wsos-cortisol"><span>Cortisol</span><i><b style={{ width: `${settledPhase === 'ramp' ? 22 : manualCortisol}%` }} /></i><em>{settledPhase === 'ramp' ? '22%' : `${manualCortisol}%`}</em></label>
+            <label className="wsos-cortisol"><span>Cortisol</span><i><b style={{ width: `${displayedCortisol}%` }} /></i><em>{displayedCortisol}%</em></label>
             <button aria-label={soundEnabled ? 'Mute workstation sounds' : 'Enable workstation sounds'} onClick={() => setSoundEnabled((value) => !value)} type="button">{soundEnabled ? 'VOL' : 'MUTE'}</button>
             <button
               aria-label={session.status === 'complete' ? 'Start a new session' : session.status === 'paused' ? 'Resume session timer' : session.status === 'expired' ? 'Session timer expired' : 'Pause session timer'}
@@ -632,7 +635,7 @@ export function WorkstationOS({
         <main className="wsos-desktop">
         <div className="wsos-wallpaper-copy" aria-hidden="true"><span>FINANCE OPERATIONS</span><strong>{settledPhase === 'ramp' ? 'Connected judgment' : 'Quarter close / day 19'}</strong></div>
 
-        <section className={`wsos-window${noticeRailOpen || evidenceRailOpen ? ' has-side-rail' : ''}`}>
+        <section className={`wsos-window${evidenceRailOpen ? ' has-side-rail' : ''}`}>
           <header className="wsos-window-bar">
             <div aria-hidden="true"><i /><i /><i /></div>
             <strong>{activeDefinition.label}</strong>
@@ -736,7 +739,7 @@ export function WorkstationOS({
               title={`${app.label} · ${navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+${index === 9 ? 0 : index + 1}`}
               type="button"
             >
-              <span>{app.shortLabel}</span>
+              <WorkstationAppIcon app={app.id} />
               <small>{app.label}</small>
             </button>
           ))}

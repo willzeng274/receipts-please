@@ -49,15 +49,15 @@ export const SCENE_LAYOUT_MANIFEST = {
     { id: 'filing-cabinet', position: [-2.45, deskOrigin[1], deskOrigin[2] + 0.65], rotation: [0, 1.47, 0] },
     { id: 'desk-computer', position: computerPosition },
     { id: 'desk-lamp', position: deskLampPosition, rotation: [0, deskLampYaw, 0] },
-    { id: 'receipt-printer', position: placeOnDesk(-1.06, -0.42), rotation: [0, 0.15, 0] },
-    { id: 'desk-phone', position: placeOnDesk(-1.16, 0.4), rotation: [0, 0.28, 0] },
+    { id: 'receipt-printer', position: placeOnDesk(-1.05, 0.1), rotation: [0, 0.22, 0] },
+    { id: 'desk-phone', position: placeOnDesk(-0.99, 0.48), rotation: [0, 0.52, 0] },
     { id: 'desk-calculator', position: placeOnDesk(-0.62, 0.32), rotation: [0, 0.2, 0], scale: 0.94 },
     { id: 'contractor-nameplate', position: placeOnDesk(-0.34, -0.38), rotation: [0, 0.02, 0], scale: 0.48 },
     { id: 'receipt-tray-set', position: placeOnDesk(0.91, 0.36), rotation: [0, -0.2, 0], scale: 0.88 },
     { id: 'freeze-card-button', position: placeOnDesk(0.61, -0.18), rotation: [0, -0.08, 0], scale: 0.9 },
-    { id: 'approval-stamp', position: placeOnDesk(-0.28, 0.08), rotation: [0, 0.04, 0], scale: 0.64 },
-    { id: 'fraud-stamp', position: placeOnDesk(0.18, 0.09), rotation: [0, -0.04, 0], scale: 0.5 },
-    { id: 'reject-stamp', position: placeOnDesk(0.52, 0.12), rotation: [0, -0.1, 0], scale: 0.64 },
+    { id: 'approval-stamp', position: placeOnDesk(0.02, 0.12), rotation: [0, 0.04, 0], scale: 0.64 },
+    { id: 'fraud-stamp', position: placeOnDesk(0.24, 0.11), rotation: [0, -0.04, 0], scale: 0.5 },
+    { id: 'reject-stamp', position: placeOnDesk(0.46, 0.12), rotation: [0, -0.1, 0], scale: 0.64 },
     { id: 'office-chair', position: [0, deskOrigin[1], deskOrigin[2] + 0.92], rotation: [0, Math.PI, 0] },
   ] satisfies SceneAssetPlacement[],
   camera: {
@@ -74,9 +74,12 @@ export const SCENE_LAYOUT_MANIFEST = {
     high: { position: [3.5, 2.95, 3.1], target: [0, 0.82, 0.08], fov: 44 },
     low: { position: [3.82, 0.52, 3.78], target: [0, 0.76, 0.16], fov: 40 },
     workstation: {
-      offset: [0, 0, 0.72] as SceneVector3,
+      // Equivalent framing to the old 40-degree focus camera, but at the
+      // seated 54-degree FOV so game focus is a clean dolly instead of a
+      // competing dolly-plus-lens zoom.
+      offset: [0, 0, 0.515] as SceneVector3,
       targetOffset: [0, 0, 0] as SceneVector3,
-      fov: 40,
+      fov: 54,
     },
     giraffe: { position: [0.04, 1.82, -2.72] as SceneVector3, target: [0.76, 2.02, -6.46] as SceneVector3, fov: 25 },
   },

@@ -1014,8 +1014,15 @@ export function DeskPhone({
       lcd.emissiveIntensity += acknowledgement * 0.28
       } else if (motion.preset === 'approve') {
       const anticipation = pulseWindow(time, 0, 0.08, 0.17)
-      const press = pulseWindow(time, 0.12, 0.22, 0.38)
-      const confirmation = pulseWindow(time, 0.2, 0.42, 0.78)
+      const dialSequence = ['digit-6', 'digit-7', 'digit-0']
+      dialSequence.forEach((keyId, index) => {
+        const key = KEY_BY_ID.get(keyId)
+        if (!key) return
+        const start = 0.09 + index * 0.14
+        setKeyOffset(key, -0.0032 * pulseWindow(time, start, start + 0.055, start + 0.13) * mechanismScale)
+      })
+      const press = pulseWindow(time, 0.46, 0.54, 0.67)
+      const confirmation = pulseWindow(time, 0.52, 0.68, 0.9)
       const settle = 1 - smoothStep((time - 0.47) / 0.36)
 
       phone.position.z = -0.001 * anticipation * motionScale

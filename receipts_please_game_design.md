@@ -57,7 +57,7 @@ A brief ghost hand demonstrates dragging the receipt into a tray. The player is 
 
 ### 0:20 to 2:10, manual review
 
-The player completes six to eight short cases. Each case should take 10 to 15 seconds.
+The player completes ten short cases before the Ramp migration. Keep each case concise enough to preserve the five-minute vertical-slice pacing.
 
 The opening is intentionally hard because information is fragmented across multiple windows and physical papers. It must still be fair. Each case has one main clue and, at most, one optional secondary clue.
 
@@ -108,11 +108,15 @@ Result: Declined automatically
 
 The CEO sends another message:
 
-CEO: can you make a one time exception
+CEO: ramp cleared the backlog
 
-CEO: he already started monday
+CEO: so the board eliminated your CFO role
 
-A giraffe slowly rises outside the office window wearing a company badge that says Chief Growth Officer.
+CEO: we reallocated your budget to growth
+
+CEO: also why did the new hire's card decline
+
+After the player clicks **Meet your replacement**, the existing office camera moves to the service window. A giraffe slowly rises outside wearing a company badge that says Chief Growth Officer. The organization update makes the punchline explicit: the player's CFO headcount and operating budget were reallocated to the giraffe for growth.
 
 Cut to the title card.
 
@@ -1230,7 +1234,7 @@ Preload only the critical opening assets before starting: the manual adaptive mu
 The final demo must include:
 
 - One polished desk environment
-- Seven manual cases
+- Ten manual cases, including the approved VP Sales client dinner and the self-approved vendor Fire case
 - Six Ramp cases
 - Three decision trays
 - Three stamps
@@ -1253,7 +1257,7 @@ The final demo must include:
 
 If development falls behind, cut in this order:
 
-1. Extra manual cases beyond six
+1. Extra manual cases beyond the required ten
 2. Extra Ramp cases beyond five
 3. Complex character lip sync
 4. Freeform evidence linking

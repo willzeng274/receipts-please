@@ -8,6 +8,9 @@ const COMBINED_SEQUENCES = [
   { id: 'receipt-routing', label: 'Receipt routing', note: 'print · inspect · file' },
   { id: 'decision-console', label: 'Decision console', note: 'calculate · decide · stamp' },
   { id: 'fraud-response', label: 'Fraud response', note: 'alert · freeze · recover' },
+  { id: 'freeze-card-control', label: 'Freeze card control', note: 'open cover · press · lock card' },
+  { id: 'travel-review', label: 'Travel exception', note: 'itinerary · receipt · decision' },
+  { id: 'phone-dial', label: 'CEO phone call', note: 'ring · dial 670 · connect' },
   { id: 'giraffe-window', label: 'Giraffe window reveal', note: 'shadow · rise · eye contact' },
 ]
 
@@ -35,6 +38,21 @@ const COMPOSITION_CUES = {
     { id: 'reject', label: 'Reject vendor' },
     { id: 'fraud', label: 'Freeze + alert' },
     { id: 'migration', label: 'Unify evidence' },
+  ],
+  'freeze-card-control': [
+    { id: 'paper-drop', label: 'Load card' },
+    { id: 'fraud', label: 'Open + freeze' },
+    { id: 'migration', label: 'Ramp control sync' },
+  ],
+  'travel-review': [
+    { id: 'paper-drop', label: 'Load itinerary' },
+    { id: 'reject', label: 'Flag mismatch' },
+    { id: 'migration', label: 'Connect travel evidence' },
+  ],
+  'phone-dial': [
+    { id: 'fraud', label: 'Incoming CEO call' },
+    { id: 'approve', label: 'Dial extension 670' },
+    { id: 'reject', label: 'Hang up' },
   ],
   'giraffe-window': [
     { id: 'paper-drop', label: 'Notice movement' },
